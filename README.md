@@ -1,16 +1,24 @@
 # picp
 sudo apt-get install sdcc
+
 sudo apt-get install picp
+
 wget http://home.pacbell.net/theposts/picmicro/picp-0.6.8.tar.gz
+
 wget https://launchpadlibrarian.net/26515430/picp_0.6.8.orig.tar.gz
+
 tar -xzf picp-0.6.8.tar.gz
+
 tar -xzf picp_0.6.8.orig.tar.gz
+
 cd picp-0.6.8
+
 make
+
 sudo make install
 
 
-
+```
 $ picp -h   
 
 picp: version 0.6.8
@@ -89,3 +97,5 @@ http://curuxa.org/en/Program_PICs_with_a_PICkit2_using_the_command_line_on_Linux
 
 
 https://hackaday.com/2010/11/03/how-to-program-pics-using-linux/
+
+```
