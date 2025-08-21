@@ -24,6 +24,7 @@
 #define	P_WARP13			2
 #define	P_JUPIC			4
 #define	P_OLIMEX			8	// non yet supported by picp - no way to test
+#define	P_K150			32	// K150 programmer support
 
 // indices into processor definition arrays
 //

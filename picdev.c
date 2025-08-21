@@ -1603,7 +1603,7 @@ const static PIC_DEFINITION PIC16C54C =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_OLIMEX),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_OLIMEX | P_K150),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -6771,6 +6771,64 @@ const static PIC_DEFINITION PIC16F88 =
 };
 
 //-----------------------------------------------------------
+const static unsigned char def_PIC16F887[] =
+{
+	0x20, 0x00,		// size of program space (8K words)
+	0x3f, 0xff,		// width of address word
+	0x3f, 0xff,		// width of data word
+	0x00, 0x7f,		// width of ID
+	0x00, 0x7f,		// ID mask
+	0x3f, 0xff,		// width of configuration word
+	0x3f, 0xff,		// configuration word mask
+	0x00, 0xff,		// EEPROM data width
+	0x00, 0xff,		// EEPROM data mask
+	0x00, 0x00,		// Calibration width
+	0x00, 0x00,		// Calibration mask
+	0x00, 0x00,		// ??
+	0x10, 0x00,		// ??
+	0x20, 0x00,		// address of ID locations
+	0x04,			// size of ID locations
+	0x20, 0x07,		// address of configuration bits
+	0x02,			// size of configuration register
+	0x00, 0x00,		// address of data space
+	0x01, 0x00,		// size of data space (256 bytes)
+	0x00, 0x00,		// address of internal clock calibration value
+	0x00, 0x00,		// size of clock calibration space
+	0x00,			// additional programming pulses for C devices
+	0x01,			// main programming pulses for C devices
+	0x14, 0x0f,		// ?? ZIF configuration ??
+};
+
+const static unsigned char defx_PIC16F887[] =
+{
+	0x3f, 0xff, 0x00, 0x03,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x3f, 0xff, 0x00, 0x03,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+};
+
+const static PIC_DEFINITION PIC16F887 =
+{
+	"16F887",			// device name
+	def_PIC16F887,		// definition
+	defx_PIC16F887,	// extended definition
+	0,					// config word: code protect bit mask
+	0,					// config word: watchdog bit mask
+
+	0,					// Word alignment for writing to this device
+	0,					// Configuration memory start address
+	0, 0,				// ID Locations addr
+	0,					// Data eeprom address
+	0,					// number of words in cfg bits with factory set bits
+	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_K150),	// bit map of supporting programmers
+};
+
+//-----------------------------------------------------------
 const static unsigned char def_PIC16F870[] =
 {
 	0x08, 0x00,		// size of program space
@@ -9033,6 +9091,65 @@ const static PIC_DEFINITION PIC18F452 =
 };
 
 //-----------------------------------------------------------
+const static unsigned char def_PIC18F2550[] =
+{
+	0x40, 0x00,		// size of program space (32K words)
+	0xff, 0xff,		// width of address word
+	0xff, 0xff,		// width of data word
+	0x0f, 0x0f,		// width of ID
+	0x0f, 0x0f,		// ID mask
+	0x3f, 0xff,		// width of configuration word
+	0x27, 0xff,		// configuration word mask
+	0x00, 0xff,		// EEPROM data width
+	0x00, 0xff,		// EEPROM data mask
+	0x00, 0x00,		// Calibration width
+	0x00, 0x00,		// Calibration mask
+	0x00, 0x00,		// ??
+	0x00, 0x01,		// ??
+	0x00, 0x00,		// address of ID locations
+	0x04,			// size of ID locations
+	0x00, 0x00,		// address of configuration bits
+	0x07,			// size of configuration register
+	0x00, 0x00,		// address of data space
+	0x01, 0x00,		// size of data space (256 bytes)
+	0x00, 0x00,		// address of internal clock calibration value
+	0x00, 0x00,		// size of clock calibration space
+	0x03,			// additional programming pulses for C devices
+	0x19,			// main programming pulses for C devices
+	0x0e, 0x0f,		// ?? ZIF configuration ??
+};
+
+const static unsigned char defx_PIC18F2550[] =
+{
+	0xcf, 0x3f, 0x1f, 0x3f,
+	0x83, 0x00, 0x00, 0x85,
+	0xc0, 0x0f, 0xe0, 0x0f,
+	0x40, 0x0f, 0x00, 0x00,
+
+	0xcf, 0x3f, 0x1f, 0x3f,
+	0x87, 0x00, 0x00, 0xe5,
+	0xc0, 0x0f, 0xe0, 0x0f,
+	0x40, 0x0f, 0x00, 0x00,
+};
+
+const static PIC_DEFINITION PIC18F2550 =
+{
+	"18F2550",			// device name
+	def_PIC18F2550,		// definition
+	defx_PIC18F2550,	// extended definition
+	0,					// config word: code protect bit mask
+	0,					// config word: watchdog bit mask
+
+	4,					// Word alignment for writing to this device
+	0x300000,			// Configuration memory start address
+	0x200000, 0,		// ID Locations addr
+	0xF00000,			// Data eeprom address
+	0,					// number of words in cfg bits with factory set bits
+	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
+	(P_WARP13 | P_K150),	// bit map of supporting programmers
+};
+
+//-----------------------------------------------------------
 const static unsigned char def_PIC18F4550[] =
 {
 	0x40, 0x00,		// size of program space
@@ -9558,6 +9675,7 @@ const PIC_DEFINITION *deviceList[] =
 	&PIC16F84A,
 	&PIC16F87,
 	&PIC16F88,
+	&PIC16F887,
 	&PIC16F870,
 	&PIC16F871,
 	&PIC16F872,
@@ -9595,6 +9713,7 @@ const PIC_DEFINITION *deviceList[] =
 	&PIC18F448,
 	&PIC18C452,
 	&PIC18F452,
+	&PIC18F2550,
 	&PIC18F4550,
 	&PIC18F458,
 	&PIC18F6520,
