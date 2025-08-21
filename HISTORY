@@ -20,7 +20,16 @@
 // Thanks to Adam Jurkiewicz for additional information about the processor
 // definition data in picdev.c, and for donating a JuPic programmer for testing.
 //
+// Thanks to Mark Stanley for providing an Olimex programmer for testing.
+//
 //-----------------------------------------------------------------------------
+//
+// 0.6.8 (19 December 2005)
+//	Read PIC_DEFINITION data from picdevrc file (picdev.c no longer used).
+//	Added convert and convertshort programs to read picdev.c file and
+//	generate verbose and short forms of picdevrc.
+//	Fixed program size for 12F509.
+//	Fixed SetRange to set address correctly for older PicStart Plus firmware.
 //
 // 0.6.7 (08 July 2005)
 //	Changed name of picstart.c to main.c since picp now works with three

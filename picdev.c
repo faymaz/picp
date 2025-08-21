@@ -98,7 +98,7 @@ const static PIC_DEFINITION PIC10F200 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 const static unsigned char def_PIC10F202[] =
@@ -155,7 +155,7 @@ const static PIC_DEFINITION PIC10F202 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 const static unsigned char def_PIC10F204[] =
@@ -212,7 +212,7 @@ const static PIC_DEFINITION PIC10F204 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 const static unsigned char def_PIC10F206[] =
@@ -269,7 +269,7 @@ const static PIC_DEFINITION PIC10F206 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -327,7 +327,7 @@ const static PIC_DEFINITION PIC12C508 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -385,7 +385,7 @@ const static PIC_DEFINITION PIC12C508A =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -443,7 +443,7 @@ const static PIC_DEFINITION PIC12C509 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -501,7 +501,7 @@ const static PIC_DEFINITION PIC12C509A =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -559,7 +559,7 @@ const static PIC_DEFINITION PIC12CE518 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -617,7 +617,7 @@ const static PIC_DEFINITION PIC12CE519 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -675,13 +675,13 @@ const static PIC_DEFINITION PIC12F508 =
 	0,						// Data eeprom address
 	1,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
 const static unsigned char def_PIC12F509[] =
 {
-	0x01, 0xff,		// size of program space
+	0x03, 0xff,		// size of program space
 	0x0f, 0xff,		// width of address word
 	0x0f, 0xff,		// width of data word
 	0x00, 0x0f,		// width of ID
@@ -693,14 +693,14 @@ const static unsigned char def_PIC12F509[] =
 	0x0f, 0xff,		// Calibration width
 	0x0f, 0xff,		// Calibration mask
 	0x00, 0x00,		// ??
-	0x01, 0xff,		// ??
-	0x02, 0x00,		// address of ID locations
+	0x03, 0xfe,		// ??
+	0x04, 0x00,		// address of ID locations
 	0x04,				// size of ID locations
 	0x0f, 0xff,		// address of configuration bits
 	0x01,				// size of configuration register
 	0x00, 0x00,		// address of data space
 	0x00, 0x00,		// size of data space
-	0x01, 0xff,		// address of internal clock calibration value
+	0x03, 0xff,		// address of internal clock calibration value
 	0x00, 0x01,		// size of clock calibration space
 	0x01,				// additional programming pulses for C devices
 	0x01,				// main programming pulses for C devices
@@ -733,7 +733,7 @@ const static PIC_DEFINITION PIC12F509 =
 	0,						// Data eeprom address
 	1,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -791,7 +791,7 @@ const static PIC_DEFINITION PIC12F629 =
 	0x2100,				// Data eeprom address
 	1,						// number of words in cfg bits with factory set bits
 	{0x3000, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -849,7 +849,7 @@ const static PIC_DEFINITION PIC12C671 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -907,7 +907,7 @@ const static PIC_DEFINITION PIC12C672 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -965,7 +965,7 @@ const static PIC_DEFINITION PIC12CE673 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -1023,7 +1023,7 @@ const static PIC_DEFINITION PIC12CE674 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -1081,7 +1081,7 @@ const static PIC_DEFINITION PIC12F675 =
 	0x2100,				// Data eeprom address
 	1,						// number of words in cfg bits with factory set bits
 	{0x3000, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -1139,7 +1139,7 @@ const static PIC_DEFINITION PIC12F683 =
 	0x2100,				// Data eeprom address
 	1,						// number of words in cfg bits with factory set bits
 	{0x3000, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -1197,7 +1197,7 @@ const static PIC_DEFINITION PIC14000 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -1255,7 +1255,65 @@ const static PIC_DEFINITION PIC16C505 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
+};
+
+//-----------------------------------------------------------
+const static unsigned char def_PIC16F505[] =
+{
+	0x03, 0xff,		// size of program space
+	0x0f, 0xff,		// width of address word
+	0x0f, 0xff,		// width of data word
+	0x00, 0x0f,		// width of ID
+	0x00, 0x0f,		// ID mask
+	0x00, 0x1f,		// width of configuration word
+	0x00, 0x1f,		// configuration word mask
+	0x00, 0x00,		// EEPROM data width
+	0x00, 0x00,		// EEPROM data mask
+	0x0f, 0xff,		// Calibration width
+	0x0f, 0xff,		// Calibration mask
+	0x00, 0x00,		// ??
+	0x01, 0xff,		// ??
+	0x04, 0x00,		// address of ID locations
+	0x04,				// size of ID locations
+	0x0f, 0xff,		// address of configuration bits
+	0x01,				// size of configuration register
+	0x00, 0x00,		// address of data space
+	0x00, 0x00,		// size of data space
+	0x03, 0xff,		// address of internal clock calibration value
+	0x00, 0x01,		// size of clock calibration space
+	0x01,				// additional programming pulses for C devices
+	0x01,				// main programming pulses for C devices
+	0x1c, 0x17,		// ?? ZIF configuration ??
+};
+
+const static unsigned char defx_PIC16F505[] =
+{
+	0x00, 0x1f, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x1f, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+};
+
+const static PIC_DEFINITION PIC16F505 =
+{
+	"16F505",			// device name
+	def_PIC16F505,		// definition
+	defx_PIC16F505,	// extended definition
+	0,						// config word: code protect bit mask
+	0,						// config word: watchdog bit mask
+
+	0,						// Word alignment for writing to this device
+	0,						// Configuration memory start address
+	0, 0,					// ID Locations addr
+	0,						// Data eeprom address
+	1,						// number of words in cfg bits with factory set bits
+	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
+	(P_PICSTART | P_JUPIC | P_OLIMEX),		// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -1313,7 +1371,7 @@ const static PIC_DEFINITION PIC16C52 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -1371,7 +1429,7 @@ const static PIC_DEFINITION PIC16C54 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -1429,7 +1487,7 @@ const static PIC_DEFINITION PIC16C54A =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -1487,7 +1545,7 @@ const static PIC_DEFINITION PIC16C54B =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -1545,7 +1603,7 @@ const static PIC_DEFINITION PIC16C54C =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -1603,7 +1661,7 @@ const static PIC_DEFINITION PIC16HV540 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART),	// bit map of supporting programmers
+	(P_PICSTART | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -1661,7 +1719,7 @@ const static PIC_DEFINITION PIC16C55 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -1719,7 +1777,7 @@ const static PIC_DEFINITION PIC16C55A =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -1777,7 +1835,7 @@ const static PIC_DEFINITION PIC16C554 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -1835,7 +1893,7 @@ const static PIC_DEFINITION PIC16C558 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -1893,7 +1951,7 @@ const static PIC_DEFINITION PIC16C56 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -1951,7 +2009,7 @@ const static PIC_DEFINITION PIC16C56A =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -2009,7 +2067,7 @@ const static PIC_DEFINITION PIC16C57 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -2067,7 +2125,7 @@ const static PIC_DEFINITION PIC16C57C =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -2125,7 +2183,7 @@ const static PIC_DEFINITION PIC16C58A =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -2183,7 +2241,7 @@ const static PIC_DEFINITION PIC16C58B =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -2241,7 +2299,7 @@ const static PIC_DEFINITION PIC16C61 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -2299,7 +2357,7 @@ const static PIC_DEFINITION PIC16C62 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -2357,7 +2415,7 @@ const static PIC_DEFINITION PIC16C62A =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -2415,7 +2473,7 @@ const static PIC_DEFINITION PIC16C62B =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -2473,7 +2531,7 @@ const static PIC_DEFINITION PIC16C620 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -2531,7 +2589,7 @@ const static PIC_DEFINITION PIC16C620A =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -2589,7 +2647,7 @@ const static PIC_DEFINITION PIC16C621 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -2647,7 +2705,7 @@ const static PIC_DEFINITION PIC16C621A =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -2705,7 +2763,7 @@ const static PIC_DEFINITION PIC16C622 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -2763,7 +2821,7 @@ const static PIC_DEFINITION PIC16C622A =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -2821,7 +2879,7 @@ const static PIC_DEFINITION PIC16CE623 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -2879,7 +2937,7 @@ const static PIC_DEFINITION PIC16CE624 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -2937,7 +2995,7 @@ const static PIC_DEFINITION PIC16CE625 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -2995,7 +3053,7 @@ const static PIC_DEFINITION PIC16F627 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -3053,7 +3111,7 @@ const static PIC_DEFINITION PIC16F627A =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -3111,7 +3169,7 @@ const static PIC_DEFINITION PIC16F628 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -3169,7 +3227,7 @@ const static PIC_DEFINITION PIC16F628A =
 	0,						// Data eeprom address    
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -3227,7 +3285,7 @@ const static PIC_DEFINITION PIC16C63 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -3285,7 +3343,7 @@ const static PIC_DEFINITION PIC16C63A =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -3343,7 +3401,7 @@ const static PIC_DEFINITION PIC16C63B =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -3401,7 +3459,7 @@ const static PIC_DEFINITION PIC16F630 =
 	0x2100,				// Data eeprom address
 	1,						// number of words in cfg bits with factory set bits
 	{0x3000, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -3459,7 +3517,7 @@ const static PIC_DEFINITION PIC16C64 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -3517,7 +3575,7 @@ const static PIC_DEFINITION PIC16C64A =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -3575,7 +3633,7 @@ const static PIC_DEFINITION PIC16C642 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -3634,7 +3692,7 @@ const static PIC_DEFINITION PIC16F648 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -3693,7 +3751,7 @@ const static PIC_DEFINITION PIC16F648A =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -3751,7 +3809,7 @@ const static PIC_DEFINITION PIC16C65 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -3809,7 +3867,7 @@ const static PIC_DEFINITION PIC16C65A =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -3867,7 +3925,7 @@ const static PIC_DEFINITION PIC16C65B =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -3925,7 +3983,7 @@ const static PIC_DEFINITION PIC16C66 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -3983,7 +4041,7 @@ const static PIC_DEFINITION PIC16C66A =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -4041,7 +4099,7 @@ const static PIC_DEFINITION PIC16C662 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -4099,7 +4157,7 @@ const static PIC_DEFINITION PIC16C67 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -4157,7 +4215,7 @@ const static PIC_DEFINITION PIC16C67A =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -4215,7 +4273,123 @@ const static PIC_DEFINITION PIC16F676 =
 	0x2100,				// Data eeprom address
 	1,						// number of words in cfg bits with factory set bits
 	{0x3000, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
+};
+
+//-----------------------------------------------------------
+const static unsigned char def_PIC16F684[] =
+{
+	0x08, 0x00,		// size of program space
+	0x3f, 0xff,		// width of address word
+	0x3f, 0xff,		// width of data word
+	0x00, 0x7f,		// width of ID
+	0x00, 0x7f,		// ID mask
+	0x0f, 0xff,		// width of configuration word
+	0x0f, 0xff,		// configuration word mask
+	0x00, 0xff,		// EEPROM data width
+	0x00, 0xff,		// EEPROM data mask
+	0x00, 0x00,		// Calibration width
+	0x00, 0x00,		// Calibration mask
+	0x00, 0x00,		// ??
+	0x08, 0x00,		// ??
+	0x20, 0x00,		// address of ID locations
+	0x04,				// size of ID locations
+	0x20, 0x07,		// address of configuration bits
+	0x01,				// size of configuration register
+	0x00, 0x00,		// address of data space
+	0x01, 0x00,		// size of data space
+	0x00, 0x00,		// address of internal clock calibration value
+	0x00, 0x00,		// size of clock calibration space
+	0x00,				// additional programming pulses for C devices
+	0x01,				// main programming pulses for C devices
+	0x15, 0x0f,		//  ZIF configuration ??
+};
+
+const static unsigned char defx_PIC16F684[] =
+{
+	0x0f, 0xff, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x0f, 0xff, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+};
+
+const static PIC_DEFINITION PIC16F684 =
+{
+	"16F684",			// device name
+	def_PIC16F684,		// definition
+	defx_PIC16F684,	// extended definition
+	0,						// config word: code protect bit mask
+	0,						// config word: watchdog bit mask
+
+	0,						// Word alignment for writing to this device
+	0,						// Configuration memory start address
+	0, 0,					// ID Locations addr
+	0,						// Data eeprom address
+	0,						// number of words in cfg bits with factory set bits
+	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
+};
+
+//-----------------------------------------------------------
+const static unsigned char def_PIC16F688[] =
+{
+	0x10, 0x00,		// size of program space
+	0x3f, 0xff,		// width of address word
+	0x3f, 0xff,		// width of data word
+	0x00, 0x7f,		// width of ID
+	0x00, 0x7f,		// ID mask
+	0x0f, 0xff,		// width of configuration word
+	0x0f, 0xff,		// configuration word mask
+	0x00, 0xff,		// EEPROM data width
+	0x00, 0xff,		// EEPROM data mask
+	0x00, 0x00,		// Calibration width
+	0x00, 0x00,		// Calibration mask
+	0x00, 0x00,		// ??
+	0x10, 0x00,		// ??
+	0x20, 0x00,		// address of ID locations
+	0x04,				// size of ID locations
+	0x20, 0x07,		// address of configuration bits
+	0x01,				// size of configuration register
+	0x00, 0x00,		// address of data space
+	0x01, 0x00,		// size of data space
+	0x00, 0x00,		// address of internal clock calibration value
+	0x00, 0x00,		// size of clock calibration space
+	0x00,				// additional programming pulses for C devices
+	0x01,				// main programming pulses for C devices
+	0x15, 0x0f,		//  ZIF configuration ??
+};
+
+const static unsigned char defx_PIC16F688[] =
+{
+	0x0f, 0xff, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x0f, 0xff, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+};
+
+const static PIC_DEFINITION PIC16F688 =
+{
+	"16F688",			// device name
+	def_PIC16F688,		// definition
+	defx_PIC16F688,	// extended definition
+	0,						// config word: code protect bit mask
+	0,						// config word: watchdog bit mask
+
+	0,						// Word alignment for writing to this device
+	0,						// Configuration memory start address
+	0, 0,					// ID Locations addr
+	0,						// Data eeprom address
+	0,						// number of words in cfg bits with factory set bits
+	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -4273,7 +4447,7 @@ const static PIC_DEFINITION PIC16C71 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -4331,7 +4505,7 @@ const static PIC_DEFINITION PIC16C710 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -4389,7 +4563,7 @@ const static PIC_DEFINITION PIC16C711 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -4447,7 +4621,7 @@ const static PIC_DEFINITION PIC16C712 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -4505,7 +4679,7 @@ const static PIC_DEFINITION PIC16C715 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -4563,7 +4737,7 @@ const static PIC_DEFINITION PIC16C716 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -4621,7 +4795,7 @@ const static PIC_DEFINITION PIC16C717 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -4679,7 +4853,7 @@ const static PIC_DEFINITION PIC16C72 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -4737,7 +4911,7 @@ const static PIC_DEFINITION PIC16C72A =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -4795,7 +4969,7 @@ const static PIC_DEFINITION PIC16F72 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -4853,7 +5027,7 @@ const static PIC_DEFINITION PIC16C73 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -4911,7 +5085,7 @@ const static PIC_DEFINITION PIC16C73A =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -4969,7 +5143,7 @@ const static PIC_DEFINITION PIC16C73B =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -5027,7 +5201,7 @@ const static PIC_DEFINITION PIC16F73 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -5085,7 +5259,7 @@ const static PIC_DEFINITION PIC16C74 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -5143,7 +5317,7 @@ const static PIC_DEFINITION PIC16C74A =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -5201,7 +5375,7 @@ const static PIC_DEFINITION PIC16C74B =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -5259,7 +5433,7 @@ const static PIC_DEFINITION PIC16C74C =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -5317,7 +5491,7 @@ const static PIC_DEFINITION PIC16F74 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -5375,7 +5549,7 @@ const static PIC_DEFINITION PIC16C745 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -5433,7 +5607,7 @@ const static PIC_DEFINITION PIC16C76 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -5491,7 +5665,7 @@ const static PIC_DEFINITION PIC16F76 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -5549,7 +5723,65 @@ const static PIC_DEFINITION PIC16C765 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
+};
+
+//-----------------------------------------------------------
+const static unsigned char def_PIC16F767[] =
+{
+	0x20, 0x00,		// size of program space
+	0x3f, 0xff,		// width of address word
+	0x3f, 0xff,		// width of data word
+	0x00, 0x7f,		// width of ID
+	0x00, 0x7f,		// ID mask
+	0x39, 0xff,		// width of configuration word
+	0x39, 0xff,		// configuration word mask
+	0x00, 0x00,		// EEPROM data width
+	0x00, 0x00,		// EEPROM data mask
+	0x00, 0x00,		// Calibration width
+	0x00, 0x00,		// Calibration mask
+	0x00, 0x00,		// ??
+	0x20, 0x00,		// ??
+	0x20, 0x00,		// address of ID locations
+	0x04,				// size of ID locations
+	0x20, 0x07, 	// address of configuration bits
+	0x02,				// size of configuration register
+	0x00, 0x00,		// address of data space
+	0x00, 0x00,		// size of data space
+	0x00, 0x00,		// address of internal clock calibration value
+	0x00, 0x00,		// size of clock calibration space
+	0x03,				// additional programming pulses for C devices
+	0x01,				// main programming pulses for C devices
+	0x17, 0x07,		//  ZIF configuration ??
+};
+
+const static unsigned char defx_PIC16F767[] =
+{
+	0x39, 0xff, 0x00, 0x43,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x39, 0xff, 0x00, 0x43,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+};
+
+const static PIC_DEFINITION PIC16F767 =
+{
+	"16F767",			// device name
+	def_PIC16F767,		// definition
+	defx_PIC16F767,	// extended definition
+	0,						// config word: code protect bit mask
+	0,						// config word: watchdog bit mask
+
+	0,						// Word alignment for writing to this device
+	0,						// Configuration memory start address
+	0, 0,					// ID Locations addr
+	0,						// Data eeprom address
+	0,						// number of words in cfg bits with factory set bits
+	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -5607,7 +5839,7 @@ const static PIC_DEFINITION PIC16C77 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -5665,7 +5897,7 @@ const static PIC_DEFINITION PIC16F77 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -5723,7 +5955,7 @@ const static PIC_DEFINITION PIC16C770 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -5781,7 +6013,7 @@ const static PIC_DEFINITION PIC16C771 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -5839,7 +6071,7 @@ const static PIC_DEFINITION PIC16C773 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -5897,7 +6129,65 @@ const static PIC_DEFINITION PIC16C774 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
+};
+
+//-----------------------------------------------------------
+const static unsigned char def_PIC16F777[] =
+{
+	0x20, 0x00,		// size of program space
+	0x3f, 0xff,		// width of address word
+	0x3f, 0xff,		// width of data word
+	0x00, 0x7f,		// width of ID
+	0x00, 0x7f,		// ID mask
+	0x39, 0xff,		// width of configuration word
+	0x39, 0xff,		// configuration word mask
+	0x00, 0x00,		// EEPROM data width
+	0x00, 0x00,		// EEPROM data mask
+	0x00, 0x00,		// Calibration width
+	0x00, 0x00,		// Calibration mask
+	0x00, 0x00,		// ??
+	0x20, 0x00,		// ??
+	0x20, 0x00,		// address of ID locations
+	0x04,				// size of ID locations
+	0x20, 0x07,		// address of configuration bits
+	0x02,				// size of configuration register
+	0x00, 0x00,		// address of data space
+	0x00, 0x00,		// size of data space
+	0x00, 0x00,		// address of internal clock calibration value
+	0x00, 0x00,		// size of clock calibration space
+	0x03,				// additional programming pulses for C devices
+	0x01,				// main programming pulses for C devices
+	0x17, 0x07,		//  ZIF configuration ??
+};
+
+const static unsigned char defx_PIC16F777[] =
+{
+	0x39, 0xff, 0x00, 0x43,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x39, 0xff, 0x00, 0x43,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+};
+
+const static PIC_DEFINITION PIC16F777 =
+{
+	"16F777",			// device name
+	def_PIC16F777,		// definition
+	defx_PIC16F777,	// extended definition
+	0,						// config word: code protect bit mask
+	0,						// config word: watchdog bit mask
+
+	0,						// Word alignment for writing to this device
+	0,						// Configuration memory start address
+	0, 0,					// ID Locations addr
+	0,						// Data eeprom address
+	0,						// number of words in cfg bits with factory set bits
+	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -5955,7 +6245,7 @@ const static PIC_DEFINITION PIC16C781 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -6013,7 +6303,7 @@ const static PIC_DEFINITION PIC16C782 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -6071,7 +6361,7 @@ const static PIC_DEFINITION PIC16F818 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -6129,7 +6419,7 @@ const static PIC_DEFINITION PIC16F819 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -6187,7 +6477,7 @@ const static PIC_DEFINITION PIC16F83 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -6245,7 +6535,7 @@ const static PIC_DEFINITION PIC16C84 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -6303,7 +6593,7 @@ const static PIC_DEFINITION PIC16F84 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -6361,7 +6651,7 @@ const static PIC_DEFINITION PIC16F84A =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -6419,7 +6709,7 @@ const static PIC_DEFINITION PIC16F87 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -6477,7 +6767,7 @@ const static PIC_DEFINITION PIC16F88 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -6535,7 +6825,7 @@ const static PIC_DEFINITION PIC16F870 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -6593,7 +6883,7 @@ const static PIC_DEFINITION PIC16F871 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -6651,7 +6941,7 @@ const static PIC_DEFINITION PIC16F872 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -6709,7 +6999,7 @@ const static PIC_DEFINITION PIC16F873 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -6767,7 +7057,7 @@ const static PIC_DEFINITION PIC16F873A =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -6825,7 +7115,7 @@ const static PIC_DEFINITION PIC16F874 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -6883,7 +7173,7 @@ const static PIC_DEFINITION PIC16F874A =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -6941,7 +7231,7 @@ const static PIC_DEFINITION PIC16F876 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -6999,7 +7289,7 @@ const static PIC_DEFINITION PIC16F876A =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -7057,7 +7347,7 @@ const static PIC_DEFINITION PIC16F877 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -7115,7 +7405,7 @@ const static PIC_DEFINITION PIC16F877A =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -7173,7 +7463,7 @@ const static PIC_DEFINITION PIC16C923 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -7231,7 +7521,7 @@ const static PIC_DEFINITION PIC16C924 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -7289,7 +7579,7 @@ const static PIC_DEFINITION PIC16C925 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -7347,7 +7637,7 @@ const static PIC_DEFINITION PIC16C926 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -7871,6 +8161,64 @@ const static PIC_DEFINITION PIC17C766 =
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
 	(P_PICSTART),		// bit map of supporting programmers
 };
+ 
+//-----------------------------------------------------------
+const static unsigned char def_PIC18F2410[] =
+{
+	0x20, 0x00,		// size of program space
+	0xff, 0xff,		// width of address word
+	0xff, 0xff,		// width of data word
+	0x0f, 0x0f,		// width of ID
+	0x0f, 0x0f,		// ID mask
+	0xcf, 0x00,		// width of configuration word
+	0xcf, 0x00,		// configuration word mask
+	0x00, 0x00,		// EEPROM data width
+	0x00, 0x00,		// EEPROM data mask
+	0x00, 0x00,		// Calibration width
+	0x00, 0x00,		// Calibration mask
+	0x00, 0x00,		// ??
+	0x20, 0x00,		// ??
+	0x00, 0x00,		// address of ID locations
+	0x04,				// size of ID locations
+	0x00, 0x00,		// address of configuration bits
+	0x07,				// size of configuration register
+	0x00, 0x00,		// address of data space
+	0x00, 0x00,		// size of data space
+	0x00, 0x00,		// address of internal clock calibration value
+	0x00, 0x00,		// size of clock calibration space
+	0x03,				// additional programming pulses for C devices
+	0x13,				// main programming pulses for C devices
+	0x1e, 0x07,		//  ZIF configuration ??
+};
+
+const static unsigned char defx_PIC18F2410[] =
+{
+	0x07, 0x00, 0x1f, 0x1f,
+	0x83, 0x00, 0x00, 0x85,
+	0x40, 0x03, 0x60, 0x03,
+	0x40, 0x03, 0x00, 0x00,
+	0xcf, 0x00, 0x1f, 0x1f,
+	0x87, 0x00, 0x00, 0xc5,
+	0x40, 0x03, 0x60, 0x03,
+	0x40, 0x03, 0x00, 0x00,
+};
+
+const static PIC_DEFINITION PIC18F2410 =
+{
+	"18F2410",						// device name
+	def_PIC18F2410, 				// definition
+	defx_PIC18F2410,				// extended definition
+	0,  								// config word: code protect bit mask
+	0,  								// config word: watchdog bit mask
+
+	4,  								// Word alignment for writing to this device
+	0x300000, 						// Configuration memory start address
+	0x200000, 0, 					// ID Locations addr
+	0xF00000, 						// Data eeprom address
+	0,  								// number of words in cfg bits with factory set bits
+	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
+};
 
 //-----------------------------------------------------------
 const static unsigned char def_PIC18C242[] =
@@ -7927,7 +8275,7 @@ const static PIC_DEFINITION PIC18C242 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -7985,7 +8333,65 @@ const static PIC_DEFINITION PIC18F242 =
 	0xF00000,			// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
+};
+
+//-----------------------------------------------------------
+const static unsigned char def_PIC18F2431[] =
+{
+	0x20, 0x00,		// size of program space
+	0xff, 0xff,		// width of address word
+	0xff, 0xff,		// width of data word
+	0x0f, 0x0f,		// width of ID
+	0x0f, 0x0f,		// ID mask
+	0xcf, 0x00,		// width of configuration word
+	0xcf, 0x00,		// configuration word mask
+	0x00, 0xff,		// EEPROM data width
+	0x00, 0xff,		// EEPROM data mask
+	0x00, 0x00,		// Calibration width
+	0x00, 0x00,		// Calibration mask
+	0x00, 0x00,		// ??
+	0x20, 0x00,		// ??
+	0x00, 0x00,		// address of ID locations
+	0x04,				// size of ID locations
+	0x00, 0x00,		// address of configuration bits
+	0x07,				// size of configuration register
+	0x00, 0x00,		// address of data space
+	0x01, 0x00,		// size of data space
+	0x00, 0x00,		// address of internal clock calibration value
+	0x00, 0x00,		// size of clock calibration space
+	0x03,				// additional programming pulses for C devices
+	0x19,				// main programming pulses for C devices
+	0x19, 0x0f,		//  ZIF configuration ??
+};
+
+const static unsigned char defx_PIC18F2431[] =
+{
+	0xcf, 0x00, 0x3f, 0x0f,
+	0x80, 0x3c, 0x00, 0x85,
+	0xc0, 0x0f, 0xe0, 0x0f,
+	0x40, 0x0f, 0x00, 0x00,
+	0xcf, 0x00, 0x3f, 0x0f,
+	0x80, 0x3c, 0x00, 0x85,
+	0xc0, 0x0f, 0xe0, 0x0f,
+	0x40, 0x0f, 0x00, 0x00,
+};
+
+const static PIC_DEFINITION PIC18F2431 =
+{
+	"18F2431",			// device name
+	def_PIC18F2431,	// definition
+	defx_PIC18F2431,	// extended definition
+	0,						// config word: code protect bit mask
+	0,						// config word: watchdog bit mask
+
+	0,						// Word alignment for writing to this device
+	0,						// Configuration memory start address
+	0, 0,					// ID Locations addr
+	0,						// Data eeprom address
+	0,						// number of words in cfg bits with factory set bits
+	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -8043,7 +8449,7 @@ const static PIC_DEFINITION PIC18F248 =
 	0xF00000,			// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -8101,7 +8507,7 @@ const static PIC_DEFINITION PIC18C252 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -8159,7 +8565,65 @@ const static PIC_DEFINITION PIC18F252 =
 	0xF00000,			// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
+};
+
+//-----------------------------------------------------------
+const static unsigned char def_PIC18F2525[] =
+{
+	0x60, 0x00,		// size of program space
+	0xff, 0xff, 	// width of address word
+	0xff, 0xff, 	// width of data word
+	0x0f, 0x0f, 	// width of ID
+	0x0f, 0x0f, 	// ID mask
+	0xcf, 0x00, 	// width of configuration word
+	0xcf, 0x00,		// configuration word mask
+	0x00, 0xff,		// EEPROM data width
+	0x00, 0xff,		// EEPROM data mask
+	0x00, 0x00,		// Calibration width
+	0x00, 0x00,		// Calibration mask
+	0x00, 0x00,		// ??
+	0x60, 0x00,		// ??
+	0x00, 0x00,		// address of ID locations
+	0x04, 			// size of ID locations
+	0x00, 0x00,		// address of configuration bits
+	0x07,				// size of configuration register
+	0x00, 0x00,		// address of data space
+	0x04, 0x00,		// size of data space
+	0x00, 0x00,		// address of internal clock calibration value
+	0x00, 0x00,		// size of clock calibration space
+	0x03, 			// additional programming pulses for C devices
+	0x13, 			// main programming pulses for C devices
+	0x1e, 0x0f, 	//  ZIF configuration ??
+};
+
+const static unsigned char defx_PIC18F2525[] =
+{
+	0x07, 0x00, 0x1f, 0x1f,
+	0x83, 0x00, 0x00, 0x85,
+	0xc0, 0x07, 0xe0, 0x07,
+	0x40, 0x07, 0x00, 0x00,
+	0xcf, 0x00, 0x1f, 0x1f,
+	0x87, 0x00, 0x00, 0xc5,
+	0xc0, 0x07, 0xe0, 0x07,
+	0x40, 0x07, 0x00, 0x00,
+};
+
+const static PIC_DEFINITION PIC18F2525 =
+{
+	"18F2525",			// device name
+	def_PIC18F2525,	// definition
+	defx_PIC18F2525,	// extended definition
+	0,						// config word: code protect bit mask
+	0,						// config word: watchdog bit mask
+
+	0,						// Word alignment for writing to this device
+	0x300000,			// Configuration memory start address
+	0x200000, 0,		// ID Locations addr
+	0,						// Data eeprom address
+	0,						// number of words in cfg bits with factory set bits
+	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -8217,7 +8681,7 @@ const static PIC_DEFINITION PIC18F258 =
 	0xF00000,			// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -8275,7 +8739,7 @@ const static PIC_DEFINITION PIC18C442 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -8333,7 +8797,7 @@ const static PIC_DEFINITION PIC18F442 =
 	0xF00000,			// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -8391,7 +8855,7 @@ const static PIC_DEFINITION PIC18F4431 =
 	0xF00000,			// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -8449,7 +8913,7 @@ const static PIC_DEFINITION PIC18F448 =
 	0xF00000,			// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -8507,7 +8971,7 @@ const static PIC_DEFINITION PIC18C452 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -8565,7 +9029,7 @@ const static PIC_DEFINITION PIC18F452 =
 	0xF00000,			// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -8682,7 +9146,7 @@ const static PIC_DEFINITION PIC18F458 =
 	0xF00000,			// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13 | P_JUPIC),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -8740,7 +9204,7 @@ static const PIC_DEFINITION PIC18F6520 =
 	0xF00000,			// EEprom address & size
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART | P_WARP13),	// bit map of supporting programmers
+	(P_PICSTART | P_WARP13 | P_OLIMEX),	// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -8798,7 +9262,7 @@ const static PIC_DEFINITION PIC18C658 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART),		// bit map of supporting programmers
+	(P_PICSTART | P_OLIMEX),		// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -8856,7 +9320,7 @@ const static PIC_DEFINITION PIC18C858 =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART),		// bit map of supporting programmers
+	(P_PICSTART | P_OLIMEX),		// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -8914,7 +9378,7 @@ const static PIC_DEFINITION PICrf509AF =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART),		// bit map of supporting programmers
+	(P_PICSTART | P_OLIMEX),		// bit map of supporting programmers
 };
 
 //-----------------------------------------------------------
@@ -8972,7 +9436,7 @@ const static PIC_DEFINITION PICrf509AG =
 	0,						// Data eeprom address
 	0,						// number of words in cfg bits with factory set bits
 	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
-	(P_PICSTART),		// bit map of supporting programmers
+	(P_PICSTART | P_OLIMEX),		// bit map of supporting programmers
 };
 
 //----------------------------------------
@@ -9000,6 +9464,7 @@ const PIC_DEFINITION *deviceList[] =
 	&PIC12F683,
 	&PIC14000,
 	&PIC16C505,
+	&PIC16F505,
 	&PIC16C52,
 	&PIC16C54,
 	&PIC16C54A,
@@ -9051,6 +9516,8 @@ const PIC_DEFINITION *deviceList[] =
 	&PIC16C67,
 	&PIC16C67A,
 	&PIC16F676,
+	&PIC16F684,
+	&PIC16F688,
 	&PIC16C71,
 	&PIC16C710,
 	&PIC16C711,
@@ -9073,12 +9540,14 @@ const PIC_DEFINITION *deviceList[] =
 	&PIC16C76,
 	&PIC16F76,
 	&PIC16C765,
+	&PIC16F767,
 	&PIC16C77,
 	&PIC16F77,
 	&PIC16C770,
 	&PIC16C771,
 	&PIC16C773,
 	&PIC16C774,
+	&PIC16F777,
 	&PIC16C781,
 	&PIC16C782,
 	&PIC16F818,
@@ -9115,6 +9584,7 @@ const PIC_DEFINITION *deviceList[] =
 	&PIC17C766,
 	&PIC18C242,
 	&PIC18F242,
+	&PIC18F2431,
 	&PIC18F248,
 	&PIC18C252,
 	&PIC18F252,

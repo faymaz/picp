@@ -1,11 +1,11 @@
 //-----------------------------------------------------------------------------
 //
-//	PICSTART Plus, Warp-13, and JuPic programming interface
-// Version 0.6.7
-// July 08, 2005
+//	PICSTART Plus, Warp-13, JuPic, and Olimex programming interface
+// Version 0.6.8
+// July 14, 2006
 //
 //	Copyright (C) 1999-2002 Cosmodog, Ltd.
-// Copyright (c) 2004-2005 Jeffery L. Post
+// Copyright (c) 2004-2006 Jeffery L. Post
 //
 //	Cosmodog, Ltd.
 //	415 West Huron Street
@@ -56,7 +56,7 @@
 //
 //-----------------------------------------------------------------------------
 
-//#define	BETA	2		// comment out for release versions
+//#define	BETA	1		// comment out for release versions
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -162,6 +162,9 @@ typedef struct
 
 static char versionString[64];	// this program's version number
 
+int	deviceCount = 0;
+DEV_LIST	*deviceList = NULL;
+
 static const BLANK_MSG blankList[] =
 {
 	{BLANK_PGM,		&GetPgmSize,	"program memory"},
@@ -231,14 +234,15 @@ static void SigHandler(int sig)
 // first three letters of the devices when comparing.  This allows
 // both PIC16C505 or 16C505 to refer to the same part.
 
-const static PIC_DEFINITION *GetPICDefinition(char *name)
+PIC_DEFINITION *GetPICDefinition(char *name)
 {
-	int	idx;
-	int	offset;
+	int		idx;
+	int		offset;
+	DEV_LIST	*devptr;
 
 	idx = 0;
 
-	while (name[idx])						// ensure it's all upper case
+	while (name[idx])					 // ensure it's all upper case
 	{
 		name[idx] = toupper(name[idx]);
 		idx++;
@@ -250,16 +254,17 @@ const static PIC_DEFINITION *GetPICDefinition(char *name)
 		offset = 3;							// skip the first three letters of the user's argument
 
 	idx = 0;
+	devptr = deviceList;
 
-	while (deviceList[idx])
+	while (devptr)
 	{
-		if (strcmp(deviceList[idx]->name, name + offset) == 0)
+		if (strcmp(devptr->picDef.name, name + offset) == 0)
 			break;
 
-		idx++;
+		devptr = devptr->next;
 	}
 
-	if (deviceList[idx] && !(strncmp(deviceList[idx]->name, "18", 2)))
+	if (devptr && !(strncmp(devptr->picDef.name, "18", 2)))
 	{
 		CharTimeout = TIMEOUT_5_SECOND;
 		is18device = true;
@@ -267,7 +272,10 @@ const static PIC_DEFINITION *GetPICDefinition(char *name)
 	else
 		is18device = false;
 
-	return(deviceList[idx]);		// return 0 if no match
+	if (devptr)
+		return((PIC_DEFINITION *) devptr);
+
+	return NULL;		// return 0 if no match
 }
 
 //-----------------------------------------------------------------------------
@@ -709,8 +717,8 @@ static bool SetRange(const PIC_DEFINITION *picDevice, unsigned int start, unsign
 	else
 	{
 		size = 5;
-		rangeBuffer[1] = 0;
-		rangeBuffer[2] = 0;
+		rangeBuffer[1] = (start >> 8) & 0xff;
+		rangeBuffer[2] = (start >> 0) & 0xff;
 		rangeBuffer[3] = (length >> 8) & 0xff;
 		rangeBuffer[4] = (length >> 0) & 0xff;
 	}
@@ -773,6 +781,7 @@ static bool DoBlankCheck(const PIC_DEFINITION *picDevice, unsigned char blankMod
 	idx = 0;
 	fail = false;
 	theBuffer[0] = CMD_BLANK_CHECK;
+	theBuffer[1] = 0xef;
 
 	if (comm_debug)
 	{
@@ -782,7 +791,7 @@ static bool DoBlankCheck(const PIC_DEFINITION *picDevice, unsigned char blankMod
 
 	if (SendMsg(theBuffer, 1, theBuffer, 2))
 	{
-		if (newfw)		// wait for endless 0xef from broken PS+ firmware
+		if (theBuffer[1] == 0xef && newfw)		// wait for endless 0xef from broken PS+ firmware
 		{
 			while (SendMsg(NULL, 0, theBuffer, 1))
 			{
@@ -918,6 +927,7 @@ static bool DoWriteData(const PIC_DEFINITION *picDevice, FILE *theFile)
 
 	while (!fileDone && !fail)
 	{
+		nextAddr &= (size - 1);							// keep address within buffer range
 		startAddr = nextAddr;							// the first address of the new block
 		curAddr = startAddr;
 		eepromData[startAddr + 1] = data;			// the first data byte of the new block
@@ -925,13 +935,15 @@ static bool DoWriteData(const PIC_DEFINITION *picDevice, FILE *theFile)
 
 		while ((!(fileDone = !GetNextByte(theFile, &nextAddr, &data)) &&  (count < size + 1)))
 		{														// get next byte
+			nextAddr &= (size - 1);
+
 			if (curAddr + 1 == nextAddr)				// use this byte now only if it's sequential
 			{
 				eepromData[startAddr + count] = data;
 				count++;
 				curAddr++;
 
-				if (curAddr > size)
+				if (curAddr > (unsigned int)(start + size))
 				{
 					fail = true;
 					fprintf(stderr, "Data file exceeds eeprom data size\n");
@@ -1003,7 +1015,7 @@ static bool DoWriteEepromData(const PIC_DEFINITION *picDevice, unsigned char *bu
 	unsigned short int	datasize;
 	bool						fail = false;
 
-	datasize = GetDataSize(picDevice);
+	datasize = GetDataSize(picDevice) * 2;
 
 	if (!datasize)
 	{
@@ -2261,7 +2273,7 @@ static bool DoWritePgm18(const PIC_DEFINITION *picDevice, FILE *theFile)
 			{
 				if ((startAddr + size) <= (devDataAddr + datasize))
 				{
-					fail = !DoWriteEepromData(picDevice, theBuffer, startAddr, size);
+					fail = !DoWriteEepromData(picDevice, theBuffer, startAddr - devDataAddr, size);
 				}
 				else
 				{
@@ -2325,10 +2337,14 @@ static bool DoWritePgm(const PIC_DEFINITION *picDevice, FILE *theFile)
 		fileDone = !GetNextByte(theFile, &nextAddr, &data);	// get a byte and the initial address
 		devCfgAddr = GetConfigStart(picDevice) * 2;	// address of device's config memory
 		devIDAddr  = GetIDAddr(picDevice) * 2;		// address of id locations.
-		devDataAddr = GetEepromStart(picDevice);	// address of eeprom data
-		datasize = GetDataSize(picDevice);
+		devDataAddr = GetEepromStart(picDevice) * 2;	// address of eeprom data
+		datasize = GetDataSize(picDevice) * 2;
 		idsize = GetIDSize(picDevice) * 2;
 		cfgsize = GetConfigSize(picDevice) * 2;
+
+//printf("\n\nConfig adrs 0x%x, size %d\n", devCfgAddr, cfgsize);
+//printf("ID adrs 0x%x, size %d\n", devIDAddr, idsize);
+//printf("EEPROM adrs 0x%x, size %d\n\n", devDataAddr, datasize);
 
 		while (!fileDone && !fail)
 		{
@@ -2336,7 +2352,7 @@ static bool DoWritePgm(const PIC_DEFINITION *picDevice, FILE *theFile)
 			curAddr = startAddr;
 			size = 0;					// number of bytes waiting to be sent
 
-			if (align && (startAddr % align) && startAddr < pgmsize) // assuming program addr starts at zero.
+			if (align && (startAddr % align) && (startAddr < pgmsize)) // assuming program addr starts at zero.
 			{
 				if (startAddr < align)
 				{
@@ -2364,7 +2380,7 @@ static bool DoWritePgm(const PIC_DEFINITION *picDevice, FILE *theFile)
 					break;
 				}
 
-				if (curAddr + 1 == nextAddr)	// use this byte now only if it's sequential
+				if ((curAddr + 1) == nextAddr)	// use this byte now only if it's sequential
 				{
 					curAddr++;
 					theBuffer[size++] = data;
@@ -2422,7 +2438,7 @@ static bool DoWritePgm(const PIC_DEFINITION *picDevice, FILE *theFile)
 			{
 				if ((startAddr + size) <= (devDataAddr + datasize))
 				{
-					fail = !DoWriteEepromData(picDevice, theBuffer, startAddr, size);
+					fail = !DoWriteEepromData(picDevice, theBuffer, startAddr - devDataAddr, size);
 				}
 				else
 				{
@@ -3186,12 +3202,75 @@ static void ShowStartSize(unsigned short int start, unsigned short int size)
 		fprintf(stdout, "    none\n");
 }
 
+// Display data from PIC_DEFINITION entry
+
+void dumpDevData(char *name)
+{
+	int	i;
+	PIC_DEFINITION	*pd;
+	unsigned char	*dptr;
+
+	pd = GetPICDefinition(name);
+//	printf("\ndumpDevData: ptr 0x%x\n", (int) pd);
+
+	printf("\nPIC definition data:");
+	printf("\ncpbits:\t\t0x%x\n", pd->cpbits);
+	printf("wdbit:\t\t0x%x\n", pd->wdbit);
+	printf("wordalign:\t0x%x\n", pd->wordalign);
+	printf("cfgmem:\t\t0x%x\n", pd->cfgmem);
+	printf("idaddr:\t\t0x%x\n", pd->idaddr);
+	printf("idsize:\t\t0x%x\n", pd->idsize);
+	printf("eeaddr:\t\t0x%x\n", pd->eeaddr);
+	printf("fixedCfgBitsSize: %d\n", pd->fixedCfgBitsSize);
+	printf("fixedCfgBits:\n");
+
+	for (i=0; i<8; i++)
+		printf(" %02x", pd->fixedCfgBits[i]);
+
+	printf("\n\nProgrammer support: ");
+
+	if (pd->pgm_support & P_PICSTART)
+		printf(" PicStart");
+
+	if (pd->pgm_support & P_WARP13)
+		printf(" Warp-13");
+
+	if (pd->pgm_support & P_JUPIC)
+		printf(" JuPic");
+
+	if (pd->pgm_support & P_OLIMEX)
+		printf(" Olimex");
+
+	dptr = pd->def;
+	printf("\n\nDEF data:\n");
+	for (i=0; i<44; i++)
+	{
+		printf(" %02x", dptr[i]);
+
+		if ((i % 16) == 15)
+			printf("\n");
+	}
+
+	dptr = pd->defx;
+	printf("\nDEFX data:\n");
+
+	for (i=0; i<32; i++)
+	{
+		printf(" %02x", dptr[i]);
+
+		if ((i % 16) == 15)
+			printf("\n");
+	}
+
+	printf("\n\n");
+}
+
 //--------------------------------------------------------------------
 // Report information about the passed device
 
 static void ShowDeviceInfo(const PIC_DEFINITION *picDevice)
 {
-	fprintf(stdout, "device name: %s\n", picDevice->name);			// show the name
+	fprintf(stdout, "\ndevice name: %s\n", picDevice->name);			// show the name
 
 	fprintf(stdout, "  program space:\n");									// show range of program space
 	ShowStartSize(0, GetPgmSize(picDevice));
@@ -3207,6 +3286,8 @@ static void ShowDeviceInfo(const PIC_DEFINITION *picDevice)
 		GetConfigStart(picDevice), GetConfigSize(picDevice));	// show address of configuration bits
 	fprintf(stdout, "    protect mask:  0x%04x\n", picDevice->cpbits);	// mask of code protect bits
 	fprintf(stdout, "    watchdog mask: 0x%04x\n", picDevice->wdbit);		// mask of watchdog enable bit
+
+	dumpDevData(picDevice->name);
 }
 
 //--------------------------------------------------------------------
@@ -3214,28 +3295,29 @@ static void ShowDeviceInfo(const PIC_DEFINITION *picDevice)
 
 static void ShowDevices()
 {
-	int idx = 0;
 	int length = 0;
 	int thisLength;
+	DEV_LIST	*devptr;
 
-	fprintf(stdout, "supported devices:\n");
+	fprintf(stdout, "\n%d supported devices:\n\n", deviceCount);
+	devptr = deviceList;
 
-	while (deviceList[idx])
+	while (devptr)
 	{
-		thisLength = strlen(deviceList[idx]->name);	// length of this device's name
+		thisLength = strlen(devptr->picDef.name);	// length of this device's name
 		length += thisLength;								// add to length of this line
 
 		if (length + 2 < MAXNAMESLEN)						// ensure there's room for the space and comma, too
-			fprintf(stdout, "%s", deviceList[idx]->name);	// put it on this line
+			fprintf(stdout, "%s", devptr->picDef.name);	// put it on this line
 		else
 		{
-			fprintf(stdout, "\n%s", deviceList[idx]->name);	// put it on the next line
+			fprintf(stdout, "\n%s", devptr->picDef.name);	// put it on the next line
 			length = thisLength;
 		}
 
-		idx++;
+		devptr = devptr->next;
 
-		if (deviceList[idx])									// if more devices are in the list,
+		if (devptr)									// if more devices are in the list,
 		{
 			fprintf(stdout, ", ");							// add a comma and a space
 			length += 2;
@@ -3243,6 +3325,8 @@ static void ShowDevices()
 		else
 			fprintf(stdout, "\n");							// or newline if it is the last one
 	}
+
+	fprintf(stdout, "\n");
 }
 
 //--------------------------------------------------------------------
@@ -3259,9 +3343,9 @@ static void ShowDevices()
 
 static void Usage()
 {
-	fprintf(stdout, "%s: version %s\n"
+	fprintf(stdout, "\n%s: version %s\n"
 			" (c) 2000-2004 Cosmodog, Ltd. (http://www.cosmodog.com)\n"
-			" (c) 2004-2005 Jeff Post (http://home.pacbell.net/theposts/picmicro)\n"
+			" (c) 2004-2006 Jeff Post (http://home.pacbell.net/theposts/picmicro)\n"
 			" GNU General Public License\n", programName, versionString);
 	fprintf(stdout, "\nUsage: %s [-c] [-d] [-v] ttyname [-v] devtype [-i] [-h] [-q] [-v] [-s [size]] [-b|-r|-w|-e][pcidof]\n", programName);
 	fprintf(stdout, " where:\n");
@@ -3271,6 +3355,7 @@ static void Usage()
 	fprintf(stdout, "  -b blank checks the requested region or regions\n");
 	fprintf(stdout, "  -c enable comm line debug output to picpcomm.log (must be before ttyname)\n");
 	fprintf(stdout, "  -d (if only parameter) show device list\n");
+	fprintf(stdout, "  -d devtype - show device information\n");
 	fprintf(stdout, "  -e erases the requested region (flash parts only)\n");
 	fprintf(stdout, "  -f ignores verify errors while writing\n");
 	fprintf(stdout, "  -h show this help\n");
@@ -3303,6 +3388,361 @@ static void Usage()
 	fprintf(stdout, "(preceeded by 0x or 0X), or decimal (anything else).\n\n");
 }
 
+// Skip over white space
+
+char *skipWhitespace(char *str)
+{
+	while (*str && (*str == ' ' || *str == '\t'))
+		str++;
+
+	return str;
+}
+
+// Skip over text to next white space
+
+char *skipText(char *str)
+{
+	while (*str && *str != ' ' && *str != '\t')
+		str++;
+
+	return str;
+}
+
+// Convert hex ascii string to binary.
+// Return updated string pointer.
+
+char *atox(char *str, int *result)
+{
+	int	digit;
+
+	*result = 0;						// start at zero
+
+	if (*str)							// do nothing if it's a null string
+	{
+		while (*str)
+		{
+			digit = toupper(*str);	// force all upper case for hex digits
+
+			if (isxdigit(digit))
+			{
+				digit = (digit >= 'A') ? digit - 'A' + 0x0a : digit - '0';	// convert to 0-9, A-F
+				*result = ((*result) << 4) + digit;	// shift up one order of magnitude, add in this digit
+			}
+			else
+				break;				// bad character, done
+
+			str++;
+		}
+	}
+
+	return str;
+}
+
+// Check if current header is for the same device.
+// If so, return the name pointer, else return NULL.
+
+char *checkSameDevice(DEV_LIST *devptr, char *str)
+{
+	int	i = 0;
+
+	while (*str && devptr->picDef.name[i])
+	{
+
+		if (*str != devptr->picDef.name[i])
+			return NULL;
+
+		i++;
+		str++;
+
+		if (*str == ':')
+		{
+			str++;
+			break;
+		}
+	}
+
+	return str;
+}
+
+// Get next value from picdevrc file.
+// The value may be for any block: main definition,
+// def values, or defx values.
+
+int getNextDefValue(FILE *fp)
+{
+	bool			done = false;
+	int			val = 0;
+	char			*cptr, *start;
+	static int	offset = 0;
+	static char	line[128];
+
+	while (!done)
+	{
+		if (!offset)
+			fgets(line, 127 - 1, fp);
+
+		start = (char *) &line[offset];
+		start = skipWhitespace(start);
+		cptr = atox(start, &val);
+
+		if (cptr == start)		// nothing was converted
+			offset = 0;				// get the next line
+		else
+		{
+			offset = (int) (cptr - &line[0]);
+
+			if (line[offset] == ';')
+				offset = 0;
+
+			done = true;
+		}
+	}
+
+	return val;
+}
+
+// Read PIC_DEFINITION data from config file
+// Return number of devices loaded.
+
+int loadPicDefinitions(void)
+{
+	int		i, val, count = 0;
+	bool		badEntry;
+	unsigned short int	pgm;
+	char		*cptr;
+	unsigned char	*data;
+	FILE		*fp;
+	DEV_LIST	*devptr, *next = NULL;
+	char		line[128];
+
+	fp = fopen("picdevrc", "r");		// try current directory first
+
+	if (!fp)			// if not found, try default directory
+#ifdef WIN32
+		fp = fopen("c:\\Program Files\\picp\\picdevrc", "r");
+#else
+		fp = fopen("/usr/local/bin/picdevrc", "r");
+#endif
+
+	if (!fp)
+		return 0;
+
+	while (!feof(fp))
+	{
+		fgets(line, 127 - 1, fp);
+
+		if (line[0] == '[')		// beginning of device definition
+		{
+			i = 1;
+			badEntry = false;
+
+			while (line[i] != ']')	// count characters in device name
+				i++;
+
+			--i;
+			cptr = (char *) malloc(i + 1);
+			strncpy(cptr, (char *) &line[1], i);
+			cptr[i] = '\0';
+
+			devptr = (DEV_LIST *) malloc(sizeof(DEV_LIST));
+			devptr->picDef.name = cptr;
+			devptr->picDef.def = NULL;
+			devptr->picDef.defx = NULL;
+			devptr->next = NULL;
+
+// read pic device data
+
+			val = getNextDefValue(fp);
+			devptr->picDef.cpbits = (unsigned short int) val;
+
+			val = getNextDefValue(fp);
+			devptr->picDef.wdbit = (unsigned short int) val;
+
+			val = getNextDefValue(fp);
+			devptr->picDef.wordalign = (unsigned short int) val;
+
+			val = getNextDefValue(fp);
+			devptr->picDef.cfgmem = (unsigned int) val;
+
+			val = getNextDefValue(fp);
+			devptr->picDef.idaddr = (unsigned int) val;
+
+			val = getNextDefValue(fp);
+			devptr->picDef.idsize = (unsigned short int) val;
+
+			val = getNextDefValue(fp);
+			devptr->picDef.eeaddr = (unsigned int) val;
+
+			val = getNextDefValue(fp);
+			devptr->picDef.fixedCfgBitsSize = (unsigned char) val;
+
+			for (i=0; i<8; i++)			// read fixed config bits words
+			{
+				val = getNextDefValue(fp);
+				devptr->picDef.fixedCfgBits[i] = (unsigned short int) val;
+			}
+
+			cptr = fgets(line, 127 - 1, fp);	// read programmer support
+			pgm = 0;
+
+			while (cptr)
+			{
+				cptr = skipWhitespace(cptr);
+
+				if (!cptr)
+					break;
+
+				switch (toupper(*cptr))
+				{
+					case 'P':		// PicStart Plus
+						pgm |= P_PICSTART;
+						break;
+
+					case 'W':		// Warp-13
+						pgm |= P_WARP13;
+						break;
+
+					case 'J':		// JuPic
+						pgm |= P_JUPIC;
+						break;
+
+					case 'O':		// Olimex
+						pgm |= P_OLIMEX;
+						break;
+
+					default:
+						cptr = NULL;
+						break;
+				}
+
+				if (cptr)
+				{
+					cptr = skipText(cptr);
+
+					if (!cptr)
+						break;
+
+					cptr = skipWhitespace(cptr);
+				}
+			}
+
+			devptr->picDef.pgm_support = pgm;
+
+// read def data
+
+			line[0] = '\0';
+
+			while (!feof(fp) && line[0] != '[')	// search for def header
+				cptr = fgets(line, 127 - 1, fp);
+
+			if (!cptr)
+			{
+				badEntry = true;
+				break;
+			}
+
+			cptr = checkSameDevice(devptr, (char *) &line[1]);
+
+			if (cptr)
+			{
+				if (!strncmp(cptr, "def]", 4))	// is def block
+				{
+					data = (unsigned char *) malloc(PICDEV_DEFSIZE);
+					devptr->picDef.def = data;
+
+					for (i=0; i<PICDEV_DEFSIZE; i++)
+					{
+						val = getNextDefValue(fp);
+						data[i] = (unsigned char) val;
+					}
+				}
+				else
+				{
+					badEntry = true;
+					break;
+				}
+			}
+			else
+			{
+				badEntry = true;
+				break;
+			}
+
+// read defx data
+
+			line[0] = '\0';
+
+			while (!feof(fp) && line[0] != '[')	// search for defx header
+				cptr = fgets(line, 127 - 1, fp);
+
+			if (!cptr)
+			{
+				badEntry = true;
+				break;
+			}
+
+			cptr = checkSameDevice(devptr, (char *) &line[1]);
+
+			if (cptr)
+			{
+				if (!strncmp(cptr, "defx", 4))	// is defx block
+				{
+					data = (unsigned char *) malloc(PICDEV_DEFXSIZE);
+					devptr->picDef.defx = data;
+
+					for (i=0; i<PICDEV_DEFXSIZE; i++)
+					{
+						val = getNextDefValue(fp);
+						data[i] = (unsigned char) val;
+					}
+				}
+				else
+				{
+					badEntry = true;
+					break;
+				}
+			}
+			else
+			{
+				badEntry = true;
+				break;
+			}
+
+			if (!badEntry)
+			{
+				if (!deviceList)
+				{
+					deviceList = devptr;
+					next = devptr;
+				}
+				else
+				{
+					next->next = devptr;
+					next = devptr;
+				}
+
+				count++;
+			}
+			else
+			{
+				free(devptr->picDef.name);
+
+				if (devptr->picDef.def)
+					free(devptr->picDef.def);
+
+				if (devptr->picDef.defx)
+					free(devptr->picDef.defx);
+
+				free(devptr);
+			}
+		}	// done with this device, check for another
+	}	// while !feof
+
+	fclose(fp);
+	deviceCount = count;
+	return count;
+}
+
 //--------------------------------------------------------------------
 // Program PICs through a serial port
 
@@ -3319,9 +3759,9 @@ int main(int argc,char *argv[])
 	const PIC_DEFINITION	*picDevice = NULL;
 
 #ifdef BETA
-	sprintf(versionString, "0.6.7 - beta %d", BETA);
+	sprintf(versionString, "0.6.8 - beta %d", BETA);
 #else
-	strcpy(versionString, "0.6.7");
+	strcpy(versionString, "0.6.8");
 #endif
 
 	comm_debug = NULL;
@@ -3334,6 +3774,13 @@ int main(int argc,char *argv[])
 	verboseOutput = true;							// be verbose unless told otherwise
 	hashWidth = false;								// don't show hask marks by default
 	ignoreVerfErr = false;							// by default stop on verify errors
+
+	if (!loadPicDefinitions())
+	{
+		fprintf(stderr, "\n%s: version %s\n", programName, versionString);
+		fprintf(stderr, "\nCan't read PIC definition data.\n\n");
+		return 1;
+	}
 
 	if (argc > 2)										// need at least four arguments to do anything
 	{
@@ -3391,7 +3838,7 @@ int main(int argc,char *argv[])
 							if (!(programmerSupport & picDevice->pgm_support))	// does this programmer support this device?
 							{
 								DoShowVersion();
-								fprintf(stderr, "\n\nDevice %s is not supported by the ", picDevice->name);
+								fprintf(stderr, "\n\nDevice %s may not be supported by the ", picDevice->name);
 
 								switch (programmerSupport)
 								{
@@ -3416,10 +3863,15 @@ int main(int argc,char *argv[])
 										break;
 								}
 
-								fprintf(stderr, " programmer\n\n");
+								fprintf(stderr, " programmer\nContinue anyway? [y/n] \n");
 								fflush(stderr);
-								CloseDevice(serialDevice);
-								exit(1);
+								i = toupper(getchar());
+
+								if (i != 'Y')
+								{
+									CloseDevice(serialDevice);
+									exit(1);
+								}
 							}
 
 							if (DoInitPIC(picDevice))					// try to load up the parameters for this device
@@ -3504,16 +3956,28 @@ int main(int argc,char *argv[])
 								}
 							}
 							else		// DoInitPIC failed
+							{
 								fprintf(stderr, "failed to initialize %s\n", picDevice->name);
+								fail = true;
+							}
 						}
 						else
+						{
 							fprintf(stderr, "failed to obtain programmer firmware version number\n");
+							fail = true;
+						}
 					}
 					else
+					{
 						fprintf(stderr, "failed to connect to programmer\n");
+						fail = true;
+					}
 				}
 				else
+				{
 					fprintf(stderr, "failed to set up the serial port\n");
+					fail = true;
+				}
 
 				CloseDevice(serialDevice);
 			}
@@ -3542,11 +4006,12 @@ int main(int argc,char *argv[])
 		{
 			fprintf(stdout, "\n%s: version %s\n"
 				" (c) 2000-2004 Cosmodog, Ltd. (http://www.cosmodog.com)\n"
-				" (c) 2004-2005 Jeff Post (http://home.pacbell.net/theposts/picmicro)\n"
+				" (c) 2004-2006 Jeff Post (http://home.pacbell.net/theposts/picmicro)\n"
 				" GNU General Public License\n\n", programName, versionString);
 		}
 		else if (flags && flags[0] == '-' && (flags[1] == 'd' || flags[1] == 'D'))
 		{
+			fprintf(stdout, "\n%s: version %s\n", programName, versionString);
 			ShowDevices();
 		}
 		else if (argc == 2)		// option instead of PIC type
@@ -3591,13 +4056,6 @@ int main(int argc,char *argv[])
 			Usage();
 			fail = true;
 		}
-	}
-
-	if (comm_debug)
-	{
-		fprintf(comm_debug, "\n");
-		fflush(comm_debug);
-		fclose(comm_debug);
 	}
 
 	return(fail);	// return 0 if okay (not failed)
