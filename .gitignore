@@ -1,0 +1,39 @@
+# Compiled binaries
+picp
+convert
+convertshort
+
+# Object files
+*.o
+*.obj
+
+# Test files
+test_*.hex
+test_*.c
+backup_*.hex
+simple_*.hex
+valid_*.hex
+
+# Log files
+*.log
+trace.log
+
+# Temporary files
+*~
+*.tmp
+*.bak
+
+# IDE files
+.vscode/
+.idea/
+
+# Build artifacts
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Archive directories (if recreated)
+archive/
+fixchksum/
+picsnoop/

@@ -199,7 +199,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [12C508:def]
 	01 ff	; size of program space
@@ -246,7 +246,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [12C508A:def]
 	01 ff	; size of program space
@@ -293,7 +293,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [12C509:def]
 	03 ff	; size of program space
@@ -340,7 +340,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [12C509A:def]
 	03 ff	; size of program space
@@ -387,7 +387,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [12CE518:def]
 	01 ff	; size of program space
@@ -434,7 +434,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [12CE519:def]
 	03 ff	; size of program space
@@ -575,7 +575,7 @@
 	2100	; Data eeprom address
 	1	; number of words in cfg bits with factory set bits
 	3000 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [12F629:def]
 	03 ff	; size of program space
@@ -622,7 +622,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [12C671:def]
 	03 ff	; size of program space
@@ -669,7 +669,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [12C672:def]
 	07 ff	; size of program space
@@ -716,7 +716,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [12CE673:def]
 	03 ff	; size of program space
@@ -763,7 +763,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [12CE674:def]
 	07 ff	; size of program space
@@ -810,7 +810,7 @@
 	2100	; Data eeprom address
 	1	; number of words in cfg bits with factory set bits
 	3000 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [12F675:def]
 	03 ff	; size of program space
@@ -904,7 +904,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [14000:def]
 	0f c0	; size of program space
@@ -951,7 +951,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C505:def]
 	03 ff	; size of program space
@@ -1045,7 +1045,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP OLIMEX	; bit map of supporting programmers
+	PICSTART WARP OLIMEX K150	; bit map of supporting programmers
 
 [16C52:def]
 	01 80	; size of program space
@@ -1092,7 +1092,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP OLIMEX	; bit map of supporting programmers
+	PICSTART WARP OLIMEX K150	; bit map of supporting programmers
 
 [16C54:def]
 	02 00	; size of program space
@@ -1139,7 +1139,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP OLIMEX	; bit map of supporting programmers
+	PICSTART WARP OLIMEX K150	; bit map of supporting programmers
 
 [16C54A:def]
 	02 00	; size of program space
@@ -1186,7 +1186,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP OLIMEX	; bit map of supporting programmers
+	PICSTART WARP OLIMEX K150	; bit map of supporting programmers
 
 [16C54B:def]
 	02 00	; size of program space
@@ -1233,7 +1233,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP OLIMEX	; bit map of supporting programmers
+	PICSTART WARP OLIMEX K150	; bit map of supporting programmers
 
 [16C54C:def]
 	02 00	; size of program space
@@ -1327,7 +1327,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP OLIMEX	; bit map of supporting programmers
+	PICSTART WARP OLIMEX K150	; bit map of supporting programmers
 
 [16C55:def]
 	02 00	; size of program space
@@ -1374,7 +1374,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP OLIMEX	; bit map of supporting programmers
+	PICSTART WARP OLIMEX K150	; bit map of supporting programmers
 
 [16C55A:def]
 	02 00	; size of program space
@@ -1421,7 +1421,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C554:def]
 	02 00	; size of program space
@@ -1468,7 +1468,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C558:def]
 	08 00	; size of program space
@@ -1515,7 +1515,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP OLIMEX	; bit map of supporting programmers
+	PICSTART WARP OLIMEX K150	; bit map of supporting programmers
 
 [16C56:def]
 	04 00	; size of program space
@@ -1562,7 +1562,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP OLIMEX	; bit map of supporting programmers
+	PICSTART WARP OLIMEX K150	; bit map of supporting programmers
 
 [16C56A:def]
 	04 00	; size of program space
@@ -1609,7 +1609,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP OLIMEX	; bit map of supporting programmers
+	PICSTART WARP OLIMEX K150	; bit map of supporting programmers
 
 [16C57:def]
 	08 00	; size of program space
@@ -1656,7 +1656,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP OLIMEX	; bit map of supporting programmers
+	PICSTART WARP OLIMEX K150	; bit map of supporting programmers
 
 [16C57C:def]
 	08 00	; size of program space
@@ -1703,7 +1703,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP OLIMEX	; bit map of supporting programmers
+	PICSTART WARP OLIMEX K150	; bit map of supporting programmers
 
 [16C58A:def]
 	08 00	; size of program space
@@ -1750,7 +1750,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP OLIMEX	; bit map of supporting programmers
+	PICSTART WARP OLIMEX K150	; bit map of supporting programmers
 
 [16C58B:def]
 	08 00	; size of program space
@@ -1797,7 +1797,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C61:def]
 	04 00	; size of program space
@@ -1844,7 +1844,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C62:def]
 	08 00	; size of program space
@@ -1891,7 +1891,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C62A:def]
 	08 00	; size of program space
@@ -1938,7 +1938,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C62B:def]
 	08 00	; size of program space
@@ -1985,7 +1985,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C620:def]
 	02 00	; size of program space
@@ -2032,7 +2032,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C620A:def]
 	02 00	; size of program space
@@ -2079,7 +2079,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C621:def]
 	04 00	; size of program space
@@ -2126,7 +2126,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C621A:def]
 	04 00	; size of program space
@@ -2173,7 +2173,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C622:def]
 	08 00	; size of program space
@@ -2220,7 +2220,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C622A:def]
 	08 00	; size of program space
@@ -2267,7 +2267,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16CE623:def]
 	02 00	; size of program space
@@ -2314,7 +2314,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16CE624:def]
 	04 00	; size of program space
@@ -2361,7 +2361,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16CE625:def]
 	08 00	; size of program space
@@ -2408,7 +2408,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16F627:def]
 	04 00	; size of program space
@@ -2455,7 +2455,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16F627A:def]
 	04 00	; size of program space
@@ -2502,7 +2502,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16F628:def]
 	08 00	; size of program space
@@ -2549,7 +2549,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16F628A:def]
 	08 00	; size of program space
@@ -2596,7 +2596,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C63:def]
 	10 00	; size of program space
@@ -2643,7 +2643,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C63A:def]
 	10 00	; size of program space
@@ -2690,7 +2690,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP OLIMEX	; bit map of supporting programmers
+	PICSTART WARP OLIMEX K150	; bit map of supporting programmers
 
 [16C63B:def]
 	10 00	; size of program space
@@ -2737,7 +2737,7 @@
 	2100	; Data eeprom address
 	1	; number of words in cfg bits with factory set bits
 	3000 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16F630:def]
 	03 ff	; size of program space
@@ -2784,7 +2784,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C64:def]
 	08 00	; size of program space
@@ -2831,7 +2831,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C64A:def]
 	08 00	; size of program space
@@ -2878,7 +2878,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C642:def]
 	10 00	; size of program space
@@ -2925,7 +2925,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP OLIMEX	; bit map of supporting programmers
+	PICSTART WARP OLIMEX K150	; bit map of supporting programmers
 
 [16F648:def]
 	10 00	; size of program space
@@ -2972,7 +2972,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16F648A:def]
 	10 00	; size of program space
@@ -3019,7 +3019,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C65:def]
 	10 00	; size of program space
@@ -3066,7 +3066,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C65A:def]
 	10 00	; size of program space
@@ -3113,7 +3113,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C65B:def]
 	10 00	; size of program space
@@ -3160,7 +3160,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C66:def]
 	20 00	; size of program space
@@ -3207,7 +3207,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP OLIMEX	; bit map of supporting programmers
+	PICSTART WARP OLIMEX K150	; bit map of supporting programmers
 
 [16C66A:def]
 	20 00	; size of program space
@@ -3254,7 +3254,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C662:def]
 	10 00	; size of program space
@@ -3301,7 +3301,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C67:def]
 	20 00	; size of program space
@@ -3348,7 +3348,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP OLIMEX	; bit map of supporting programmers
+	PICSTART WARP OLIMEX K150	; bit map of supporting programmers
 
 [16C67A:def]
 	20 00	; size of program space
@@ -3395,7 +3395,7 @@
 	2100	; Data eeprom address
 	1	; number of words in cfg bits with factory set bits
 	3000 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16F676:def]
 	03 ff	; size of program space
@@ -3442,7 +3442,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16F684:def]
 	08 00	; size of program space
@@ -3480,6 +3480,53 @@
 	00 00 00 00
 	00 00 00 00
 
+[16F690]	; pic definition
+	0	; config word: code protect bit mask
+	0	; config word: watchdog bit mask
+	0	; Word alignment for writing to this device
+	0	; Configuration memory start address
+	0 0	; ID Locations addr and size
+	0	; Data eeprom address
+	0	; number of words in cfg bits with factory set bits
+	0 0 0 0 0 0 0 0	; fixed bits mask
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
+
+[16F690:def]
+	20 00	; size of program space (8K words)
+	3f ff	; width of address word
+	3f ff	; width of data word
+	00 7f	; width of ID
+	00 7f	; ID mask
+	0f ff	; width of configuration word
+	0f ff	; configuration word mask
+	00 ff	; EEPROM data width
+	00 ff	; EEPROM data mask
+	00 00	; Calibration width
+	00 00	; Calibration mask
+	00 00	; ??
+	20 00	; ??
+	20 00	; address of ID locations
+	04	; size of ID locations
+	20 07	; address of configuration bits
+	01	; size of configuration register
+	00 00	; address of data space
+	01 00	; size of data space (256 bytes)
+	00 00	; address of internal clock calibration value
+	00 00	; size of clock calibration space
+	00	; additional programming pulses for C devices
+	01	; main programming pulses for C devices
+	15 14	; ?? ZIF configuration ?? (20-pin)
+
+[16F690:defx]
+	0f ff 00 00
+	00 00 00 00
+	00 00 00 00
+	00 00 00 00
+	0f ff 00 00
+	00 00 00 00
+	00 00 00 00
+	00 00 00 00
+
 [16F688]	; pic definition
 	0	; config word: code protect bit mask
 	0	; config word: watchdog bit mask
@@ -3489,7 +3536,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16F688:def]
 	10 00	; size of program space
@@ -3536,7 +3583,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C71:def]
 	04 00	; size of program space
@@ -3583,7 +3630,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C710:def]
 	02 00	; size of program space
@@ -3630,7 +3677,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C711:def]
 	04 00	; size of program space
@@ -3677,7 +3724,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C712:def]
 	04 00	; size of program space
@@ -3724,7 +3771,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C715:def]
 	08 00	; size of program space
@@ -3771,7 +3818,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C716:def]
 	08 00	; size of program space
@@ -3818,7 +3865,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C717:def]
 	08 00	; size of program space
@@ -3865,7 +3912,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C72:def]
 	08 00	; size of program space
@@ -3912,7 +3959,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C72A:def]
 	08 00	; size of program space
@@ -3959,7 +4006,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16F72:def]
 	08 00	; size of program space
@@ -4006,7 +4053,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C73:def]
 	10 00	; size of program space
@@ -4053,7 +4100,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C73A:def]
 	10 00	; size of program space
@@ -4100,7 +4147,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C73B:def]
 	10 00	; size of program space
@@ -4147,7 +4194,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16F73:def]
 	10 00	; size of program space
@@ -4194,7 +4241,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C74:def]
 	10 00	; size of program space
@@ -4241,7 +4288,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C74A:def]
 	10 00	; size of program space
@@ -4288,7 +4335,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C74B:def]
 	10 00	; size of program space
@@ -4335,7 +4382,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C74C:def]
 	10 00	; size of program space
@@ -4382,7 +4429,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16F74:def]
 	10 00	; size of program space
@@ -4429,7 +4476,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C745:def]
 	20 00	; size of program space
@@ -4476,7 +4523,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C76:def]
 	20 00	; size of program space
@@ -4523,7 +4570,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16F76:def]
 	20 00	; size of program space
@@ -4570,7 +4617,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C765:def]
 	20 00	; size of program space
@@ -4617,7 +4664,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16F767:def]
 	20 00	; size of program space
@@ -4664,7 +4711,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C77:def]
 	20 00	; size of program space
@@ -4711,7 +4758,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16F77:def]
 	20 00	; size of program space
@@ -4758,7 +4805,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C770:def]
 	08 00	; size of program space
@@ -4805,7 +4852,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C771:def]
 	10 00	; size of program space
@@ -4852,7 +4899,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C773:def]
 	10 00	; size of program space
@@ -4899,7 +4946,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C774:def]
 	10 00	; size of program space
@@ -4946,7 +4993,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16F777:def]
 	20 00	; size of program space
@@ -4993,7 +5040,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C781:def]
 	04 00	; size of program space
@@ -5040,7 +5087,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C782:def]
 	08 00	; size of program space
@@ -5087,7 +5134,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16F818:def]
 	04 00	; size of program space
@@ -5134,7 +5181,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16F819:def]
 	08 00	; size of program space
@@ -5181,7 +5228,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16F83:def]
 	02 00	; size of program space
@@ -5228,7 +5275,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C84:def]
 	04 00	; size of program space
@@ -5275,7 +5322,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16F84:def]
 	04 00	; size of program space
@@ -5322,7 +5369,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16F84A:def]
 	04 00	; size of program space
@@ -5369,7 +5416,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16F87:def]
 	10 00	; size of program space
@@ -5416,7 +5463,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16F88:def]
 	10 00	; size of program space
@@ -5463,7 +5510,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16F870:def]
 	08 00	; size of program space
@@ -5510,7 +5557,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16F871:def]
 	08 00	; size of program space
@@ -5557,7 +5604,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16F872:def]
 	08 00	; size of program space
@@ -5604,7 +5651,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16F873:def]
 	10 00	; size of program space
@@ -5651,7 +5698,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16F873A:def]
 	10 00	; size of program space
@@ -5698,7 +5745,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16F874:def]
 	10 00	; size of program space
@@ -5745,7 +5792,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16F874A:def]
 	10 00	; size of program space
@@ -5792,7 +5839,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16F876:def]
 	20 00	; size of program space
@@ -5839,7 +5886,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16F876A:def]
 	20 00	; size of program space
@@ -5886,7 +5933,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16F877:def]
 	20 00	; size of program space
@@ -5933,7 +5980,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16F877A:def]
 	20 00	; size of program space
@@ -5980,7 +6027,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C923:def]
 	10 00	; size of program space
@@ -6027,7 +6074,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C924:def]
 	10 00	; size of program space
@@ -6074,7 +6121,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C925:def]
 	10 00	; size of program space
@@ -6121,7 +6168,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16C926:def]
 	20 00	; size of program space
@@ -6591,7 +6638,7 @@
 	f00000	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [18F2410:def]
 	20 00	; size of program space
@@ -6638,7 +6685,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP OLIMEX	; bit map of supporting programmers
+	PICSTART WARP OLIMEX K150	; bit map of supporting programmers
 
 [18C242:def]
 	20 00	; size of program space
@@ -6685,7 +6732,7 @@
 	f00000	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [18F242:def]
 	20 00	; size of program space
@@ -6732,7 +6779,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [18F2431:def]
 	20 00	; size of program space
@@ -6779,7 +6826,7 @@
 	f00000	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [18F248:def]
 	20 00	; size of program space
@@ -6826,7 +6873,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP OLIMEX	; bit map of supporting programmers
+	PICSTART WARP OLIMEX K150	; bit map of supporting programmers
 
 [18C252:def]
 	40 00	; size of program space
@@ -6873,7 +6920,7 @@
 	f00000	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [18F252:def]
 	40 00	; size of program space
@@ -6920,7 +6967,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [18F2525:def]
 	60 00	; size of program space
@@ -6967,7 +7014,7 @@
 	f00000	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [18F258:def]
 	40 00	; size of program space
@@ -7014,7 +7061,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP OLIMEX	; bit map of supporting programmers
+	PICSTART WARP OLIMEX K150	; bit map of supporting programmers
 
 [18C442:def]
 	20 00	; size of program space
@@ -7061,7 +7108,7 @@
 	f00000	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [18F442:def]
 	20 00	; size of program space
@@ -7155,7 +7202,7 @@
 	f00000	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [18F448:def]
 	20 00	; size of program space
@@ -7202,7 +7249,7 @@
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP OLIMEX	; bit map of supporting programmers
+	PICSTART WARP OLIMEX K150	; bit map of supporting programmers
 
 [18C452:def]
 	40 00	; size of program space
@@ -7249,7 +7296,7 @@
 	f00000	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [18F452:def]
 	40 00	; size of program space
@@ -7286,6 +7333,53 @@
 	01 00 00 85
 	c0 0f e0 0f
 	40 0f 00 00
+
+[18F2550]	; pic definition
+	0	; config word: code protect bit mask
+	0	; config word: watchdog bit mask
+	4	; Word alignment for writing to this device
+	300000	; Configuration memory start address
+	200000 0	; ID Locations addr and size
+	f00000	; Data eeprom address
+	0	; number of words in cfg bits with factory set bits
+	0 0 0 0 0 0 0 0	; fixed bits mask
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
+
+[18F2550:def]
+	40 00	; size of program space (32KB)
+	ff ff	; width of address word
+	ff ff	; width of data word
+	0f 0f	; width of ID
+	0f 0f	; ID mask
+	3f ff	; width of configuration word
+	27 ff	; configuration word mask
+	00 ff	; EEPROM data width
+	00 ff	; EEPROM data mask
+	00 00	; Calibration width
+	00 00	; Calibration mask
+	00 00	; ??
+	00 01	; ??
+	00 00	; address of ID locations
+	04	; size of ID locations
+	00 00	; address of configuration bits
+	07	; size of configuration register
+	00 00	; address of data space
+	01 00	; size of data space
+	00 00	; address of internal clock calibration value
+	00 00	; size of clock calibration space
+	03	; additional programming pulses for C devices
+	19	; main programming pulses for C devices
+	1c 0f	; ?? ZIF configuration ?? (28-pin)
+
+[18F2550:defx]
+	cf 3f 1f 3f
+	83 00 00 85
+	c0 0f e0 0f
+	40 0f 00 00
+	00 00 00 0f
+	00 00 cf 3f
+	1f 3f 87 00
+	00 e5 c0 0f
 
 [18F4550]	; pic definition
 	0	; config word: code protect bit mask
@@ -7343,7 +7437,7 @@
 	f00000	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
 	0 0 0 0 0 0 0 0	; fixed bits mask
-	PICSTART WARP JUPIC OLIMEX	; bit map of supporting programmers
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [18F458:def]
 	40 00	; size of program space

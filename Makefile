@@ -1,6 +1,6 @@
 #
-# Makefile for picp 0.6.8
-# PIC programmer interface
+# Makefile for picp 0.6.9
+# PIC programmer interface with K150 support
 #
 
 CC=gcc
@@ -8,13 +8,13 @@ APP=picp
 INCLUDES=-I.
 OPTIONS=-O2 -Wall -x c++
 CFLAGS=$(INCLUDES) $(OPTIONS)
-SRCS=main.c serial.c record.c parse.c atoi_base.c
-OBJECTS = main.o serial.o record.o parse.o atoi_base.o
+SRCS=main.c serial.c record.c parse.c atoi_base.c k150.c
+OBJECTS = main.o serial.o record.o parse.o atoi_base.o k150.o
 
 WINCC=/usr/local/cross-tools/bin/i386-mingw32msvc-gcc
 WINCFLAGS=-Wall -O2 -fomit-frame-pointer -s -I/usr/local/cross-tools/include -D_WIN32 -DWIN32
 WINLIBS=
-WINOBJECTS = main.obj serial.obj record.obj parse.obj atoi_base.obj
+WINOBJECTS = main.obj serial.obj record.obj parse.obj atoi_base.obj k150.obj
 
 all: $(APP) convert convertshort
 
@@ -58,6 +58,9 @@ parse.obj: parse.c
 	$(WINCC) -o $@ $(WINCFLAGS) -c $<
 
 atoi_base.obj: atoi_base.c
+	$(WINCC) -o $@ $(WINCFLAGS) -c $<
+
+k150.obj: k150.c
 	$(WINCC) -o $@ $(WINCFLAGS) -c $<
 
 convert.exe: convert.c

@@ -1,4 +1,4 @@
-picp README -- version 0.6.8 (19 December 2005)
+picp README -- version 0.6.9 (21 August 2025)
 
 Includes utilities (convert and convertshort) that convert picdev.c to a
 resource configuration file (picdevrc).
