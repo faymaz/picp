@@ -1,0 +1,26 @@
+picp INSTALLATION
+
+1) open the archive with:
+	tar -xzf picp-0.6.7.tar.gz
+	
+2) change into the picp directory and build the application:
+	make
+
+3) install the application:
+	make install
+	
+"make install" tries to copy the executable ("picp") into
+/usr/local/bin. You will probably need to be root to do this.  If this
+is not where executables live on your system, copy it manually.
+
+For help just type "picp". A quick summary of command line arguments
+will be displayed.
+
+To see a list of supported devices, type "picp -d".
+
+Picp has compiled and run successfully without warnings or complaints
+under Linux 2.2.10 (and higher) for both DEC Alpha and Intel ix86. If
+you have difficulties or success with a different platform, please
+report your findings to j_post <AT> pacbell <DOT> net.
+
+picp is free software; please read the included file LICENSE.TXT.

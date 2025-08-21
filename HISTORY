@@ -1,0 +1,212 @@
+//
+// Picp revision history
+//
+//-----------------------------------------------------------------------------
+//
+// Special thanks to Todd Squires, Brian Chamberlain, Scott Johnston, Mike
+//  Crowe, Jim Gasbarro, Tim Voght, Ahmi Wolf, and Antonio Augusto Todo Bom Neto
+//  for various suggestions and contributions
+//
+// Many thanks to Jim Robertson (Newfound Electronics) and Wayne Patterson for
+// their excellent support and advice in developing version 0.6.0 and higher.
+// Thanks to Alexandre Nunes for his modifications for 18xxx devices.
+//
+// Thanks to Joost Versteegh of Amsterdam, and Rodney Brooks of MIT for their
+// help in debugging problems with 18F chips. Special thanks to Dr. Brooks for
+// providing hardware with an 18f458 with which to test ISP programming.
+//
+// Thanks to Eric Lofstad for providing patches for the Windows port.
+//
+// Thanks to Adam Jurkiewicz for additional information about the processor
+// definition data in picdev.c, and for donating a JuPic programmer for testing.
+//
+//-----------------------------------------------------------------------------
+//
+// 0.6.7 (08 July 2005)
+//	Changed name of picstart.c to main.c since picp now works with three
+//	different programmers (PicStart Plus, Warp-13, and JuPic).
+//	Modified to handle new protocol for PS+ firmware version 4.30.04.
+//	Removed automatic blank check after erase flash function (do blank
+//	check as a separate operation).
+//	Fixed 12F683 definition data (thanks to Charles Rennolet).
+//	Added definition for 18F4550 (thanks to Christian Klippel).
+//
+// 0.6.6 (20 April 2005)
+//	Added support for JuPic programmer. Fixed timing problem with flash erase
+//	followed by blank check command. Added new devices to picdev.c and modified
+//	pic definition structure to include programmer type support. Picsnoop updated
+//	to include new structure definition. Miscellaneous code cleanup and bug fixes.
+//
+// 0.6.5 (11 January 2005)
+//	Fixed long-standing problem with 18Fxxx devices. Should now work with either
+//		PicStart Plus or Warp-13.
+//	Corrected data in pic defs for 10F200 and 10F202. 10F204 and 10F206 are still
+//	probably not correct, but I don't have those chips to test with.
+//	Added new command line options.
+//	Added support for 10F chips (very unlikely to be working yet!).
+//	Save and then restore oscillator calibration data on erase flash and erase
+//		program functions.
+//	Fixed bug in DoWriteOscCalBits.
+//	Added warning message on erase functions other than erase flash. These other
+//		functions MAY work on SOME devices.
+//	Added command line option to suppress writes for picp debugging.
+//	Removed WriteBytes conditional on WIN32.
+//
+// 0.6.4 (3 October 2004)
+//	Fixed DoWriteIDLocs to use byte programming only for 18xxx devices when the ISP
+//		flag (-i) is used.
+//	DoWriteEepromData now accepts a 'start' parameter to deal with partial
+//		eeprom data in hex file. DoWriteData modified to deal with partial data.
+//	Makefile can now build a Windows executable (picp.exe) in Linux.
+//	Show command line options in log file.
+//	Added data eeprom address entries for 12F629/75 and 16F630/76.
+//	Changed word alignment for writes for all 18F devices to 8 words (16 bytes).
+//	There is a report that USB serial ports don't work in RedHat9. Using the 2.4.26
+//		kernel solves the problem.
+//	Added -wpx option to suppress actually writing to program space, for debugging
+//		picp. Picpcomm.log file will show data that would have been sent.
+//	Fixed problem in DoGetProgrammerType and DoGetVersion that caused failure on
+//		Mac OS X with slow USB-serial ports (thanks to Jose Commins for the
+//		patches).
+//
+// 0.6.3 (1 August 2004)
+//	Calls to WriteHexRecord now pass a blankData value so program reads won't dump
+//		out lines to the Intel hex file containing nothing but unprogrammed data.
+//	Checksum verification added to GetIntelRecord (in parse.c)
+//	Added code to save factory set bits in configuration registers before erasing
+//		and to restore them after the erase. This applies only to erasing the
+//		configuration registers; the user can still shoot himself in the foot
+//		by writing the config regs without setting the appropriate bits.
+//	Implemented algorithm for writing 18xxx config bits one word at a time.
+//	Added code to write ID locations, configuration bits, and eeprom data that is
+//		embedded in a hex file written with -wp.
+//	DoWriteConfigBits - apply picDevice->defx mask to remove invalid configuration bits.
+//		Pre-read factory set bits before writing.
+//	Fixed bug in DoBlankCheck that would report non-blank config bits for some chips
+//		when they really are blank.
+//	Eliminated picp-isp by making ISP programming a runtime option (-i). This option
+//		seems to be needed only when using a Warp-13 with BluePole version 1.5 firmware
+//		and 18fxxx devices.
+//
+// 0.6.2 (15 June 2004) - Jeff Post
+//	Added routine to check if a Warp-13 programmer is connected. NOTE: the Warp-13
+//		firmware may not support this feature in future versions.
+//	Added serial comm line debug option (-c). NOTE: the -c option MUST be the first
+//		option on the command line (eg: picp -c /dev/ttyS1 16f84 -ri). If used, the -c
+//		option will record all bytes sent/received to/from the PS+ or Warp-13 programmer
+//		in a file named 'picpcomm.log'. This file is cumulative--each time it is used
+//		it will append data to the log file. The log file can grow quite large unless
+//		you delete it occasionally. To report problems with picp, use the -c option to
+//		record the comm line data in picpcomm.log, put it in a zip file, and email it
+//		to me at j_post <AT> pacbell <DOT> net. Please do not send humungously large
+//		log files--try to limit the log file to the minimum that shows the problem.
+//	Added code to change character timeout for 18xxx PICs from 1 sec to 5 sec.
+//	Fixed dumb bug that forced even number of words when writing program space.
+//
+//	Thanks to Alexandre Nunes for the following:
+//	Add working support for PIC18F252, PIC18F452:
+//		- Support for configuration bits with size > 1 word;
+//		- Added some data to the device structure to supply
+//		   some information not detected from the headers;
+//		- Support for word/multiword address alignment (at least 18Fxx2 requires 8 bytes);
+//		- Picstart addressing seems to be in byte fashion, not word (size is in words);
+//
+//		- Modified atoi_base to support octal (JLP).
+//
+//	Fixed endian issue with configuration data in hex file.
+//	Handle comment lines in Intel hex file.
+//	Fixed cfgsize error in DoReadCfg.
+//	Fixed extended info in PIC_DEFINITION of 16f818/9.
+//	Multiple "failed to verify" messages suppressed.
+//
+// 0.6.1 (18 May 2004) - Jeff Post
+//	Added read/write/erase data (eeprom) space.
+//	Added erase ID locations and erase configuration bits.
+//	Modified DoEraseFlash to explicitly program blank any area that did not
+//		get blanked by the CMD_ERASE_FLASH command.
+//
+// 0.6.0 (14 April 2004) - Jeff Post
+//	Added ID location programming.
+//	Added compatibility with Warp-13 programmer.
+//
+// 0.5d (12 June 2003)
+//	added erase flash command
+//	fixed segfault in WritePgmRange()
+//
+// 0.5c (12 November 2002)
+//	added signal handing; if any signal is received reset the PICSTART and exit
+//	added libc++ to Makefile to eliminate link errors in OS X and Red Hat 8.0
+//
+// 0.5b (3 November 2002)
+//	fixed bug which crept back into DoWritePgm() which messed up config word
+//	increased BUFFERSIZE to 128k (was 8k)
+//
+// 0.5a (2 November 2002)
+//	updated to match MPLAB 5.70.40 (PICSTART Plus firmware 3.00.40)
+//	added all parts from MPLAB 5.70.40
+//
+// 0.5 (31 October, 2002)
+//	added support for more parts (current as of MPLAB 5.40.00 -- thanks Mike!)
+//	increased character timeout to 1 second from 1/2 second (helps to eliminate
+//		false "no response from PICSTART" errors)
+//	added support for extended linear address records in Intel hex files.  this
+//		used to fail silently and prevented programming if any byte address in
+//		the file exceeded 0x8000 (like certain configuration words)
+//	corrected size of 'startAddr' and 'curAddr' (were 16 bit, now need to be 32 bit)
+//	added warning if segment address record is encountered in Intel hex files.
+//		such records are now ignored; previously they caused the parser to fail
+//		silently.
+//	added test for buffer overrun when reading hex files.  this was absent before,
+//		and writing files larger than 8K bytes would fail.  now hex files may be
+//		arbitrarily large.
+//	added extended linear address record generation to output when reading device
+//	replaced some ioctl calls in serial.c with wrapper functions which makes it
+//		more portable (now builds under OS X without modification) -- thanks to
+//		Ahmi Wolf.
+//	fixed error reporting in main() when you specify an illegal part number or
+//		serial port
+//	reorganized some of the code.
+//	added support for V3 of the PS+.
+//	added support for the 16F627.
+//
+// 0.4d (20 February, 2001)
+//	changed CMD_REQUEST_ACK to CMD_REQUEST_MODEL (actually asking for programmer
+//		model, not just an acknowledge)
+//	dropped baud rates over 115200 from serial.c, they aren't useful here and
+//		were limiting cross compatibility
+//	added bool as a typedef so picp can be compiled under straight c instead of c++
+//	changed Makefile so picp compiles using gcc instead of c++
+//	modified OpenDevice() and CloseDevice() to save the previous serial port
+//		settings and restore them on exit
+//	made some improvements to ConfigureDevice() courtesy Brian Chamberlain
+//
+// 0.4c (14 July, 2000)
+//	added support for PIC18C442 and PIC18C452
+//
+// 0.4b (14 July 2000)
+//	added support for several additional parts (culled from MPLAB 5.00.00)
+//	added extended device profile (or something) to initialization -- newer
+//		versions of MPLAB send more stuff at device init; these are now sent
+//		by picp as well
+//
+// 0.4a (28 Oct. 1999)
+//	improved hex record parsing
+//	added timeout to InitDevice() to allow the PICSTART to respond to DTR
+//
+// 0.4  (1 Oct. 1999)
+//	cleaned up some argument handling (better, more generalized)
+//	broke picstart.c up into smaller modules
+//	added support for -wo flag (only works on single-word calibration spaces)
+//	added oscillator calibration space size checking
+//	added dump of device info if invoked without any flags
+//
+// 0.3  (12 Sept. 1999)
+//	cleaned up a couple of mistakes in the usage text
+//	added support for many more parts (everything supported by MPLAB)
+//
+// 0.2a (11 Sept. 1999)
+//	removed timebits.h from includes.h (wasn't actually used anywhere)
+//
+// 0.2  (10 Sept. 1999) -- first real release
+//
+

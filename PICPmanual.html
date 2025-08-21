@@ -1,0 +1,415 @@
+<!doctype html public"-//w3c//dtd xhtml 1.0 Transitional//en">
+<html>
+<head>
+<title>PICP Users Manual</title>
+</head>
+<body>
+<!-- Last update July 9, 2005 -->
+<a name="topofdoc"></a>
+<div align="center">
+<font size="8" color="#ff0000">
+<strong><i>PICP Users Manual</i></strong><br>
+</font>
+<font size="5" color="#ff0000">
+Linux (and Windows) Interface to PICSTART Plus, Warp-13, and JuPic programmers<br>
+</font>
+<br>
+
+<hr>
+<font size="4" color="#000000">
+Copyright 2004-2005 by Jeffery L. Post
+<br>
+Version 0.6.7 - July, 2005
+<br>
+GNU General Public License
+</font>
+<hr>
+</div>
+<hr>
+
+<h3>TABLE OF CONTENTS</h3>
+<!strong>
+<ul>
+  <li><a href="#intro">Introduction</a><br>
+  <li><a href="#cli">Command Line Interface</a><br>
+  <li><a href="#protocol">Comm Protocol</a><br>
+  <li><a href="#bugs">Known Issues</a><br>
+</ul>
+<br><br>
+<!/strong>
+
+<hr>
+<a name="intro"></a>
+<h4><em>Introduction</em></h4>
+<hr><br>
+Picp is a Linux (and Windows) command line interface to
+Microchip's <a href="http://www.microchip.com">PICSTART Plus</a>,
+Newfound Electronic's <a href="http://www.newfoundelectronics.com">Warp-13</a>,
+and <a href="http://ajpic.zonk.pl">JuPic</a>
+PIC programmers. Originally written by
+<a href="http://www.cosmodog.com">Andrew Pines</a>, picp is now maintained by
+Jeff Post. The latest version can be downloaded from my
+<a href="http://home.pacbell.net/theposts/picmicro">picmicro website</a>.
+<br><br>
+Thanks to Jim Robertson of <a href="http://www.newfoundelectronics.com">
+Newfound Electronics</a>, who generously donated a Warp-13a programmer and
+technical advice so that picp would work with both the Warp-13 and PICSTART
+Plus programmers.
+<br><br>
+Thanks also to <a href="http://ajpic.zonk.pl">Adam Jurkiewicz</a>, who donated a
+JuPic programmer for testing. JuPic is an <i>excellent</i> replacement for the
+Warp-13 programmer (which is no longer being sold).
+<br><br>
+Picp is licensed under the GNU General Public License.
+<br><br>
+
+<br><br>
+<hr>
+<a name="cli"></a>
+<h4><em>Command Line Interface</em></h4>
+<hr><br>
+
+Usage:<br>
+&nbsp;&nbsp;&nbsp; picp [-c] [-d] [-v] ttyname devtype [-i] [-h] [-q] [-v] [-s [size]] [-b|-r|-w|-e][pcidof]<br>
+ where:<br>
+&nbsp;&nbsp;&nbsp;ttyname is the serial (or USB) device the PICSTART or Warp-13 is attached to<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(e.g. /dev/ttyS0 or com1)<br>
+&nbsp;&nbsp;&nbsp;devtype is the pic device to be used (12C508, 16C505, etc.)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-b blank checks the requested region or regions<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-c enable comm line debug output to picpcomm.log (must be before ttyname)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-d (if only parameter) show device list<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-e erases the requested region (flash parts only)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-f ignores verify errors while writing<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-h show this help<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-i use ISP protocol (must be first option after devtype)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-q sets quiet mode (excess messages supressed)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-r initiates a read (Intel Hex record format)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-s [size] shows a hash mark status bar of length [size] while erasing/writing<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-w writes to the requested region<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; -wpx will suppress actual writing to program space (for debugging picp)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-v shows PICSTART Plus version number<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-v (if only parameter) show picp version number<br>
+&nbsp;&nbsp;&nbsp;Read/Write/Erase parameters:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;p [filename] = program memory, optionally reading/writing filename<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;c [val] = configuration bits (val is a numeric word value when writing)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;i [val] = ID locations<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;d [filename] = data memory, optionally reading/writing filename<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;o [val] = oscillator calibration space<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;f = entire flash device (only applies to -e, erase)<br>
+&nbsp;&nbsp;&nbsp;filename is an optional input or output file (default is stdin/stdout)<br><br><br>
+
+Example:<br><br>
+&nbsp;&nbsp;&nbsp;&nbsp;picp -c /dev/ttyS1 16f84 -wp widget.hex
+<br><br>
+Programs a 16F84 device with the program in the file widget.hex using the ttyS1
+serial port, and writes comm line debug information in the file picpcomm.log.
+<br><br>
+*The -i option causes picp to use a slightly different protocol for communicating
+with the Warp-13 programmer when programming 18fxxx chips connected to the ISP
+port of the Warp-13. This appears to be necessary only when using BluePole
+firmware version 1.5. Use this option only if you experience problems without it.
+<br><br>
+<a href="#topofdoc">Back to top</a><br>
+
+<br><br>
+<br><br>
+
+<hr>
+<a name="protocol"></a>
+<h4><em>Comm Protocol</em></h4>
+<hr><br>
+This is a summary of the Picstart Plus (Warp-13) protocol known as of
+July, 2004. This information is the result of tests performed by Andrew
+Pines, Gabor Kiss, and Jeff Post. It is believed to be accurate, but
+there are no guarantees.
+<br><br>
+-> shows data from the computer to the PIC programmer.<br>
+<- shows data from the PIC programmer to the computer.<br>
+... means a repetition.<br>
+<br><br>
+-------------------------------------------------------------------------------<br>
+Picstart Plus commands in numerical order:<br>
+(Only those with a name, eg CMD_BLANK_CHECK, are used by picp)<br>
+<br><br>
+
+<br><br>
+<table border cellpadding=5>
+<caption>CMD_BLANK_CHECK 'B'</caption>
+<tr><td>0x42</td><td>-></td><td>Blank check full</td></tr>
+<tr><td></td><td><-</td><td>0x42</td></tr>
+<tr><td></td><td><-</td><td>status</td></tr>
+</table>
+
+<br><br>
+<table border cellpadding=5>
+<tr><td>0x43</td><td>-></td><td>Diagnostics</td></tr>
+<tr><td></td><td><-</td><td>0xdd</td></tr>
+<tr><td>subcode</td><td>-></td><td></td></tr>
+<tr><td></td><td><-</td><td>echo</td></tr>
+</table>
+
+<br><br>
+<table border cellpadding=5>
+<tr><td>0x44</td><td>-></td><td>Blank check partial</td></tr>
+<tr><td></td><td><-</td><td>0x44</td></tr>
+<tr><td></td><td><-</td><td>status</td></tr>
+</table>
+
+<br><br>
+<table border cellpadding=5>
+<caption>CMD_WRITE_PGM 'Q'</caption>
+<tr><td>0x51</td><td>-></td><td>Write program</td></tr>
+<tr><td></td><td><-</td><td>0x51</td></tr>
+<tr><td>word to write</td><td>-></td><td></td></tr>
+<tr><td></td><td><-</td><td>word read back</td></tr>
+<tr><td></td><td>...</td><td></td></tr>
+<tr><td></td><td><-</td><td>status</td></tr>
+</table>
+
+<br><br>
+<table border cellpadding=5>
+<caption>CMD_READ_PGM 'T'</caption>
+<tr><td>0x54</td><td>-></td><td>Read program</td></tr>
+<tr><td></td><td><-</td><td>0x54</td></tr>
+<tr><td></td><td><-</td><td>word read</td></tr>
+<tr><td></td><td>...</td><td></td></tr>
+<tr><td></td><td><-</td><td>status</td></tr>
+</table>
+
+<br><br>
+<table border cellpadding=5>
+<caption>CMD_READ_OSC 'c'</caption>
+<tr><td>0x63</td><td>-></td><td>Read calibration values</td></tr>
+<tr><td></td><td><-</td><td>0x63</td></tr>
+<tr><td></td><td><-</td><td>word read</td></tr>
+<tr><td></td><td>...</td><td></td></tr>
+<tr><td></td><td><-</td><td>status</td></tr>
+</table>
+
+<br><br>
+<table border cellpadding=5>
+<caption>CMD_READ_DATA 'd'</caption>
+<tr><td>0x64</td><td>-></td><td>Read data</td></tr>
+<tr><td></td><td><-</td><td>0x64</td></tr>
+<tr><td></td><td><-</td><td>byte read</td></tr>
+<tr><td></td><td>...</td><td></td></tr>
+<tr><td></td><td><-</td><td>status</td></tr>
+</table>
+
+<br><br>
+<table border cellpadding=5>
+<caption>CMD_READ_ID 'e'</caption>
+<tr><td>0x65</td><td>-></td><td>Read ID</td></tr>
+<tr><td></td><td><-</td><td>0x65</td></tr>
+<tr><td></td><td><-</td><td>word read</td></tr>
+<tr><td></td><td>...</td><td></td></tr>
+<tr><td></td><td><-</td><td>status</td></tr>
+</table>
+
+<br><br>
+<table border cellpadding=5>
+<caption>CMD_READ_CFG 'f'</caption>
+<tr><td>0x66</td><td>-></td><td>Read config</td></tr>
+<tr><td></td><td><-</td><td>0x66</td></tr>
+<tr><td></td><td><-</td><td>word read</td></tr>
+<tr><td></td><td>...</td><td></td></tr>
+<tr><td></td><td><-</td><td>status</td></tr>
+</table>
+
+<br><br>
+<table border cellpadding=5>
+<caption>CMD_WRITE_CFG 'g'</caption>
+<tr><td>0x67</td><td>-></td><td>Write config</td></tr>
+<tr><td></td><td><-</td><td>0x67</td></tr>
+<tr><td>word to write</td><td>-></td><td></td></tr>
+<tr><td></td><td><-</td><td>each word echoed back</td></tr>
+<tr><td></td><td>...</td><td></td></tr>
+<tr><td></td><td><-</td><td>status</td></tr>
+</table>
+
+<br><br>
+<table border cellpadding=5>
+<caption>CMD_WRITE_ID 'h'</caption>
+<tr><td>0x68</td><td>-></td><td>Write ID</td></tr>
+<tr><td></td><td><-</td><td>0x68</td></tr>
+<tr><td>word to write</td><td>-></td><td></td></tr>
+<tr><td></td><td><-</td><td>word read back</td></tr>
+<tr><td></td><td>...</td><td></td></tr>
+<tr><td></td><td><-</td><td>status</td></tr>
+</table>
+
+<br><br>
+<table border cellpadding=5>
+<caption>CMD_WRITE_DATA 'i'</caption>
+<tr><td>0x69</td><td>-></td><td>Write data</td></tr>
+<tr><td></td><td><-</td><td>0x69</td></tr>
+<tr><td>byte to write</td><td>-></td><td></td></tr>
+<tr><td></td><td><-</td><td>byte read back</td></tr>
+<tr><td></td><td>...</td><td></td></tr>
+<tr><td></td><td><-</td><td>status</td></tr>
+</table>
+
+<br><br>
+<table border cellpadding=5>
+<caption>CMD_WRITE_CFG_WORD 'p'</caption>
+<tr><td>0x70</td><td>-></td><td>Write one config word</td></tr>
+<tr><td></td><td><-</td><td>0x70</td></tr>
+<tr><td>word to write</td><td>-></td><td></td></tr>
+<tr><td></td><td><-</td><td>word read back</td></tr>
+<tr><td></td><td><-</td><td>status</td></tr>
+</table>
+(For 18xxx chips only. Each word must be preceeded by 'set range'.)
+<br><br>
+
+<br><br>
+<table border cellpadding=5>
+<caption>CMD_WRITE_OSC 'q'</caption>
+<tr><td>0x71</td><td>-></td><td>Write calibration values</td></tr>
+<tr><td></td><td><-</td><td>0x71</td></tr>
+<tr><td>word to write</td><td>-></td><td></td></tr>
+<tr><td></td><td><-</td><td>word read back</td></tr>
+<tr><td></td><td>...</td><td></td></tr>
+<tr><td></td><td><-</td><td>status</td></tr>
+</table>
+
+<br><br>
+<table border cellpadding=5>
+<tr><td>0x80</td><td>-></td><td>Get processor info length</td></tr>
+<tr><td></td><td><-</td><td>0x80</td></tr>
+<tr><td></td><td><-</td><td>0x2c (44)</td></tr>
+</table>
+
+<br><br>
+<table border cellpadding=5>
+<caption>CMD_LOAD_INFO</caption>
+<tr><td>0x81</td><td>-></td><td>Load processor info</td></tr>
+<tr><td></td><td><-</td><td>0x81</td></tr>
+<tr><td>44 bytes</td><td>-></td><td></td></tr>
+<tr><td>chksum</td><td>-></td><td></td></tr>
+<tr><td></td><td><-</td><td>status</td></tr>
+</table>
+
+<br><br>
+<table border cellpadding=5>
+<caption>CMD_LOAD_EXT_INFO</caption>
+<tr><td>0x82</td><td>-></td><td>Load extended config masks</td></tr>
+<tr><td></td><td><-</td><td>0x82</td></tr>
+<tr><td>8+8 words</td><td>-></td><td></td></tr>
+<tr><td>chksum</td><td>-></td><td></td></tr>
+<tr><td></td><td><-</td><td>status</td></tr>
+</table>
+
+<br><br>
+<table border cellpadding=5>
+<caption>CMD_REQUEST_MODEL</caption>
+<tr><td>0x88</td><td>-></td><td>Ping</td></tr>
+<tr><td></td><td><-</td><td>0xab	response identifying PS+/Warp-13/JuPic</td></tr>
+</table>
+
+<br><br>
+<table border cellpadding=5>
+<caption>CMD_REQUEST_VERSION</caption>
+<tr><td>0x8d</td><td>-></td><td>Get version</td></tr>
+<tr><td></td><td><-</td><td>0x8d</td></tr>
+<tr><td></td><td><-</td><td>major</td></tr>
+<tr><td></td><td><-</td><td>middle</td></tr>
+<tr><td></td><td><-</td><td>minor</td></tr>
+</table>
+
+<br><br>
+<table border cellpadding=5>
+<caption>CMD_SET_ADDR</caption>
+<tr><td>0x8e</td><td>-></td><td>Set range</td></tr>
+<tr><td></td><td><-</td><td>0x8e</td></tr>
+<tr><td>5 bytes</td><td>-></td><td>send each byte</td></tr>
+<tr><td></td><td><-</td><td>each byte echoed</td></tr>
+<tr><td></td><td>...</td><td></td></tr>
+</table>
+
+<br><br>
+<table border cellpadding=5>
+<caption>CMD_ERASE_FLASH</caption>
+<tr><td>0x8f</td><td>-></td><td>Erase flash device</td></tr>
+<tr><td></td><td><-</td><td>0x8f</td></tr>
+<tr><td></td><td><-</td><td>status</td></tr>
+</table>
+
+<br><br>
+<table border cellpadding=5>
+<tr><td>0x90</td><td>-></td><td>Compute program checksum</td></tr>
+<tr><td></td><td align="center"><-</td><td>0x90</td></tr>
+<tr><td></td><td><-</td><td>checksum_h</td></tr>
+<tr><td></td><td><-</td><td>checksum_l</td></tr>
+<tr><td></td><td><-</td><td>status</td></tr>
+</table>
+
+<br><br>
+<table border cellpadding=5>
+<tr><td>0x91</td><td>-></td><td>Compute config checksum</td></tr>
+<tr><td></td><td><-</td><td>0x91</td></tr>
+<tr><td></td><td><-</td><td>checksum_h</td></tr>
+<tr><td></td><td><-</td><td>checksum_l</td></tr>
+<tr><td></td><td><-</td><td>status</td></tr>
+</table>
+
+<br><br>
+<table border cellpadding=5>
+<tr><td>0x92</td><td>-></td><td>Compute ID checksum</td></tr>
+<tr><td></td><td><-</td><td>0x92</td></tr>
+<tr><td></td><td><-</td><td>checksum_h</td></tr>
+<tr><td></td><td><-</td><td>checksum_l</td></tr>
+<tr><td></td><td><-</td><td>status</td></tr>
+</table>
+
+<br><br>
+<table border cellpadding=5>
+<tr><td>0x93</td><td>-></td><td>Compute data checksum</td></tr>
+<tr><td></td><td><-</td><td>0x93</td></tr>
+<tr><td></td><td><-</td><td>checksum_h</td></tr>
+<tr><td></td><td><-</td><td>checksum_l</td></tr>
+<tr><td></td><td><-</td><td>status</td></tr>
+</table>
+
+<br><br>
+<table border cellpadding=5>
+<tr><td>0x94</td><td>-></td><td>Compute cal checksum</td></tr>
+<tr><td></td><td><-</td><td>0x94</td></tr>
+<tr><td></td><td><-</td><td>checksum_h</td></tr>
+<tr><td></td><td><-</td><td>checksum_l</td></tr>
+<tr><td></td><td><-</td><td>status</td></tr>
+</table>
+
+<br><br><br>
+<a href="#topofdoc">Back to top</a><br>
+<br><br>
+
+<hr>
+<a name="bugs"></a>
+<h4><em>Known Issues</em></h4>
+<hr>
+<br><br>
+Erase program (-ep) does not work with most PIC devices. Use -ef (erase flash) instead.
+<br><br>
+Some data in picdev.c is known to be incorrect (but what the correct data should
+be is not known). Many entries in picdev have been sent to me by users, but I
+don't always have the corresponding PIC devices with which to test them. If you
+find a problem with a particular PIC chip, please let me know.
+<br><br>
+Support for 18Fxxx devices has been tested only with 18F458 and 18F252 chips. Bug reports
+regarding 18Fxxx chips will be greatly appreciated. Please email a zip or gz file
+with the picpcomm.log file and any other information relevant to the problems you find.
+<br><br>
+Support for some 10Fxxx devices has been added, but is only partially tested at this time.
+<br><br>
+Many functions have still not been implemented. Work is continuing on these
+issues.
+<br><br>
+Please send bug reports and feature wish lists to
+&nbsp;'&#106;_&#112;&#111;st &lt;&#65;T&gt; p&#97;c&#98;e&#108;l &lt;D&#79;T&gt; n&#101;t'.
+Comments on this documentation are also appreciated.
+
+<br><br>
+<a href="#topofdoc">Back to top</a><br>
+<br><br><br><br>
+</body>
+</html>

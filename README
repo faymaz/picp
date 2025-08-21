@@ -1,0 +1,73 @@
+picp README -- version 0.6.7 (08 July 2005)
+
+For installation instructions, please read INSTALL.
+
+for help and a list of supported devices type "picp" without any other
+arguments. More complete documentation may be viewed at
+http://www.cosmodog.com/pic/picpdoc.html.
+
+The current version of picp may be downloaded from
+http://home.pacbell.net/theposts/picmicro
+
+Your PICSTART Plus programmer must have version 3.00.40 firmware or
+later; go to http://www.microchip.com to download the latest. You can
+check the version number of your firmware by typing
+	picp /dev/ttyS0 12c508 -v
+where /dev/ttyS0 is the serial device the PICSTART is attached to and
+12c508 is any supported PIC device.
+
+picp is free software; please read the included file LICENSE.TXT.
+Comments, suggestions, installation problems, successes, etc. should
+be directed to j_post <AT> pacbell <DOT> net.
+
+The PICSTART Plus was reverse engineered without the benefit of any
+documentation or help from Microchip. If you have any insights or
+useful information into the meaning of the remaining processor
+definition codes please pass them along (see picdev.h for the current
+state of knowledge). At some point MPLAB was modified to send yet
+more part-specific data at start up using a previously unused command
+(0x82).  picp 0.4c supports this new data but I have no idea what it
+does or why it wasn't needed before. Anyone with a better understanding
+of the PICSTART Plus protocol is encouraged to come forward.
+
+There is a report that USB serial ports don't work in RedHat9. Using the
+2.4.26 kernel solves the problem.
+
+-----------------------------------------------------------------------------
+REMAINING DEFICIENCIES:
+
+picp cannot write to the oscillator calibration space of devices with
+more than one calibration word (specifically the PIC14000) via the
+command line flag '-wo'.  Since the calibration space is actually in
+program space you should be able to write to this region with '-wp',
+but it is untested.  '-ro' should work but is untested on the PIC14000.
+
+The code protect masks in the part definitions are incomplete for most
+devices. This will not affect the ability to program parts but it does
+prevent picp from detecting if a device is code protected and
+generating the appropriate warning.
+
+Erase program and erase ID locations (-ep and -ei) don't work for some parts,
+at least with the Warp-13 programmer. At this time the reason is unknown.
+If this problem occurs with a particular chip, try erasing the flash device
+(-ef).
+
+Although picp supports multiple commands (eg: picp /dev/ttyS1 16F84 -ef -wp file.hex),
+I only test using one command at a time (testing time would grow beyond reason
+otherwise). If a particular combination of commands doesn't seem to work, try
+invoking picp separately for each command.
+
+-----------------------------------------------------------------------------
+IN CASE OF DIFFICULTY:
+
+Every effort was taken to define all devices correctly, but the possibility
+of errors still exists. If you have difficulty with a particular device,
+type "picp <device>" to dump what picp believes are the characteristics of
+the device. Please forward any errors or bugs to j_post <AT> pacbell <DOT> net.
+
+-----------------------------------------------------------------------------
+
+ See HISTORY for a revision history
+
+-----------------------------------------------------------------------------
+
