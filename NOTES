@@ -1,0 +1,420 @@
+PICSTART Plus
+
+these are my somewhat disorganized notes from reverse-engineering the PICSTART.
+this file may safely be ignored.
+
+
+
+1) Device is DCE.  Use 9-pin, DB-9, male to female, straight-through cable.
+2) Uses RTS/CTS hardware handshaking
+3) 19.2 kBaud, 8 bit, no parity, 1 stop bit
+
+
+
+Host-to-PICSTART communications
+
+messages to PICSTART are preceeded by >
+messages from PICSTART are preceeded by <
+
+0x88:
+	response: 0xab
+	action: doesn't do anything else (appears to be asking for the programmer type, 0xab says 'PICSTART Plus')
+
+0x8d:
+	response: 0x8d 0xaa 0xbb 0xcc
+	action: return version number
+
+0x8e: 0xaa 0xbb 0xcc 0xdd
+	response: echo everything
+	action: set address range
+	  0xaa/0xbb = start address
+	  0xcc/0xdd = number of words included in range
+
+0x80:
+	response: 0x80 0x2c
+	action: doesn't do anything (some kind of sub code?)
+
+0x81:
+	response: 0x81 0xaa
+	action: load processor info
+	0xaa = 0 if okay, 0xff if checksum error
+
+0x42: ('B')
+	response: 0x42 0xbb (0xbb indicates what isn't blank)
+	action: blank check device
+
+	things which can be blank:
+		program memory
+		configuration bits
+		IDs
+		data memory
+	b7:
+	b6:
+	b5:
+	b4: ? this bit is set on 16C505 even when it reports blank
+	b3: 0 = EEPROM data blank
+	b2: 0 = ID locations blank
+	b1: 0 = configuration bits blank
+	b0: 0 = program memory blank
+
+0x51: ('Q')
+	action: write program memory
+
+	data is written two bytes (high/low) at a time, wait for echo
+
+0x54: ('T')
+	action: read program memory
+
+	echo command, range is read as one big blob, with an extra 0 at the end
+
+0x63: ('c')
+0x94: ??? seems to be redundant
+	action: read calibration memory
+	response: 0x63 0xaa 0xbb 0x00 where 0xaa 0xbb is the calibration
+
+0x64: ('d')
+	response: 0x64, then all the data then a 0x00
+	action: read EEPROM data
+
+0x65: ('e')
+	response: 0x65 + eight bytes +0x00 at the end
+	action: read ID locations
+
+ configuration bits:
+0x66: ('f')
+	response: 0x66 0xaa 0xbb 0xcc
+	action: read configuration bits
+
+0x67: ('g')  0xaa 0xbb
+	response: 0x67 0xaa 0xbb
+	action: write configuration bits
+
+0x68: ('h') + 16 bytes (8 words)
+	response: echo everything, then 0 if all okay
+	action: write ID locations
+	write a word, wait for reply, etc.
+
+0x69: ('i') + data bytes
+	response: echo everything, then 0 if all okay
+	action: write EEPROM data
+
+0x71: ('q')  0xaa 0xbb
+	response: 0x71 0xaa 0xbb 0x00
+	action: write calibration data
+
+Enable Programmer:
+> 88					set pc present
+< ab					(code shows aa)
+
+> 8d					request firmware version
+< 8d 02 01 00			reply firmware version (version 2.01.00)
+
+> 80
+< 80 2c
+
+> 81
+< 81
+
+PIC12C508/PIC12C508A/PIC12CE518
+(osc ext. RC, wd on, master clear external, code protect off):
+> 01 ff 0f ff 0f ff 00 0f 00 0f 00 1f 00 1f 00 00 00 00 0f
+> ff 0f ff 00 00 00 01 02 00 04 0f ff 01 00 00 00 00 01 ff 00
+> 01 0b 08 0a 16 de
+< 00
+
+PIC12C509/PIC12C509A/PIC12CE519:
+(osc ext. RC, wd on, master clear external, code protect off):
+> 03 ff 0f ff 0f ff 00 0f 00 0f 00 1f 00 1f 00 00 00 00 0f
+> ff 0f ff 00 00 00 01 04 00 04 0f ff 01 00 00 00 00 03 ff 00
+> 01 0b 08 0a 16 e4
+< 00
+
+PIC12C671/PIC12CE673:
+(osc ext. RC clkout, wd on, pwr up timer off,  master clear external, code protect off):
+> 03 ff 3f ff 3f ff 00 7f 00 7f 3f ff 3f ff 00 00 00 00 3f
+> ff 3f ff 00 00 00 01 20 00 04 20 07 01 00 00 00 00 03 ff 00
+> 01 03 19 09 16 ff
+< 00
+
+PIC12C672/PIC12CE674:
+(osc ext. RC clkout, wd on, pwr up timer off,  master clear external, code protect off):
+> 07 ff 3f ff 3f ff 00 7f 00 7f 3f ff 3f ff 00 00 00 00 3f
+> ff 3f ff 00 00 00 01 20 00 04 20 07 01 00 00 00 00 07 ff 00
+> 01 03 19 09 16 07
+
+PIC14000:
+(osc int. RC, wd on, pwr up timer off, code protect off):
+> 0f c0 3f ff 3f ff 00 7f 00 7f 3f bd 3f bd 00 00 00 00 3f
+> ff 3f ff 00 00 00 01 20 00 04 20 07 01 00 00 00 00 0f c0 00
+> 40 03 19 01 16 4c
+
+PIC16C505:
+(osc ext. RC clkout, wd on, master clear external, code protect off):
+> 03 ff 0f ff 0f ff 00 0f 00 0f 0f ff 0f ff 00 00 00 00 0f
+> ff 0f ff 00 00 00 01 04 00 04 0f ff 01 00 00 00 00 03 ff 00
+> 01 0b 08 0a 16 c2
+
+PIC16C52:
+(osc RC, code protect off)
+> 01 80 0f ff 0f ff 00 0f 00 0f 00 0b 00 0b 00 00 00 00 00
+> 00 00 00 00 00 00 01 02 00 00 0f ff 01 00 00 00 00 00 00 00
+> 00 0b 08 05 04 ff
+
+PIC16C54/PIC16C54A:
+(osc RC, wd on, code protect off)
+> 02 00 0f ff 0f ff 00 0f 00 0f 00 0f 00 0f 00 00 00 00 00
+> 00 00 00 00 00 00 01 02 00 04 0f ff 01 00 00 00 00 00 00 00
+> 00 0b 08 05 06 8e
+
+PIC16C54B/PIC16C54C:
+> 02 00 0f ff 0f ff 00 0f 00 0f 0f ff 0f ff 00 00 00 00 00
+> 00 00 00 00 00 00 01 02 00 04 0f ff 01 00 00 00 00 00 00 00
+> 00 0b 08 05 06 8c
+
+PIC16C55:
+> 02 00 0f ff 0f ff 00 0f 00 0f 00 0f 00 0f 00 00 00 00 00
+> 00 00 00 00 00 00 01 02 00 04 0f ff 01 00 00 00 00 00 00 00
+> 00 0b 08 06 06 8f
+
+PIC16C554/PIC16C554A:
+> 02 00 3f ff 3f ff 00 7f 00 7f 3f 3f 3f 3f 00 00 00 00 00
+> 00 00 00 00 00 00 01 20 00 04 20 07 01 00 00 00 00 00 00 00
+> 00 03 19 02 06 e9
+
+PIC16C556/PIC16C556A:
+> 04 00 3f ff 3f ff 00 7f 00 7f 3f 3f 3f 3f 00 00 00 00 00
+> 00 00 00 00 00 00 01 20 00 04 20 07 01 00 00 00 00 00 00 00
+> 00 03 19 02 06 eb
+
+PIC16C558/PIC16C558A:
+> 08 00 3f ff 3f ff 00 7f 00 7f 3f 3f 3f 3f 00 00 00 00 00
+> 00 00 00 00 00 00 01 20 00 04 20 07 01 00 00 00 00 00 00 00
+> 00 03 19 02 06 ef
+
+PIC16C56:
+> 04 00 0f ff 0f ff 00 0f 00 0f 00 0f 00 0f 00 00 00 00 00
+> 00 00 00 00 00 00 01 04 00 04 0f ff 01 00 00 00 00 00 00 00
+> 00 0b 08 05 06 92
+
+PIC16C56A:
+> 04 00 0f ff 0f ff 00 0f 00 0f 0f ff 0f ff 00 00 00 00 00
+> 00 00 00 00 00 00 01 04 00 04 0f ff 01 00 00 00 00 00 00 00
+> 00 0b 08 05 06 90
+
+PIC16C57:
+> 08 00 0f ff 0f ff 00 0f 00 0f 00 0f 00 0f 00 00 00 00 00
+> 00 00 00 00 00 00 01 08 00 04 0f ff 01 00 00 00 00 00 00 00
+> 00 0b 08 06 06 9b
+
+PIC16C58A:
+> 08 00 0f ff 0f ff 00 0f 00 0f 00 0f 00 0f 00 00 00 00 00
+> 00 00 00 00 00 00 01 08 00 04 0f ff 01 00 00 00 00 00 00 00
+> 00 0b 08 05 06 9a
+
+PIC16C58B:
+> 08 00 0f ff 0f ff 00 0f 00 0f 0f ff 0f ff 00 00 00 00 00
+> 00 00 00 00 00 00 01 08 00 04 0f ff 01 00 00 00 00 00 00 00
+> 00 0b 08 05 06 98
+
+PIC16C61:
+> 04 00 3f ff 3f ff 00 7f 00 7f 00 1f 00 1f 00 00 00 00 00
+> 00 00 00 00 00 00 01 20 00 04 20 07 01 00 00 00 00 00 00 00
+> 00 03 19 02 06 2d
+
+PIC16C62:
+> 08 00 3f ff 3f ff 00 7f 00 7f 00 3f 00 3f 00 00 00 00 00
+> 00 00 00 00 00 00 01 20 00 04 20 07 01 00 00 00 00 00 00 00
+> 00 03 19 03 06 72
+
+PIC16C62A/PIC16C62B:
+> 08 00 3f ff 3f ff 00 7f 00 7f 3f 7f 3f 7f 00 00 00 00 00
+> 00 00 00 00 00 00 01 20 00 04 20 07 01 00 00 00 00 00 00 00
+> 00 03 19 03 06 70
+
+PIC16C620/PIC16C620A/PIC16CE623:
+> 02 00 3f ff 3f ff 00 7f 00 7f 3f 7f 3f 7f 00 00 00 00 00
+> 00 00 00 00 00 00 01 20 00 04 20 07 01 00 00 00 00 00 00 00
+> 00 03 19 02 06 69
+
+PIC16C621/PIC16C621A/PIC16CE624:
+> 04 00 3f ff 3f ff 00 7f 00 7f 3f 7f 3f 7f 00 00 00 00 00
+> 00 00 00 00 00 00 01 20 00 04 20 07 01 00 00 00 00 00 00 00
+> 00 03 19 02 06 6b
+
+PIC16C622/PIC16C622A/PIC16CE625:
+> 08 00 3f ff 3f ff 00 7f 00 7f 3f 7f 3f 7f 00 00 00 00 00
+> 00 00 00 00 00 00 01 20 00 04 20 07 01 00 00 00 00 00 00 00
+> 00 03 19 02 06 6f
+
+PIC16C63/PIC16C63A:
+> 10 00 3f ff 3f ff 00 7f 00 7f 3f 7f 3f 7f 00 00 00 00 00
+> 00 00 00 00 00 00 01 20 00 04 20 07 01 00 00 00 00 00 00 00
+> 00 03 19 03 06 78
+
+PIC16C64:
+> 08 00 3f ff 3f ff 00 7f 00 7f 00 3f 00 3f 00 00 00 00 00
+> 00 00 00 00 00 00 01 20 00 04 20 07 01 00 00 00 00 00 00 00
+> 00 03 19 04 06 73
+
+PIC16C64A:
+> 08 00 3f ff 3f ff 00 7f 00 7f 3f 7f 3f 7f 00 00 00 00 00
+> 00 00 00 00 00 00 01 20 00 04 20 07 01 00 00 00 00 00 00 00
+> 00 03 19 04 06 71
+
+PIC16C642:
+> 10 00 3f ff 3f ff 00 7f 00 7f 3f ff 3f ff 00 00 00 00 00
+> 00 00 00 00 00 00 01 20 00 04 20 07 01 00 00 00 00 00 00 00
+> 00 03 19 03 26 98
+
+PIC16C65:
+> 10 00 3f ff 3f ff 00 7f 00 7f 00 3f 00 3f 00 00 00 00 00
+> 00 00 00 00 00 00 01 20 00 04 20 07 01 00 00 00 00 00 00 00
+> 00 03 19 04 06 7b
+
+PIC16C65A/PIC16C65B:
+> 10 00 3f ff 3f ff 00 7f 00 7f 3f 7f 3f 7f 00 00 00 00 00
+> 00 00 00 00 00 00 01 20 00 04 20 07 01 00 00 00 00 00 00 00
+> 00 03 19 04 06 79
+
+PIC16C66:
+> 20 00 3f ff 3f ff 00 7f 00 7f 3f 7f 3f 7f 00 00 00 00 00
+> 00 00 00 00 00 00 01 20 00 04 20 07 01 00 00 00 00 00 00 00
+> 00 03 19 03 06 88
+
+PIC16C662:
+> 10 00 3f ff 3f ff 00 7f 00 7f 3f ff 3f ff 00 00 00 00 00
+> 00 00 00 00 00 00 01 20 00 04 20 07 01 00 00 00 00 00 00 00
+> 00 03 19 04 26 99
+
+PIC16C67:
+> 20 00 3f ff 3f ff 00 7f 00 7f 3f 7f 3f 7f 00 00 00 00 00
+> 00 00 00 00 00 00 01 20 00 04 20 07 01 00 00 00 00 00 00 00
+> 00 03 19 04 06 89
+
+PIC16C71:
+> 04 00 3f ff 3f ff 00 7f 00 7f 00 1f 00 1f 00 00 00 00 00
+> 00 00 00 00 00 00 01 20 00 04 20 07 01 00 00 00 00 00 00 00
+> 00 03 19 02 06 2d
+
+PIC16C710:
+> 02 00 3f ff 3f ff 00 7f 00 7f 3f ff 3f ff 00 00 00 00 00
+> 00 00 00 00 00 00 01 20 00 04 20 07 01 00 00 00 00 00 00 00
+> 00 03 19 02 06 69
+
+PIC16C711:
+> 04 00 3f ff 3f ff 00 7f 00 7f 3f ff 3f ff 00 00 00 00 00
+> 00 00 00 00 00 00 01 20 00 04 20 07 01 00 00 00 00 00 00 00
+> 00 03 19 02 06 6b
+
+PIC16C715:
+> 08 00 3f ff 3f ff 00 7f 00 7f 3f ff 3f ff 00 00 00 00 00
+> 00 00 00 00 00 00 01 20 00 04 20 07 01 00 00 00 00 00 00 00
+> 00 03 19 02 26 8f
+
+PIC16C72/PIC16C72A:
+> 08 00 3f ff 3f ff 00 7f 00 7f 3f 7f 3f 7f 00 00 00 00 00
+> 00 00 00 00 00 00 01 20 00 04 20 07 01 00 00 00 00 00 00 00
+> 00 03 19 03 06 70
+
+PIC16C73:
+> 10 00 3f ff 3f ff 00 7f 00 7f 00 3f 00 3f 00 00 00 00 00
+> 00 00 00 00 00 00 01 20 00 04 20 07 01 00 00 00 00 00 00 00
+> 00 03 19 03 06 7a
+
+PIC16C73A/PIC16C73B:
+> 10 00 3f ff 3f ff 00 7f 00 7f 3f 7f 3f 7f 00 00 00 00 00
+> 00 00 00 00 00 00 01 20 00 04 20 07 01 00 00 00 00 00 00 00
+> 00 03 19 03 06 78
+
+PIC16C74:
+> 10 00 3f ff 3f ff 00 7f 00 7f 00 3f 00 3f 00 00 00 00 00
+> 00 00 00 00 00 00 01 20 00 04 20 07 01 00 00 00 00 00 00 00
+> 00 03 19 04 06 7b
+
+PIC16C74A/PIC16C74B:
+> 10 00 3f ff 3f ff 00 7f 00 7f 3f 7f 3f 7f 00 00 00 00 00
+> 00 00 00 00 00 00 01 20 00 04 20 07 01 00 00 00 00 00 00 00
+> 00 03 19 04 06 79
+
+PIC16C76:
+> 20 00 3f ff 3f ff 00 7f 00 7f 3f 7f 3f 7f 00 00 00 00 00
+> 00 00 00 00 00 00 01 20 00 04 20 07 01 00 00 00 00 00 00 00
+> 00 03 19 03 06 88
+
+PIC16C77:
+> 20 00 3f ff 3f ff 00 7f 00 7f 3f 7f 3f 7f 00 00 00 00 00
+> 00 00 00 00 00 00 01 20 00 04 20 07 01 00 00 00 00 00 00 00
+> 00 03 19 04 06 89
+
+PIC16F83:
+> 02 00 3f ff 3f ff 00 7f 00 7f 3f ff 3f ff 00 ff 00 ff 00
+> 00 00 00 00 00 00 01 20 00 04 20 07 01 00 00 00 40 00 00 00
+> 00 03 01 02 0f 98
+
+PIC16C84:
+> 04 00 3f ff 3f ff 00 7f 00 7f 00 1f 00 1f 00 ff 00 ff 00
+> 00 00 00 00 00 00 01 20 00 04 20 07 01 00 00 00 40 00 00 00
+> 00 03 01 02 0f 5c
+
+PIC16F84:
+(osc RC, wd on, power up timer off, code protect off)
+> 04 00 3f ff 3f ff 00 7f 00 7f 3f ff 3f ff 00 ff 00 ff 00
+> 00 00 00 00 00 00 01 20 00 04 20 07 01 00 00 00 40 00 00 00
+> 00 03 01 02 0f 9a
+
+PIC16F84A:
+> 04 00 3f ff 3f ff 00 7f 00 7f 3f ff 3f ff 00 ff 00 ff 00
+> 00 00 00 00 00 00 01 20 00 04 20 07 01 00 00 00 40 00 00 00
+> 00 00 01 02 0f 97
+
+PIC16F877:
+> 20 00 3f ff 3f ff 00 7f 00 7f 3b ff 3b ff 00 ff 00 ff 00
+> 00 00 00 00 00 00 01 20 00 04 20 07 01 00 00 01 00 00 00 00
+> 00 00 01 04 0f 6e
+
+PIC16C923:
+> 10 00 3f ff 3f ff 00 7f 00 7f 3f 3f 3f 3f 00 00 00 00 00
+> 00 00 00 00 00 00 01 20 00 04 20 07 01 00 00 00 00 00 00 00
+> 00 03 19 04 06 f9
+
+PIC16C924:
+> 10 00 3f ff 3f ff 00 7f 00 7f 3f 3f 3f 3f 00 00 00 00 00
+> 00 00 00 00 00 00 01 20 00 04 20 07 01 00 00 00 00 00 00 00
+> 00 03 19 04 06 f9
+
+PIC17C42:
+> 08 00 ff ff ff ff 00 00 00 00 00 5f 00 5f 00 00 00 00 00
+> 00 00 00 00 00 00 01 00 00 00 fe 00 01 00 00 00 00 00 00 00
+> 00 03 19 07 04 e9
+
+PIC17C42A:
+> 08 00 ff ff ff ff 00 00 00 00 80 5f 80 5f 00 00 00 00 00
+> 00 00 00 00 00 00 01 00 00 00 fe 00 01 00 00 00 00 00 00 00
+> 00 03 19 07 04 e9
+
+PIC17C43:
+> 10 00 ff ff ff ff 00 00 00 00 80 5f 80 5f 00 00 00 00 00
+> 00 00 00 00 00 00 01 00 00 00 fe 00 01 00 00 00 00 00 00 00
+> 00 03 19 07 04 f1
+
+PIC17C44:
+> 20 00 ff ff ff ff 00 00 00 00 80 5f 80 5f 00 00 00 00 00
+> 00 00 00 00 00 00 01 00 00 00 fe 00 01 00 00 00 00 00 00 00
+> 00 03 19 07 04 01
+
+PIC17C752/PIC17C762:
+> 20 00 ff ff ff ff 00 00 00 00 c0 5f c0 5f 00 00 00 00 00
+> 00 00 00 00 00 00 01 00 00 00 fe 00 01 00 00 00 00 00 00 00
+> 00 03 19 07 04 81
+
+PIC17C756/PIC17C756A:
+> 40 00 ff ff ff ff 00 00 00 00 c0 5f c0 5f 00 00 00 00 00
+> 00 00 00 00 00 00 01 00 00 00 fe 00 01 00 00 00 00 00 00 00
+> 00 03 19 07 04 a1
+
+PIC17C766:
+> 40 00 ff ff ff ff 00 00 00 00 c0 5f c0 5f 00 00 00 00 00
+> 00 00 00 00 00 00 01 00 00 00 fe 00 01 00 00 00 00 00 00 00
+> 00 03 19 07 04 a1
+
+

@@ -1,0 +1,36 @@
+
+TODO list (12 January, 2005):
+----------------------------
+
+There is a report that USB serial ports don't work in RedHat9. Using the
+2.4.26 kernel solves the problem. If information on a workaround for this
+becomes available, modify the port init routines to make it work with RH9.
+
+For which chips does the data eeprom address entry in the PIC_DEFINITION
+need to be set? (See 12F629/75 and 16F630/76.)
+
+In DoEraseConfigBits (picstart.c), erase config bits may not be correct for all
+devices.
+
+Add diagnostic code to test Picstart Plus/Warp-13 (need info on command
+code 0x43)?
+
+In picdev.c, need to add code protect and watchdog masks to definition
+structures for most parts.
+
+Verify program space.
+
+Verify data space.
+
+Erase oscillator calibration (probably unnecessary since none of the current
+flash devices have calibration space).
+
+Support osc. calibration space sizes other than 1 (PIC14000 only?).
+
+Seems to have trouble verifying oscillator calibration when stringing several
+operations together.
+
+Seems to have a problem with 16C63A (but not 16C63, which MPLAB appears to
+treat as identical).
+
+
