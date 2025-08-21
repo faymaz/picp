@@ -1,10 +1,12 @@
-picp README -- version 0.6.7 (08 July 2005)
+picp README -- version 0.6.8 (19 December 2005)
+
+Includes utilities (convert and convertshort) that convert picdev.c to a
+resource configuration file (picdevrc).
 
 For installation instructions, please read INSTALL.
 
 for help and a list of supported devices type "picp" without any other
-arguments. More complete documentation may be viewed at
-http://www.cosmodog.com/pic/picpdoc.html.
+arguments. More complete documentation may be found in PICPmanual.html.
 
 The current version of picp may be downloaded from
 http://home.pacbell.net/theposts/picmicro

@@ -1,7 +1,7 @@
 picp INSTALLATION
 
 1) open the archive with:
-	tar -xzf picp-0.6.7.tar.gz
+	tar -xzf picp-0.6.8.tar.gz
 	
 2) change into the picp directory and build the application:
 	make

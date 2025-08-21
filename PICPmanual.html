@@ -4,22 +4,22 @@
 <title>PICP Users Manual</title>
 </head>
 <body>
-<!-- Last update July 9, 2005 -->
+<!-- Last update July 14, 2006 -->
 <a name="topofdoc"></a>
 <div align="center">
 <font size="8" color="#ff0000">
 <strong><i>PICP Users Manual</i></strong><br>
 </font>
 <font size="5" color="#ff0000">
-Linux (and Windows) Interface to PICSTART Plus, Warp-13, and JuPic programmers<br>
+Linux (and Windows) Interface to PICSTART Plus, Warp-13, JuPic, and Olimex programmers<br>
 </font>
 <br>
 
 <hr>
 <font size="4" color="#000000">
-Copyright 2004-2005 by Jeffery L. Post
+Copyright 2004-2006 by Jeffery L. Post
 <br>
-Version 0.6.7 - July, 2005
+Version 0.6.8 - July, 2006
 <br>
 GNU General Public License
 </font>
@@ -33,6 +33,7 @@ GNU General Public License
   <li><a href="#intro">Introduction</a><br>
   <li><a href="#cli">Command Line Interface</a><br>
   <li><a href="#protocol">Comm Protocol</a><br>
+  <li><a href="#rcfile">Config File</a><br>
   <li><a href="#bugs">Known Issues</a><br>
 </ul>
 <br><br>
@@ -45,8 +46,8 @@ GNU General Public License
 Picp is a Linux (and Windows) command line interface to
 Microchip's <a href="http://www.microchip.com">PICSTART Plus</a>,
 Newfound Electronic's <a href="http://www.newfoundelectronics.com">Warp-13</a>,
-and <a href="http://ajpic.zonk.pl">JuPic</a>
-PIC programmers. Originally written by
+<a href="http://ajpic.zonk.pl">JuPic</a>, and <a href="http://www.olimex.com">
+Olimex</a> PIC programmers. Originally written by
 <a href="http://www.cosmodog.com">Andrew Pines</a>, picp is now maintained by
 Jeff Post. The latest version can be downloaded from my
 <a href="http://home.pacbell.net/theposts/picmicro">picmicro website</a>.
@@ -58,7 +59,8 @@ Plus programmers.
 <br><br>
 Thanks also to <a href="http://ajpic.zonk.pl">Adam Jurkiewicz</a>, who donated a
 JuPic programmer for testing. JuPic is an <i>excellent</i> replacement for the
-Warp-13 programmer (which is no longer being sold).
+Warp-13 programmer (which is no longer being sold). And thanks to Mark Stanley
+who donated an Olimex programmer.
 <br><br>
 Picp is licensed under the GNU General Public License.
 <br><br>
@@ -381,6 +383,110 @@ Picstart Plus commands in numerical order:<br>
 
 <br><br><br>
 <a href="#topofdoc">Back to top</a><br>
+<br><br>
+
+<hr>
+<a name="rcfile"></a>
+<h4><em>PIC Device Configuration File</em></h4>
+<hr>
+<br>
+Beginning with version 0.6.8, picp no longer compiles in the PIC definition
+data from the file <i>picdev.c</i>. The PIC definition data is now read in
+at runtime from a file called <i>picdevrc</i>. This allows users to add new
+PIC device types without having to recompile the source code. The picdevrc
+file contains the PIC definition data in ascii, so it can be modified with
+any text editor. Picp will try to find picdevrc in the current directory,
+and if not found there, will look for it in /usr/local/bin (Linux) or
+c:\Program Files\picp (Windows).
+<br><br>
+The format of picdevrc entries may be either a short (default) form for a
+smaller file, or a long form that includes information more meaningful to
+humans. Picp will process either type.
+<br><br>
+
+<b>Example picdevrc entry for 16F84 (default form):</b><br><br>
+
+[16F84]<br>
+<table>
+<tr><td></td><td></td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+<tr><td></td><td></td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+</table>
+<table><tr><td></td><td></td><td>PICSTART WARP JUPIC</td></tr></table>
+<br>
+<br>
+[16F84:def]<br>
+<table>
+<tr><td></td><td></td><td>04</td><td>00</td><td>3f</td><td>ff</td><td>3f</td><td>ff</td><td>00</td><td>7f</td></tr>
+<tr><td></td><td></td><td>00</td><td>7f</td><td>3f</td><td>ff</td><td>3f</td><td>ff</td><td>00</td><td>ff</td></tr>
+<tr><td></td><td></td><td>00</td><td>ff</td><td>00</td><td>00</td><td>00</td><td>00</td><td>00</td><td>00</td></tr>
+<tr><td></td><td></td><td>00</td><td>01</td><td>20</td><td>00</td><td>04</td><td>20</td><td>07</td><td>01</td></tr>
+<tr><td></td><td></td><td>00</td><td>00</td><td>00</td><td>40</td><td>00</td><td>00</td><td>00</td><td>00</td></tr>
+<tr><td></td><td></td><td>03</td><td>01</td><td>02</td><td>0f</td></tr>
+</table>
+<br>
+<br>
+[16F84:defx]<br>
+<table>
+<tr><td></td><td></td><td>3f</td><td>ff</td><td>00</td><td>00</td><td>00</td><td>00</td><td>00</td><td>00</td></tr>
+<tr><td></td><td></td><td>00</td><td>00</td><td>00</td><td>00</td><td>00</td><td>00</td><td>00</td><td>00</td></tr>
+<tr><td></td><td></td><td>3f</td><td>ff</td><td>00</td><td>00</td><td>00</td><td>00</td><td>00</td><td>00</td></tr>
+<tr><td></td><td></td><td>00</td><td>00</td><td>00</td><td>00</td><td>00</td><td>00</td><td>00</td><td>00</td></tr>
+</table><br>
+<br><br>
+
+<b>Example picdevrc entry for 16F84 (long form):</b><br><br>
+<table>
+[16F84]&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;; pic definition<br>
+<tr><td></td><td></td><td>0</td><td>; config word: code protect bit mask</td></tr>
+<tr><td></td><td></td><td>0</td><td>; config word: watchdog bit mask</td></tr>
+<tr><td></td><td></td><td>0</td><td>; Word alignment for writing to this device</td></tr>
+<tr><td></td><td></td><td>0</td><td>; Configuration memory start address</td></tr>
+<tr><td></td><td></td><td>0 0</td><td>; ID Locations addr and size</td></tr>
+<tr><td></td><td></td><td>0</td><td>; Data eeprom address</td></tr>
+<tr><td></td><td></td><td>0</td><td>; number of words in cfg bits with factory set bits</td></tr>
+<tr><td></td><td></td><td>0 0 0 0 0 0 0 0</td><td>; fixed bits mask</td></tr>
+<tr><td></td><td></td><td>PICSTART WARP JUPIC</td><td>; bit map of supporting programmers</td></tr>
+</table>
+<br>
+[16F84:def]<br>
+<table>
+<tr><td></td><td></td><td>04 00&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td></td><td>; size of program space</td></tr>
+<tr><td></td><td></td><td>3f ff</td><td></td><td>; width of address word</td></tr>
+<tr><td></td><td></td><td>3f ff</td><td></td><td>; width of data word</td></tr>
+<tr><td></td><td></td><td>00 7f</td><td></td><td>; width of ID</td></tr>
+<tr><td></td><td></td><td>00 7f</td><td></td><td>; ID mask</td></tr>
+<tr><td></td><td></td><td>3f ff</td><td></td><td>; width of configuration word</td></tr>
+<tr><td></td><td></td><td>3f ff</td><td></td><td>; configuration word mask</td></tr>
+<tr><td></td><td></td><td>00 ff</td><td></td><td>; EEPROM data width</td></tr>
+<tr><td></td><td></td><td>00 ff</td><td></td><td>; EEPROM data mask</td></tr>
+<tr><td></td><td></td><td>00 00</td><td></td><td>; Calibration width</td></tr>
+<tr><td></td><td></td><td>00 00</td><td></td><td>; Calibration mask</td></tr>
+<tr><td></td><td></td><td>00 00</td><td></td><td>; ??</td></tr>
+<tr><td></td><td></td><td>00 01</td><td></td><td>; ??</td></tr>
+<tr><td></td><td></td><td>20 00</td><td></td><td>; address of ID locations</td></tr>
+<tr><td></td><td></td><td>04</td><td></td><td>; size of ID locations</td></tr>
+<tr><td></td><td></td><td>20 07</td><td></td><td>; address of configuration bits</td></tr>
+<tr><td></td><td></td><td>01</td><td></td><td>; size of configuration register</td></tr>
+<tr><td></td><td></td><td>00 00</td><td></td><td>; address of data space</td></tr>
+<tr><td></td><td></td><td>00 40</td><td></td><td>; size of data space</td></tr>
+<tr><td></td><td></td><td>00 00</td><td></td><td>; address of internal clock calibration value</td></tr>
+<tr><td></td><td></td><td>00 00</td><td></td><td>; size of clock calibration space</td></tr>
+<tr><td></td><td></td><td>03</td><td></td><td>; additional programming pulses for C devices</td></tr>
+<tr><td></td><td></td><td>01</td><td></td><td>; main programming pulses for C devices</td></tr>
+<tr><td></td><td></td><td>02 0f</td><td></td><td>; ?? ZIF configuration ??</td></tr>
+</table>
+<br>
+[16F84:defx]<br>
+<table>
+<tr><td></td><td></td><td>3f</td><td>ff</td><td>00</td><td>00</td></tr>
+<tr><td></td><td></td><td>00</td><td>00</td><td>00</td><td>00</td></tr>
+<tr><td></td><td></td><td>00</td><td>00</td><td>00</td><td>00</td></tr>
+<tr><td></td><td></td><td>00</td><td>00</td><td>00</td><td>00</td></tr>
+<tr><td></td><td></td><td>3f</td><td>ff</td><td>00</td><td>00</td></tr>
+<tr><td></td><td></td><td>00</td><td>00</td><td>00</td><td>00</td></tr>
+<tr><td></td><td></td><td>00</td><td>00</td><td>00</td><td>00</td></tr>
+<tr><td></td><td></td><td>00</td><td>00</td><td>00</td><td>00</td></tr>
+</table><br>
 <br><br>
 
 <hr>

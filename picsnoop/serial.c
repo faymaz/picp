@@ -16,6 +16,9 @@
 #include <termio.h>
 #endif
 
+#define	byte		unsigned char
+#define	word		unsigned short int
+
 #include	"serial.h"
 
 // See if there is unread data waiting on theDevice.
@@ -24,7 +27,7 @@
 // As soon as there is data, or timeOut expires, return.
 // NOTE: timeOut is measured in microseconds
 // if timeOut is 0, this will return the status immediately
-bool ByteWaiting(int theDevice, unsigned int timeOut)
+bool ByteWaiting(int theDevice, int timeOut)
 {
 #ifndef WIN32
 	fd_set		readSet;
@@ -52,10 +55,10 @@ bool ByteWaiting(int theDevice, unsigned int timeOut)
 // once any byte is seen, attempt to get any more which are pending
 // up to maxBytes
 // If timeOut occurs, return 0
-unsigned int ReadBytes(int theDevice, unsigned char *theBytes, unsigned int maxBytes, unsigned int timeOut)
+int ReadBytes(int theDevice, byte *theBytes, int maxBytes, int timeOut)
 {
 #ifndef WIN32
-	unsigned int	numRead = 0;
+	int	numRead = 0;
 #else
 	HANDLE			hCom = (HANDLE) theDevice;
 	DWORD				numRead;
@@ -82,7 +85,7 @@ unsigned int ReadBytes(int theDevice, unsigned char *theBytes, unsigned int maxB
 }
 
 // Write theBytes to theDevice.
-void WriteBytes(int theDevice, unsigned char *theBytes, unsigned int numBytes)
+void WriteBytes(int theDevice, byte *theBytes, int numBytes)
 {
 #ifndef WIN32
 	write(theDevice, theBytes, numBytes);
@@ -136,14 +139,14 @@ void FlushBytes(int theDevice)
 //#define	B256000	CBR_256000
 #endif
 
-bool ConfigureDevice(int theDevice, unsigned int baudRate, unsigned char dataBits, unsigned char stopBits, unsigned char parity, bool cooked)
+bool ConfigureDevice(int theDevice, int baudRate, byte dataBits, byte stopBits, byte parity, bool cooked)
 {
 #ifndef WIN32
 	struct termios	terminalParams;
 	speed_t			theSpeed;
 #else
-	DCB				dcb;
-	unsigned int	theSpeed;
+	DCB	dcb;
+	int	theSpeed;
 #endif
 
 #ifndef WIN32
@@ -329,7 +332,7 @@ bool ConfigureDevice(int theDevice, unsigned int baudRate, unsigned char dataBit
 // parity is 0=none,
 //           1=odd,
 //           2=even
-void GetDeviceConfiguration(int theDevice, unsigned int *baudRate, unsigned char *dataBits, unsigned char *stopBits, unsigned char *parity)
+void GetDeviceConfiguration(int theDevice, int *baudRate, byte *dataBits, byte *stopBits, byte *parity)
 {
 #ifndef WIN32
 	struct termios	terminalParams;
