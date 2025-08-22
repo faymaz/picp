@@ -1,4 +1,5 @@
 # PICP - PIC Microcontroller Programmer
+![Visitor Count](https://visitor-badge.laobi.icu/badge?page_id=faymaz.picp)
 
 **Version 0.6.9** - Enhanced K150 Support Edition
 
