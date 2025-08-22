@@ -1,5 +1,7 @@
 picp README -- version 0.6.8 (19 December 2005)
 
+![Visitor Count](https://visitor-badge.laobi.icu/badge?page_id=faymaz.picp)
+
 Includes utilities (convert and convertshort) that convert picdev.c to a
 resource configuration file (picdevrc).
 
@@ -72,4 +74,3 @@ the device. Please forward any errors or bugs to j_post <AT> pacbell <DOT> net.
  See HISTORY for a revision history
 
 -----------------------------------------------------------------------------
-
