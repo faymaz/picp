@@ -330,7 +330,7 @@ int k150_init_pic(int pic_type)
     response = k150_receive_response();
     printf("K150: Init response: 0x%02X\n", response);
     
-    if (response == 'I' || response == 0x56) {
+    if (response == 'I' || response == 0x56 || response == 0x76) {
         printf("K150: PIC initialization successful (response: 0x%02X)\n", response);
         return 0;
     }
@@ -438,15 +438,16 @@ int k150_program_rom(unsigned char *data, int size)
             fflush(stdout);
         }
     }
-    printf("\nK150: All data sent, waiting for response\n");
+    printf("K150: All data sent, waiting for response\n");
     
-    // Wait for response - programming might take time
+    // Wait for programming response
     response = k150_receive_response();
     printf("K150: Program response: 0x%02X\n", response);
     
-    // Accept various success responses - K150 can return different codes
+    // Accept multiple success response codes based on K150 behavior
     if (response == K150_RESP_OK || response == 0x42 || response == 'A' || response == 'Y' || response == 0x00 || response == 0x20 || response == 0x10) {
         printf("K150: Programming successful with response 0x%02X\n", response);
+        // Note: Keep voltages ON for immediate verification - don't turn off here
         return 0;
     }
     
@@ -455,11 +456,12 @@ int k150_program_rom(unsigned char *data, int size)
 }
 
 //-----------------------------------------------------------------------------
-// Read ROM data
+// Read ROM data with multiple approaches
 //-----------------------------------------------------------------------------
-int k150_read_rom(unsigned char *data, int size)
+// K150 read ROM based on official protocol documentation
+int k150_read_rom_immediate(unsigned char *data, int size)
 {
-    int i;
+    int i = 0;
     unsigned char response;
     
     if (!k150_is_port_open()) {
@@ -467,39 +469,176 @@ int k150_read_rom(unsigned char *data, int size)
         return -1;
     }
     
-    printf("K150: Reading ROM (%d bytes)...\n", size);
+    printf("K150: Reading ROM using protocol-compliant method (%d bytes)...\n", size);
     
-    // Try direct read command without voltage control (K150 may still have voltages on from programming)
+    // Protocol: Command 11 returns all ROM data up until address specified when initializing variables
+    // K150 should still be in Command Jump Table from programming
     printf("K150: Sending read ROM command (11)...\n");
     if (k150_send_byte(11) != 0) {
         printf("K150: Failed to send read ROM command\n");
         return -1;
     }
     
-    printf("K150: Reading ROM data stream...\n");
+    // Protocol note: "If a byte is received during transfer, it stops"
+    // So we must read continuously without sending any bytes
+    printf("K150: Reading continuous ROM data stream...\n");
     
-    // Read ROM data directly - protocol returns all ROM data up to initialized size
     for (i = 0; i < size; i++) {
-        response = k150_receive_response();
-        if (response == 0xFFFFFFFF) {
-            printf("K150: Timeout reading byte %d\n", i);
+        // Use shorter timeout for continuous reading
+        struct timeval timeout;
+        fd_set readfds;
+        
+        FD_ZERO(&readfds);
+        FD_SET(k150_fd, &readfds);
+        timeout.tv_sec = 0;
+        timeout.tv_usec = 100000; // 100ms timeout per byte
+        
+        int result = select(k150_fd + 1, &readfds, NULL, NULL, &timeout);
+        if (result <= 0) {
+            printf("K150: Timeout at byte %d (read %d bytes)\n", i, i);
             break;
         }
-        data[i] = response & 0xFF;
         
-        if ((i % 256) == 0) {
+        unsigned char byte;
+        if (read(k150_fd, &byte, 1) != 1) {
+            printf("K150: Read error at byte %d\n", i);
+            break;
+        }
+        
+        data[i] = byte;
+        
+        if ((i % 512) == 0 && i > 0) {
             printf("K150: Read %d/%d bytes\r", i, size);
             fflush(stdout);
         }
         
-        // Add small delay to prevent overwhelming K150
-        if ((i % 64) == 0) {
-            usleep(1000); // 1ms delay every 64 bytes
+        // LED feedback during read
+        if ((i % 128) == 0) {
+            k150_toggle_led();
         }
     }
     
-    printf("\nK150: ROM read completed (%d bytes)\n", i);
+    printf("\nK150: Protocol-compliant read completed (%d bytes)\n", i);
     return (i == size) ? 0 : -1;
+}
+
+int k150_read_rom(unsigned char *data, int size)
+{
+    int i = 0;
+    unsigned char response;
+    
+    if (!k150_is_port_open()) {
+        printf("K150: Port not open for ROM read\n");
+        return -1;
+    }
+    
+    printf("K150: Reading ROM using protocol-compliant method (%d bytes)...\n", size);
+    
+    // Method 1: Standard voltage control sequence (Command 4 -> 11 -> 5)
+    printf("K150: Attempting voltage control sequence...\n");
+    if (k150_send_byte(4) == 0) {  // Turn on voltages
+        response = k150_receive_response();
+        printf("K150: Voltage ON response: 0x%02X\n", response);
+        
+        if (response == 'V') {
+            printf("K150: Voltages ON, reading ROM...\n");
+            
+            if (k150_send_byte(11) == 0) {  // Read ROM command
+                // Read continuous data stream (protocol compliant)
+                for (i = 0; i < size; i++) {
+                    struct timeval timeout;
+                    fd_set readfds;
+                    
+                    FD_ZERO(&readfds);
+                    FD_SET(k150_fd, &readfds);
+                    timeout.tv_sec = 0;
+                    timeout.tv_usec = 50000; // 50ms per byte
+                    
+                    int result = select(k150_fd + 1, &readfds, NULL, NULL, &timeout);
+                    if (result <= 0) {
+                        printf("K150: Timeout at byte %d\n", i);
+                        break;
+                    }
+                    
+                    unsigned char byte;
+                    if (read(k150_fd, &byte, 1) != 1) {
+                        printf("K150: Read error at byte %d\n", i);
+                        break;
+                    }
+                    
+                    data[i] = byte;
+                    
+                    if ((i % 512) == 0 && i > 0) {
+                        printf("K150: Read %d/%d bytes\r", i, size);
+                        fflush(stdout);
+                    }
+                    
+                    // LED feedback
+                    if ((i % 128) == 0) {
+                        k150_toggle_led();
+                    }
+                }
+                
+                // Turn off voltages
+                k150_send_byte(5);
+                response = k150_receive_response();
+                printf("\nK150: Voltage OFF response: 0x%02X\n", response);
+                
+                if (i == size) {
+                    printf("K150: Voltage control read successful (%d bytes)\n", size);
+                    return 0;
+                }
+            }
+        } else {
+            printf("K150: Voltage control failed (response: 0x%02X)\n", response);
+        }
+    }
+    
+    // Method 2: Direct read (assumes K150 is in proper state)
+    printf("K150: Attempting direct read ROM command...\n");
+    if (k150_send_byte(11) == 0) {
+        
+        for (i = 0; i < size; i++) {
+            struct timeval timeout;
+            fd_set readfds;
+            
+            FD_ZERO(&readfds);
+            FD_SET(k150_fd, &readfds);
+            timeout.tv_sec = 0;
+            timeout.tv_usec = 50000; // 50ms per byte
+            
+            int result = select(k150_fd + 1, &readfds, NULL, NULL, &timeout);
+            if (result <= 0) {
+                printf("K150: Direct read timeout at byte %d\n", i);
+                break;
+            }
+            
+            unsigned char byte;
+            if (read(k150_fd, &byte, 1) != 1) {
+                printf("K150: Direct read error at byte %d\n", i);
+                break;
+            }
+            
+            data[i] = byte;
+            
+            if ((i % 512) == 0 && i > 0) {
+                printf("K150: Read %d/%d bytes\r", i, size);
+                fflush(stdout);
+            }
+            
+            if ((i % 128) == 0) {
+                k150_toggle_led();
+            }
+        }
+        
+        if (i == size) {
+            printf("\nK150: Direct read successful (%d bytes)\n", size);
+            return 0;
+        }
+    }
+    
+    printf("\nK150: All read methods failed (read %d/%d bytes)\n", i, size);
+    return -1;
 }
 
 // Verification function based on picpro protocol
@@ -520,33 +659,33 @@ int k150_verify_rom(unsigned char *programmed_data, int size)
         return -1;
     }
     
-    printf("K150: Verifying programmed data...\n");
+    printf("K150: Verifying programmed data using protocol-compliant read...\n");
     
-    // Read back the programmed data
-    if (k150_read_rom(read_data, size) != 0) {
-        printf("K150: Failed to read ROM for verification\n");
-        free(read_data);
-        return -1;
-    }
-    
-    // Compare byte by byte
-    for (i = 0; i < size; i++) {
-        if (programmed_data[i] != read_data[i]) {
-            errors++;
-            if (errors <= 10) { // Show first 10 errors only
-                printf("K150: Verification error at byte %d: expected 0x%02X, got 0x%02X\n", 
-                       i, programmed_data[i], read_data[i]);
+    // Read back the programmed data using improved read ROM
+    if (k150_read_rom(read_data, size) == 0) {
+        // Compare byte by byte
+        for (i = 0; i < size; i++) {
+            if (programmed_data[i] != read_data[i]) {
+                errors++;
+                if (errors <= 10) { // Show first 10 errors only
+                    printf("K150: Verification error at byte %d: expected 0x%02X, got 0x%02X\n", 
+                           i, programmed_data[i], read_data[i]);
+                }
             }
         }
-    }
-    
-    free(read_data);
-    
-    if (errors == 0) {
-        printf("K150: Verification successful - all %d bytes match\n", size);
-        return 0;
+        
+        free(read_data);
+        
+        if (errors == 0) {
+            printf("K150: Verification successful - all %d bytes match\n", size);
+            return 0;
+        } else {
+            printf("K150: Verification failed - %d byte(s) mismatch\n", errors);
+            return -1;
+        }
     } else {
-        printf("K150: Verification failed - %d byte(s) mismatch\n", errors);
+        printf("K150: Failed to read ROM for verification\n");
+        free(read_data);
         return -1;
     }
 }

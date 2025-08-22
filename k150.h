@@ -47,6 +47,7 @@ int k150_init_pic(int pic_type);
 int k150_erase_chip(void);
 int k150_program_rom(unsigned char *data, int size);
 int k150_read_rom(unsigned char *data, int size);
+int k150_read_rom_immediate(unsigned char *data, int size);
 int k150_verify_rom(unsigned char *programmed_data, int size);
 int k150_program_eeprom(unsigned char *data, int size);
 int k150_read_eeprom(unsigned char *data, int size);
