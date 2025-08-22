@@ -33,7 +33,7 @@ A versatile command-line programmer for Microchip PIC microcontrollers supportin
 
 | Programmer | Interface | Status | Notes |
 |------------|-----------|--------|-------|
-| **K150** | USB (PL2303) | ✅ Full Support | Auto-detection, ICSP support |
+| **K150** | USB (PL2303) | 🔄 Partial | Verification and dump improvements in progress |
 | PICSTART Plus | Serial RS232 | ✅ Full Support | Requires firmware 3.00.40+ |
 | Warp-13 | Parallel Port | ✅ Supported | Legacy support |
 | JuPic | Serial | ✅ Supported | - |
