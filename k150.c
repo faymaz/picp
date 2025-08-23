@@ -522,41 +522,44 @@ int k150_read_rom(unsigned char *data, int size)
     int dtr_flag = TIOCM_DTR;
     ioctl(k150_fd, TIOCMBIS, &dtr_flag);  // LED on
     
-    // Send read ROM command (K150 specific)
-    if (k150_send_byte(K150_CMD_READ_ROM) != 0) {
-        printf("K150: Failed to send read ROM command\n");
-        ioctl(k150_fd, TIOCMBIC, &dtr_flag);  // LED off
-        return -1;
+    // K150 read protocol: Use proper command sequence
+    // First send read command with address
+    unsigned char cmd_sequence[] = {K150_CMD_READ_ROM, 0x00, 0x00}; // Command + start address
+    
+    for (int j = 0; j < 3; j++) {
+        if (k150_send_byte(cmd_sequence[j]) != 0) {
+            printf("K150: Failed to send read command byte %d\n", j);
+            ioctl(k150_fd, TIOCMBIC, &dtr_flag);  // LED off
+            return -1;
+        }
     }
     
-    // Give K150 time to prepare data
-    usleep(200000);  // 200ms delay for K150 to prepare
+    // Wait for K150 to acknowledge and prepare data
+    usleep(100000);  // 100ms delay
     
-    // Read ROM data directly from serial port (K150 specific method)
+    // Read ROM data with improved protocol
     for (i = 0; i < size; i++) {
-        unsigned char byte;
-        ssize_t result = read(k150_fd, &byte, 1);
-        if (result == 1) {
-            data[i] = byte;
-        } else {
-            // Try again with short delay
-            usleep(5000);  // 5ms delay
-            result = read(k150_fd, &byte, 1);
-            if (result == 1) {
-                data[i] = byte;
-            } else {
-                data[i] = 0xFF;  // Fill with 0xFF for failed reads
+        unsigned char byte = 0xFF;
+        
+        // Try multiple read attempts
+        for (int retry = 0; retry < 3; retry++) {
+            ssize_t result = read(k150_fd, &byte, 1);
+            if (result == 1 && byte != 0xFF) {
+                break;  // Got valid data
             }
+            usleep(1000);  // 1ms between retries
         }
         
-        // LED toggle every 256 bytes for visual feedback
+        data[i] = byte;
+        
+        // LED toggle and progress every 256 bytes
         if ((i % 256) == 0) {
             if (i % 512 == 0) {
                 ioctl(k150_fd, TIOCMBIS, &dtr_flag);  // LED on
-                printf("K150: Read progress: %d/%d bytes\n", i, size);
             } else {
                 ioctl(k150_fd, TIOCMBIC, &dtr_flag);  // LED off
             }
+            printf("K150: Read progress: %d/%d bytes\n", i, size);
         }
     }
     
