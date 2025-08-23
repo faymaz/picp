@@ -4199,6 +4199,10 @@ int loadPicDefinitions(void)
 
 int main(int argc,char *argv[])
 {
+	// Force unbuffered output for debugging
+	setbuf(stdout, NULL);
+	setbuf(stderr, NULL);
+	
 	FILE *debug_file = fopen("debug_picp.log", "w");
 	if (debug_file) {
 		fprintf(debug_file, "DEBUG: main() started with argc=%d\n", argc);
@@ -4206,11 +4210,14 @@ int main(int argc,char *argv[])
 			fprintf(debug_file, "DEBUG: argv[%d] = '%s'\n", i, argv[i]);
 		}
 		fflush(debug_file);
+		fclose(debug_file);
 	}
 	
 	printf("DEBUG: main() started with argc=%d\n", argc);
+	fflush(stdout);
 	for (int i = 0; i < argc; i++) {
 		printf("DEBUG: argv[%d] = '%s'\n", i, argv[i]);
+		fflush(stdout);
 	}
 	
 	bool				fail;
