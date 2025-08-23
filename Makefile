@@ -36,9 +36,31 @@ clean:
 	rm -f convert
 	rm -f convertshort
 
-install:
-	cp -f $(APP) /usr/local/bin/
-	cp -f picdevrc /usr/local/bin
+uninstall:
+	@echo "Uninstalling PICP..."
+	rm -f /usr/local/bin/$(APP)
+	rm -f /usr/local/bin/picdevrc
+	rm -f /usr/local/bin/convert
+	rm -f /usr/local/bin/convertshort
+	@echo "✓ PICP uninstalled"
+
+install: $(APP) convert convertshort
+	@echo "Installing PICP..."
+	@if [ "$$(id -u)" != "0" ]; then \
+		echo "Error: Installation requires root privileges. Use 'sudo make install'"; \
+		exit 1; \
+	fi
+	install -d /usr/local/bin
+	install -m 755 $(APP) /usr/local/bin/
+	install -m 644 picdevrc /usr/local/bin/
+	install -m 755 convert /usr/local/bin/
+	install -m 755 convertshort /usr/local/bin/
+	@echo "✓ PICP installed successfully!"
+	@echo "✓ Binary: /usr/local/bin/$(APP)"
+	@echo "✓ Data file: /usr/local/bin/picdevrc"
+	@echo "✓ Utilities: convert, convertshort"
+	@echo ""
+	@echo "Usage: picp /dev/ttyUSB0 16f628a -ep"
 
 win: $(APP).exe convert.exe convertshort.exe
 
@@ -75,3 +97,4 @@ winclean:
 	rm -f convert.exe
 	rm -f convertshort.exe
 
+.PHONY: all clean install uninstall win winclean
