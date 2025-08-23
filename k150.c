@@ -24,7 +24,8 @@
 #include "serial.h"
 
 // Global variables
-static int k150_fd = -1;
+static int k150_fd = -1;  // File descriptor for K150 serial port
+static unsigned char k150_firmware_version = 0;  // Store detected firmware version
 static struct termios old_termios;
 
 //-----------------------------------------------------------------------------
@@ -253,38 +254,62 @@ int k150_send_command(unsigned char cmd)
 }
 
 //-----------------------------------------------------------------------------
-// Detect K150 programmer
+// Detect K150 programmer and get firmware version
 //-----------------------------------------------------------------------------
 int k150_detect_programmer(void)
 {
+    unsigned char cmd = K150_P18A_DETECT;  // 0x42 - Detection command
     unsigned char response[2];
     
     if (k150_fd == -1) {
-        printf("K150: Port not open for detection\n");
         return -1;
     }
     
-    // Send detection command - try multiple approaches
-    if (k150_send_byte('B') != 0) {
-        printf("K150: Failed to send detection command\n");
+    // Send detection command
+    if (write(k150_fd, &cmd, 1) != 1) {
         return -1;
     }
     
-    // Try to receive 2-byte response
-    if (k150_receive_byte(&response[0]) != 0 || 
-        k150_receive_byte(&response[1]) != 0) {
-        printf("K150: Failed to receive detection response\n");
-        return -1;
+    // Wait for response
+    usleep(100000);  // 100ms delay
+    
+    // Read response
+    ssize_t bytes_read = read(k150_fd, response, 2);
+    if (bytes_read >= 1) {
+        printf("K150: Received response: 0x%02X", response[0]);
+        if (bytes_read >= 2) {
+            printf(" 0x%02X", response[1]);
+            k150_firmware_version = response[1];  // Store firmware version
+        }
+        printf("\n");
+        
+        if (response[0] == 0x42) {
+            if (bytes_read >= 2) {
+                // Detect firmware version
+                switch (response[1]) {
+                    case K150_FW_P18A:
+                        printf("K150 programmer detected (firmware: P18A - modern)\n");
+                        break;
+                    case K150_FW_P018:
+                        printf("K150 programmer detected (firmware: P018 - legacy)\n");
+                        break;
+                    case K150_FW_P016:
+                        printf("K150 programmer detected (firmware: P016 - legacy)\n");
+                        break;
+                    case K150_FW_P014:
+                        printf("K150 programmer detected (firmware: P014 - legacy)\n");
+                        break;
+                    default:
+                        printf("K150 programmer detected (firmware: 0x%02X - unknown)\n", response[1]);
+                        break;
+                }
+            } else {
+                printf("K150 programmer detected (unknown firmware)\n");
+            }
+            return 0;
+        }
     }
     
-    printf("K150: Received response: 0x%02X 0x%02X\n", response[0], response[1]);
-    
-    if (response[0] == 'B') {
-        printf("K150 programmer detected (firmware type: %d)\n", response[1]);
-        return 0;
-    }
-    
-    printf("K150: Detection failed, expected 'B', got 0x%02X\n", response[0]);
     return -1;
 }
 
@@ -505,7 +530,7 @@ int k150_program_id_fuses(unsigned char *id_data, unsigned char *fuse_data)
 }
 
 //-----------------------------------------------------------------------------
-// Read ROM data - Enhanced with picpro protocol
+// Read ROM data using P18A protocol (block read)
 //-----------------------------------------------------------------------------
 int k150_read_rom(unsigned char *data, int size)
 {
@@ -522,53 +547,116 @@ int k150_read_rom(unsigned char *data, int size)
     int dtr_flag = TIOCM_DTR;
     ioctl(k150_fd, TIOCMBIS, &dtr_flag);  // LED on
     
-    // K150 read protocol: Use address-based reading like picpro
-    // Read ROM word by word (PIC16F628A has 14-bit words)
-    for (i = 0; i < size; i += 2) {  // Read 2 bytes at a time (1 word)
-        unsigned int address = i / 2;  // Word address
+    // Check firmware version and use appropriate protocol
+    if (k150_firmware_version == K150_FW_P18A) {
+        // P18A Protocol: Block read (256 bytes per block)
+        printf("K150: Using P18A block read protocol\n");
         
-        // Send read command with address
-        unsigned char cmd[] = {
-            K150_CMD_READ_ROM,
-            (address & 0xFF),        // Address low byte
-            ((address >> 8) & 0xFF)  // Address high byte
-        };
+        // Enter programming mode
+        unsigned char enter_cmd = K150_P18A_ENTER_PROG;  // 0x50
+        if (write(k150_fd, &enter_cmd, 1) != 1) {
+            printf("K150: Failed to send enter prog mode command\n");
+            ioctl(k150_fd, TIOCMBIC, &dtr_flag);
+            return -1;
+        }
         
-        // Send command sequence
-        for (int j = 0; j < 3; j++) {
-            if (k150_send_byte(cmd[j]) != 0) {
-                printf("K150: Failed to send read command\n");
-                ioctl(k150_fd, TIOCMBIC, &dtr_flag);  // LED off
+        // Wait for acknowledgment
+        usleep(100000);  // 100ms delay
+        unsigned char ack;
+        if (read(k150_fd, &ack, 1) != 1 || ack != K150_P18A_ENTER_PROG) {
+            printf("K150: Failed to enter programming mode (ack: 0x%02X)\n", ack);
+        }
+        
+        // Read ROM in 256-byte blocks
+        int blocks = (size + 255) / 256;  // Round up
+        for (int block = 0; block < blocks; block++) {
+            int block_addr = block * 256;
+            int bytes_to_read = (block_addr + 256 > size) ? (size - block_addr) : 256;
+            
+            // Send read block command
+            unsigned char cmd[3] = {
+                K150_P18A_READ_BLOCK,     // 0x46
+                (block & 0xFF),           // Block address low
+                ((block >> 8) & 0xFF)     // Block address high
+            };
+            
+            if (write(k150_fd, cmd, 3) != 3) {
+                printf("K150: Failed to send read block command\n");
+                ioctl(k150_fd, TIOCMBIC, &dtr_flag);
                 return -1;
             }
-        }
-        
-        // Wait for response
-        usleep(1000);  // 1ms delay
-        
-        // Read word data (2 bytes)
-        unsigned char word_data[2] = {0xFF, 0xFF};
-        for (int j = 0; j < 2; j++) {
-            ssize_t result = read(k150_fd, &word_data[j], 1);
-            if (result != 1) {
-                word_data[j] = 0xFF;  // Default for failed reads
+            
+            // Wait and read block data
+            usleep(50000);  // 50ms delay for block preparation
+            ssize_t bytes_read = read(k150_fd, &data[block_addr], bytes_to_read);
+            
+            if (bytes_read != bytes_to_read) {
+                printf("K150: Block %d read failed (%zd/%d bytes)\n", block, bytes_read, bytes_to_read);
+                // Fill remaining with 0xFF
+                for (int j = bytes_read; j < bytes_to_read; j++) {
+                    data[block_addr + j] = 0xFF;
+                }
             }
-        }
-        
-        // Store bytes (little endian)
-        data[i] = word_data[0];
-        if (i + 1 < size) {
-            data[i + 1] = word_data[1];
-        }
-        
-        // LED toggle and progress every 256 bytes
-        if ((i % 256) == 0) {
-            if (i % 512 == 0) {
+            
+            // LED toggle and progress
+            if (block % 2 == 0) {
                 ioctl(k150_fd, TIOCMBIS, &dtr_flag);  // LED on
             } else {
                 ioctl(k150_fd, TIOCMBIC, &dtr_flag);  // LED off
             }
-            printf("K150: Read progress: %d/%d bytes\n", i, size);
+            printf("K150: Read progress: %d/%d bytes\n", block_addr + bytes_to_read, size);
+        }
+        
+        // Exit programming mode
+        unsigned char exit_cmd = K150_P18A_EXIT_PROG;  // 0x51
+        write(k150_fd, &exit_cmd, 1);
+        usleep(50000);
+        
+    } else {
+        // Legacy protocol for older firmware (P018, P016, P014)
+        printf("K150: Using legacy read protocol for firmware 0x%02X\n", k150_firmware_version);
+        
+        // Use original word-by-word reading for legacy firmware
+        for (i = 0; i < size; i += 2) {
+            unsigned int address = i / 2;
+            
+            unsigned char cmd[] = {
+                K150_CMD_READ_ROM,
+                (address & 0xFF),
+                ((address >> 8) & 0xFF)
+            };
+            
+            for (int j = 0; j < 3; j++) {
+                if (k150_send_byte(cmd[j]) != 0) {
+                    printf("K150: Failed to send legacy read command\n");
+                    ioctl(k150_fd, TIOCMBIC, &dtr_flag);
+                    return -1;
+                }
+            }
+            
+            usleep(1000);
+            
+            unsigned char word_data[2] = {0xFF, 0xFF};
+            for (int j = 0; j < 2; j++) {
+                ssize_t result = read(k150_fd, &word_data[j], 1);
+                if (result != 1) {
+                    word_data[j] = 0xFF;
+                }
+            }
+            
+            data[i] = word_data[0];
+            if (i + 1 < size) {
+                data[i + 1] = word_data[1];
+            }
+            
+            if ((i % 256) == 0) {
+                if (i % 512 == 0) {
+                    ioctl(k150_fd, TIOCMBIS, &dtr_flag);
+                } else {
+                    ioctl(k150_fd, TIOCMBIC, &dtr_flag);
+                }
+                printf("K150: Read progress: %d/%d bytes\n", i, size);
+            }
         }
     }
     

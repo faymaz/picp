@@ -36,6 +36,21 @@
 #define K150_RESP_CONFIG         'C'
 #define K150_RESP_ACKNOWLEDGE    'A'
 
+// P18A Protocol commands (modern K150 firmware)
+#define K150_P18A_DETECT         0x42
+#define K150_P18A_ENTER_PROG     0x50
+#define K150_P18A_EXIT_PROG      0x51
+#define K150_P18A_READ_BLOCK     0x46
+#define K150_P18A_WRITE_BLOCK    0x47
+#define K150_P18A_ERASE_CHIP     0x4D
+#define K150_P18A_ICSP_ENABLE    0x49
+
+// Firmware version detection
+#define K150_FW_P014             0x01
+#define K150_FW_P016             0x02
+#define K150_FW_P018             0x03
+#define K150_FW_P18A             0x12
+
 // K150 Programmer version
 #define K150_VERSION             3
 
