@@ -522,35 +522,43 @@ int k150_read_rom(unsigned char *data, int size)
     int dtr_flag = TIOCM_DTR;
     ioctl(k150_fd, TIOCMBIS, &dtr_flag);  // LED on
     
-    // K150 read protocol: Use proper command sequence
-    // First send read command with address
-    unsigned char cmd_sequence[] = {K150_CMD_READ_ROM, 0x00, 0x00}; // Command + start address
-    
-    for (int j = 0; j < 3; j++) {
-        if (k150_send_byte(cmd_sequence[j]) != 0) {
-            printf("K150: Failed to send read command byte %d\n", j);
-            ioctl(k150_fd, TIOCMBIC, &dtr_flag);  // LED off
-            return -1;
-        }
+    // K150 specific read protocol - block read approach
+    // Send read command without extra parameters
+    if (k150_send_byte(K150_CMD_READ_ROM) != 0) {
+        printf("K150: Failed to send read ROM command\n");
+        ioctl(k150_fd, TIOCMBIC, &dtr_flag);  // LED off
+        return -1;
     }
     
-    // Wait for K150 to acknowledge and prepare data
-    usleep(100000);  // 100ms delay
+    // K150 needs time to prepare ROM data
+    usleep(500000);  // 500ms delay for K150 to prepare all data
     
-    // Read ROM data with improved protocol
-    for (i = 0; i < size; i++) {
-        unsigned char byte = 0xFF;
+    // Read ROM data in blocks for better performance
+    int block_size = 32;  // Read in 32-byte blocks
+    for (i = 0; i < size; i += block_size) {
+        int bytes_to_read = (i + block_size > size) ? (size - i) : block_size;
         
-        // Try multiple read attempts
-        for (int retry = 0; retry < 3; retry++) {
-            ssize_t result = read(k150_fd, &byte, 1);
-            if (result == 1 && byte != 0xFF) {
-                break;  // Got valid data
+        // Try to read a block of data
+        ssize_t bytes_read = read(k150_fd, &data[i], bytes_to_read);
+        
+        if (bytes_read <= 0) {
+            // If block read fails, try byte by byte
+            for (int j = 0; j < bytes_to_read; j++) {
+                unsigned char byte;
+                ssize_t result = read(k150_fd, &byte, 1);
+                if (result == 1) {
+                    data[i + j] = byte;
+                } else {
+                    data[i + j] = 0xFF;  // Fill with 0xFF for failed reads
+                }
+                usleep(100);  // Small delay between bytes
             }
-            usleep(1000);  // 1ms between retries
+        } else if (bytes_read < bytes_to_read) {
+            // Partial read - fill remaining with 0xFF
+            for (int j = bytes_read; j < bytes_to_read; j++) {
+                data[i + j] = 0xFF;
+            }
         }
-        
-        data[i] = byte;
         
         // LED toggle and progress every 256 bytes
         if ((i % 256) == 0) {
