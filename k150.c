@@ -285,13 +285,18 @@ int k150_detect_programmer(void)
         
         if (response[0] == 0x42) {
             if (bytes_read >= 2) {
-                // Detect firmware version
+                // Detect firmware version with option to force P18A protocol
                 switch (response[1]) {
                     case K150_FW_P18A:
                         printf("K150 programmer detected (firmware: P18A - modern)\n");
                         break;
                     case K150_FW_P018:
                         printf("K150 programmer detected (firmware: P018 - legacy)\n");
+                        // Option to force P18A protocol for better compatibility
+                        if (getenv("K150_FORCE_P18A")) {
+                            printf("K150: Forcing P18A protocol mode (override)\n");
+                            k150_firmware_version = K150_FW_P18A;
+                        }
                         break;
                     case K150_FW_P016:
                         printf("K150 programmer detected (firmware: P016 - legacy)\n");
@@ -613,49 +618,103 @@ int k150_read_rom(unsigned char *data, int size)
         usleep(50000);
         
     } else {
-        // Legacy protocol for older firmware (P018, P016, P014)
-        printf("K150: Using legacy read protocol for firmware 0x%02X\n", k150_firmware_version);
+        // P018 Legacy protocol with address-based single word read (command 0x0B)
+        printf("K150: Using P018 legacy protocol (address-based read 0x0B) for firmware 0x%02X\n", k150_firmware_version);
         
-        // Use original word-by-word reading for legacy firmware
-        for (i = 0; i < size; i += 2) {
-            unsigned int address = i / 2;
+        // Enter programming mode with 'P' (0x50)
+        unsigned char start = 0x50;  // 'P'
+        if (write(k150_fd, &start, 1) != 1) {
+            printf("K150: Failed to send start command\n");
+            ioctl(k150_fd, TIOCMBIC, &dtr_flag);
+            return -1;
+        }
+        
+        usleep(10000);  // 10ms delay for mode entry
+        
+        // Read acknowledgment (optional for legacy)
+        unsigned char ack;
+        if (read(k150_fd, &ack, 1) == 1) {
+            printf("K150: Start ACK: 0x%02X\n", ack);
+        }
+        
+        int words = size / 2;  // Convert bytes to words
+        printf("K150: Reading %d words (%d bytes) using address-based protocol\n", words, size);
+        
+        // Read each word individually by address
+        for (i = 0; i < words; i++) {
+            int retry_count = 0;
+            int word_read_success = 0;
+            unsigned char low_byte = 0xFF, high_byte = 0xFF;
             
-            unsigned char cmd[] = {
-                K150_CMD_READ_ROM,
-                (address & 0xFF),
-                ((address >> 8) & 0xFF)
-            };
-            
-            for (int j = 0; j < 3; j++) {
-                if (k150_send_byte(cmd[j]) != 0) {
-                    printf("K150: Failed to send legacy read command\n");
-                    ioctl(k150_fd, TIOCMBIC, &dtr_flag);
-                    return -1;
+            // Retry mechanism for each word
+            while (retry_count < 3 && !word_read_success) {
+                // Send command 0x0B: Read word at address
+                unsigned char cmd = 0x0B;
+                if (write(k150_fd, &cmd, 1) != 1) {
+                    printf("K150: Failed to send read command for word %d\n", i);
+                    retry_count++;
+                    usleep(5000);
+                    continue;
                 }
-            }
-            
-            usleep(1000);
-            
-            unsigned char word_data[2] = {0xFF, 0xFF};
-            for (int j = 0; j < 2; j++) {
-                ssize_t result = read(k150_fd, &word_data[j], 1);
-                if (result != 1) {
-                    word_data[j] = 0xFF;
+                
+                usleep(2000);  // 2ms delay after command
+                
+                // Send address (word address, not byte address)
+                unsigned char addr_low = i & 0xFF;
+                unsigned char addr_high = (i >> 8) & 0xFF;
+                
+                if (write(k150_fd, &addr_low, 1) != 1 || write(k150_fd, &addr_high, 1) != 1) {
+                    printf("K150: Failed to send address for word %d\n", i);
+                    retry_count++;
+                    usleep(5000);
+                    continue;
                 }
-            }
-            
-            data[i] = word_data[0];
-            if (i + 1 < size) {
-                data[i + 1] = word_data[1];
-            }
-            
-            if ((i % 256) == 0) {
-                if (i % 512 == 0) {
-                    ioctl(k150_fd, TIOCMBIS, &dtr_flag);
+                
+                usleep(5000);  // 5ms delay for data preparation
+                
+                // Read 2 bytes using enhanced retry mechanism
+                unsigned char word_data[2];
+                unsigned int bytes_read = ReadBytesWithRetry(k150_fd, word_data, 2, 50000, 3);  // 50ms timeout, 3 retries
+                
+                if (bytes_read == 2) {
+                    low_byte = word_data[0];
+                    high_byte = word_data[1];
+                    word_read_success = 1;
                 } else {
-                    ioctl(k150_fd, TIOCMBIC, &dtr_flag);
+                    printf("K150: Read timeout for word %d (attempt %d), got %u bytes\n", i, retry_count + 1, bytes_read);
+                    retry_count++;
+                    usleep(10000);  // 10ms delay before retry
                 }
-                printf("K150: Read progress: %d/%d bytes\n", i, size);
+            }
+            
+            // Store word data in buffer
+            int byte_index = i * 2;
+            data[byte_index] = low_byte;
+            if (byte_index + 1 < size) {
+                data[byte_index + 1] = high_byte & 0x3F;  // Mask to 6 bits for 14-bit word
+            }
+            
+            // Progress reporting and LED toggle
+            if ((i % 64) == 0) {  // Every 64 words (128 bytes)
+                if (i % 128 == 0) {
+                    ioctl(k150_fd, TIOCMBIS, &dtr_flag);  // LED on
+                } else {
+                    ioctl(k150_fd, TIOCMBIC, &dtr_flag);  // LED off
+                }
+                printf("K150: Read progress: %d/%d words (%d/%d bytes)\n", i, words, byte_index, size);
+            }
+            
+            // Small delay between words for hardware timing
+            usleep(1000);  // 1ms delay between words
+        }
+        
+        // Send end command (command 1: Quit)
+        unsigned char end_cmd = 0x01;
+        if (write(k150_fd, &end_cmd, 1) == 1) {
+            usleep(5000);
+            // Try to read quit acknowledgment
+            if (read(k150_fd, &ack, 1) == 1) {
+                printf("K150: Quit ACK: 0x%02X\n", ack);
             }
         }
     }

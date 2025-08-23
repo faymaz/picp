@@ -140,6 +140,72 @@ unsigned int ReadBytes(int theDevice, unsigned char *theBytes, unsigned int maxB
 	return((int) numRead);
 }
 
+// Enhanced ReadBytes with retry mechanism for K150 operations
+// Attempts multiple reads with delays to handle timing-sensitive hardware
+unsigned int ReadBytesWithRetry(int theDevice, unsigned char *theBytes, unsigned int maxBytes, unsigned int timeOut, int maxRetries)
+{
+#ifndef WIN32
+	unsigned int numRead = 0;
+	int retry_count = 0;
+	
+	while (retry_count < maxRetries && numRead == 0) {
+		if (ByteWaiting(theDevice, timeOut)) {
+			numRead = read(theDevice, theBytes, maxBytes);
+			if (numRead > 0) {
+				// Debug output for successful reads
+				if (comm_debug) {
+					for (unsigned int i = 0; i < numRead; i++) {
+						fprintf(comm_debug, " I-0x%02x", theBytes[i]);
+						if (sendCommand) {
+							fprintf(comm_debug, "\n");
+							sendCommand = false;
+							comm_debug_count = 0;
+						} else {
+							comm_debug_count++;
+						}
+						if (comm_debug_count >= 8) {
+							comm_debug_count = 0;
+							fprintf(comm_debug, "\n");
+						}
+					}
+				}
+				break;  // Success, exit retry loop
+			}
+		}
+		
+		retry_count++;
+		if (retry_count < maxRetries) {
+			usleep(5000);  // 5ms delay between retries
+		}
+	}
+	
+	return numRead;
+#else
+	// Windows implementation with retry
+	HANDLE hCom = (HANDLE) theDevice;
+	DWORD numRead = 0;
+	COMMTIMEOUTS cto;
+	int retry_count = 0;
+	
+	GetCommTimeouts(hCom, &cto);
+	cto.ReadTotalTimeoutConstant = timeOut / 1000;
+	SetCommTimeouts(hCom, &cto);
+	
+	while (retry_count < maxRetries && numRead == 0) {
+		ReadFile(hCom, theBytes, maxBytes, &numRead, NULL);
+		if (numRead > 0) {
+			break;  // Success
+		}
+		retry_count++;
+		if (retry_count < maxRetries) {
+			Sleep(5);  // 5ms delay between retries
+		}
+	}
+	
+	return (unsigned int) numRead;
+#endif
+}
+
 // Write theBytes to theDevice.
 void WriteBytes(int theDevice, unsigned char *theBytes, unsigned int numBytes)
 {
@@ -643,18 +709,21 @@ static COMMTIMEOUTS	oldCto;
 bool OpenDevice(char *theName, int *theDevice)
 {
 #ifndef WIN32
-	// NOTE: the NOCTTY will prevent us from grabbing this terminal as our
-	// controlling terminal (when run from init, we have no controlling
-	// terminal, and we do not want this device to become one!)
-	if ((*theDevice = open(theName, O_NDELAY | O_RDWR | O_NOCTTY)) != -1)
-	{
-		// attempt to read configuration, to verify this is a serial device
-		// and to save settings
-		if (tcgetattr(*theDevice, &oldTerminalParams) != -1)
-			return(true);
+        *theDevice = open(theName, O_RDWR | O_NOCTTY | O_NONBLOCK);
+        if (*theDevice < 0) {
+                return *theDevice;
+        }
+        
+        // Fix K150 read issues: Make serial port blocking for reliable reads
+        int flags = fcntl(*theDevice, F_GETFL);
+        if (flags != -1) {
+            fcntl(*theDevice, F_SETFL, flags & ~O_NONBLOCK);
+        }
 
-		close(*theDevice);
-	}
+        // attempt to read configuration, to verify this is a serial device
+        // and to save settings
+        if (tcgetattr(*theDevice, &oldTerminalParams) != -1)
+            return(true);
 
 	return(false);
 #else
