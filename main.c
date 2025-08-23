@@ -4285,10 +4285,18 @@ int main(int argc,char *argv[])
 			argv++;
 		}
 
+		printf("DEBUG: Before device parsing - argc=%d\n", argc);
+		for (int j = 0; j < argc; j++) {
+			printf("DEBUG: remaining argv[%d] = '%s'\n", j, argv[j]);
+		}
+		
 		deviceName = *argv++;								// name of the device (probably)
 		argc--;
+		printf("DEBUG: deviceName = '%s', argc after device = %d\n", deviceName, argc);
+		
 		picName = *argv++;									// name of the PIC type (probably)
 		argc--;
+		printf("DEBUG: picName = '%s', argc after pic = %d\n", picName, argc);
 
 		if ((picDevice = GetPICDefinition(picName)))			// locate the PIC type (0 = none found)
 		{
