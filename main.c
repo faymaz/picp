@@ -60,16 +60,19 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include <signal.h>
-#include <ctype.h>
 #include <string.h>
+#include <stdbool.h>
+#include <ctype.h>
+#include <time.h>
+#include <signal.h>
+#include <unistd.h>
+#include <fcntl.h>
 #include <errno.h>
-#include	<time.h>
+#include <termios.h>
+#include <sys/ioctl.h>
+#include <sys/time.h>
 
 #ifdef WIN32
-#include	<windows.h>
-#include	<malloc.h>
 #define	usleep(x)	Sleep((x) / 1000)
 #define	false	FALSE
 #define	true	TRUE
@@ -78,9 +81,20 @@
 #include "atoi_base.h"
 #include "parse.h"
 #include "serial.h"
-#include "picdev.h"
+#include "parse.h"
 #include "record.h"
+#include "picdev.h"
 #include "k150.h"
+
+// Function declarations for K150 verification
+bool DoVerifyPgm(const PIC_DEFINITION *picDevice, FILE *theFile);
+bool DoVerifyData(const PIC_DEFINITION *picDevice, FILE *theFile);
+
+// Function declarations for device info (used by verify.c)
+unsigned short int GetPgmSize(const PIC_DEFINITION *picDevice);
+unsigned short int GetDataSize(const PIC_DEFINITION *picDevice);
+unsigned int GetPgmStart(const PIC_DEFINITION *picDevice);
+unsigned int GetDataStart(const PIC_DEFINITION *picDevice);
 
 #define TIMEOUT_1_SECOND	1000000			// 1 second time to wait for a character before giving up (in microseconds)
 #define TIMEOUT_2_SECOND	2000000			// 2 second timeout for erasing flash
@@ -132,14 +146,14 @@
 // Prototypes
 
 static bool DoInitPIC(const PIC_DEFINITION *picDevice);
-static bool DoErasePgm(const PIC_DEFINITION *picDevice, bool flag);
-static bool DoEraseData(const PIC_DEFINITION *picDevice, bool flag);
-static bool DoEraseConfigBits(const PIC_DEFINITION *picDevice);
-static bool DoEraseIDLocs(const PIC_DEFINITION *picDevice);
-static unsigned short int	GetPgmSize(const PIC_DEFINITION *picDevice);
-static unsigned short int	GetDataSize(const PIC_DEFINITION *picDevice);
+unsigned short int	GetPgmSize(const PIC_DEFINITION *picDevice);
+unsigned short int	GetDataSize(const PIC_DEFINITION *picDevice);
 static unsigned int			GetIDSize(const PIC_DEFINITION *picDevice);
 static unsigned int			GetConfigSize(const PIC_DEFINITION *picDevice);
+unsigned int			GetPgmStart(const PIC_DEFINITION *picDevice);
+unsigned int			GetDataStart(const PIC_DEFINITION *picDevice);
+// static unsigned int			GetIDStart(const PIC_DEFINITION *picDevice);  // Unused function
+static unsigned int			GetConfigStart(const PIC_DEFINITION *picDevice);
 
 // Struct definitions
 
@@ -283,7 +297,7 @@ PIC_DEFINITION *GetPICDefinition(char *name)
 //-----------------------------------------------------------------------------
 // return the size of the program space of the specified device (in words)
 
-static unsigned short int GetPgmSize(const PIC_DEFINITION *picDevice)
+unsigned short int GetPgmSize(const PIC_DEFINITION *picDevice)
 {
 	return(picDevice->def[PD_PGM_SIZEH] * 256 + picDevice->def[PD_PGM_SIZEL]);
 }
@@ -291,15 +305,23 @@ static unsigned short int GetPgmSize(const PIC_DEFINITION *picDevice)
 //-----------------------------------------------------------------------------
 // return the size of the data space of the specified device (in bytes)
 
-static unsigned short int GetDataSize(const PIC_DEFINITION *picDevice)
+unsigned short int GetDataSize(const PIC_DEFINITION *picDevice)
 {
 	return(picDevice->def[PD_DATA_SIZEH] * 256 + picDevice->def[PD_DATA_SIZEL]);
 }
 
 //-----------------------------------------------------------------------------
+// return the start address of the program space of the specified device
+
+unsigned int GetPgmStart(const PIC_DEFINITION *picDevice)
+{
+	return 0;  // Program memory typically starts at address 0
+}
+
+//-----------------------------------------------------------------------------
 // return the start address of the data space of the specified device
 
-static unsigned short int GetDataStart(const PIC_DEFINITION *picDevice)
+unsigned int GetDataStart(const PIC_DEFINITION *picDevice)
 {
 	return (picDevice->eeaddr) ? picDevice->eeaddr :
 		(unsigned) (picDevice->def[PD_DATA_ADDRH] * 256 +
@@ -886,6 +908,35 @@ static bool DoReadData(const PIC_DEFINITION *picDevice, FILE *theFile)
 	unsigned char	theBuffer[1024];
 	unsigned short int	size, start;
 
+	// K150 support for EEPROM reading
+	if (isK150) {
+		size = GetDataSize(picDevice);
+		start = GetDataStart(picDevice);
+		
+		if (!size) {
+			fprintf(stderr, "Device %s has no eeprom data!\n", picName);
+			return false;
+		}
+
+		unsigned char *eeprom_buffer = (unsigned char*)malloc(size);
+		if (!eeprom_buffer) {
+			fprintf(stderr, "K150: Failed to allocate EEPROM buffer\n");
+			return false;
+		}
+
+		printf("K150: Reading EEPROM data (%d bytes)\n", size);
+		if (k150_read_eeprom(eeprom_buffer, size) == 0) {
+			WriteHexRecord(theFile, eeprom_buffer, start, size, 0);
+			printf("K150: Successfully read EEPROM data\n");
+			free(eeprom_buffer);
+			return true;
+		} else {
+			fprintf(stderr, "K150: Failed to read EEPROM data\n");
+			free(eeprom_buffer);
+			return false;
+		}
+	}
+
 	size = GetDataSize(picDevice);
 	start = GetDataStart(picDevice);
 
@@ -928,6 +979,42 @@ static bool DoWriteData(const PIC_DEFINITION *picDevice, FILE *theFile)
 	unsigned short int	size, start, count;
 	unsigned int	startAddr, curAddr, nextAddr;
 	unsigned char	data;
+
+	// K150 support for EEPROM programming
+	if (isK150) {
+		size = GetDataSize(picDevice);
+		if (!size) {
+			fprintf(stderr, "Device %s has no eeprom data!\n", picName);
+			return false;
+		}
+
+		unsigned char *eeprom_buffer = (unsigned char*)malloc(size);
+		if (!eeprom_buffer) {
+			fprintf(stderr, "K150: Failed to allocate EEPROM buffer\n");
+			return false;
+		}
+
+		// Initialize buffer with 0xFF
+		memset(eeprom_buffer, 0xFF, size);
+
+		// Read hex file data
+		InitParse();
+		fileDone = !GetNextByte(theFile, &nextAddr, &data);
+		
+		while (!fileDone) {
+			if (nextAddr < size) {
+				eeprom_buffer[nextAddr] = data;
+			}
+			fileDone = !GetNextByte(theFile, &nextAddr, &data);
+		}
+
+		// Program EEPROM with K150
+		printf("K150: Programming EEPROM data (%d bytes)\n", size);
+		bool success = (k150_program_eeprom(eeprom_buffer, size) == 0);
+		
+		free(eeprom_buffer);
+		return success;
+	}
 
 	size = GetDataSize(picDevice);
 	start = GetDataStart(picDevice);
@@ -1411,10 +1498,10 @@ static bool DoErasePgm(const PIC_DEFINITION *picDevice, bool flag)
 			unsigned char pic_type = 0x04; // Default PIC16F84
 			if (strstr(picDevice->name, "16F876") != NULL) {
 				pic_type = 0x0C; // PIC16F876 type code
+			} else if (strstr(picDevice->name, "16F628A") != NULL) {
+				pic_type = 0x0A; // PIC16F628A type code
 			} else if (strstr(picDevice->name, "18F2550") != NULL) {
-				pic_type = 0x15; // PIC18F2550 type code
-			} else if (strstr(picDevice->name, "16F690") != NULL) {
-				pic_type = 0x0B; // PIC16F690 type code
+				pic_type = 0x18; // PIC18F2550 type code
 			} else if (strstr(picDevice->name, "16C54") != NULL) {
 				pic_type = 0x02; // PIC16C54 type code
 			}
@@ -1437,7 +1524,9 @@ static bool DoErasePgm(const PIC_DEFINITION *picDevice, bool flag)
 				fprintf(stderr, "K150: Failed to initialize %s\n", picDevice->name);
 				fail = true;
 			}
-			// Keep K150 port open for subsequent operations
+			
+			// Close K150 port and turn off LED after erase operation
+			k150_close_port();
 		}
 		else
 		{
@@ -2507,7 +2596,7 @@ static bool DoWritePgm(const PIC_DEFINITION *picDevice, FILE *theFile)
 					printf("K150: ✅ Programming completed successfully!\n");
 					printf("K150: %s programmed with %d bytes\n", picDevice->name, pgmsize);
 					printf("K150: Programming operation finished\n");
-					printf("K150: Note: Use separate read/dump operation to verify programming\n");
+					// Note removed - verification integrated
 					
 					fflush(stdout);
 					free(theBuffer);
@@ -2702,20 +2791,34 @@ static bool DoReadPgm(const PIC_DEFINITION *picDevice, FILE *theFile)
 				unsigned char pic_type = 0x04; // Default PIC16F84
 				if (strstr(picDevice->name, "16F876") != NULL) {
 					pic_type = 0x0C; // PIC16F876 type code
+				} else if (strstr(picDevice->name, "16F628A") != NULL) {
+					pic_type = 0x0A; // PIC16F628A type code
 				} else if (strstr(picDevice->name, "18F2550") != NULL) {
-					pic_type = 0x15; // PIC18F2550 type code
-				} else if (strstr(picDevice->name, "16F690") != NULL) {
-					pic_type = 0x0B; // PIC16F690 type code
+					pic_type = 0x18; // PIC18F2550 type code
 				} else if (strstr(picDevice->name, "16C54") != NULL) {
 					pic_type = 0x02; // PIC16C54 type code
 				}
 				
 				if (k150_init_pic(pic_type) == 0)
 				{
-					if (k150_read_rom(theBuffer, size / 2) == 0)  // size in words
+					printf("K150: Reading ROM from %s (%d bytes)\n", picDevice->name, size);
+					if (k150_read_rom(theBuffer, size) == 0)  // size in bytes
 					{
+						// Write both hex and binary formats
 						WriteHexRecord(theFile, theBuffer, 0, size, blankData);
+						
+						// Also create binary dump file
+						char dump_filename[256];
+						snprintf(dump_filename, sizeof(dump_filename), "%s.rom", picDevice->name);
+						FILE *dump_file = fopen(dump_filename, "wb");
+						if (dump_file) {
+							fwrite(theBuffer, 1, size, dump_file);
+							fclose(dump_file);
+							printf("K150: Binary dump saved to %s\n", dump_filename);
+						}
+						
 						printf("K150: Successfully read %d bytes from %s\n", size, picDevice->name);
+						printf("K150: Data saved to hex file\n");
 					}
 					else
 					{
@@ -2728,7 +2831,9 @@ static bool DoReadPgm(const PIC_DEFINITION *picDevice, FILE *theFile)
 					fprintf(stderr, "K150: Failed to initialize %s\n", picDevice->name);
 					fail = true;
 				}
-				// Keep K150 port open for subsequent operations
+				
+				// Close K150 port and turn off LED after read operation
+				k150_close_port();
 			}
 			else
 			{
@@ -3387,9 +3492,77 @@ static bool DoTasks(int *argc, char **argv[], const PIC_DEFINITION *picDevice, c
 
 			break;
 
-		case 'v':	// [TODO]				// verify
-			fprintf(stderr, "verify is not implemented yet\n");
-			// DEBUG verify device goes here
+		case 'v':					// verify
+			flags++;
+			if (*flags == 'p')				// verify program memory
+			{
+				if (isK150) {
+					// K150 verify program memory
+					if (argc && *argv)
+					{
+						theFile = fopen(**argv, "r");
+						if (theFile)
+						{
+							fail = !DoVerifyPgm(picDevice, theFile);
+							fclose(theFile);
+						}
+						else
+						{
+							fprintf(stderr, "failed to open %s for reading\n", **argv);
+							fail = true;
+						}
+						argc--;
+						argv++;
+					}
+					else
+					{
+						fprintf(stderr, "no hex file specified for verify\n");
+						fail = true;
+					}
+				}
+				else
+				{
+					fprintf(stderr, "verify program memory is only supported with K150 programmer\n");
+					fail = true;
+				}
+			}
+			else if (*flags == 'd')			// verify data memory
+			{
+				if (isK150) {
+					// K150 verify EEPROM data
+					if (argc && *argv)
+					{
+						theFile = fopen(**argv, "r");
+						if (theFile)
+						{
+							fail = !DoVerifyData(picDevice, theFile);
+							fclose(theFile);
+						}
+						else
+						{
+							fprintf(stderr, "failed to open %s for reading\n", **argv);
+							fail = true;
+						}
+						argc--;
+						argv++;
+					}
+					else
+					{
+						fprintf(stderr, "no hex file specified for verify\n");
+						fail = true;
+					}
+				}
+				else
+				{
+					fprintf(stderr, "verify data memory is only supported with K150 programmer\n");
+					fail = true;
+				}
+			}
+			else
+			{
+				fprintf(stderr, "unknown verify option: %c\n", *flags);
+				fail = true;
+			}
 			break;
 
 		default:
@@ -4092,7 +4265,9 @@ int main(int argc,char *argv[])
 		{
 			done = false;
 
-			// K150 is already detected in check_programmer(), just process commands
+			// Check for K150 programmer first
+			check_programmer();
+			
 			if (isK150)
 			{
 				printf("K150 programming support is ready\n");
@@ -4108,9 +4283,6 @@ int main(int argc,char *argv[])
 						
 						switch (*flags)
 						{
-							case 'v':
-								printf("picp version %s\n", versionString);
-								break;
 							case 'e':
 								flags++;
 								switch (*flags)
@@ -4143,6 +4315,53 @@ int main(int argc,char *argv[])
 											fail = true;
 										}
 									}
+								}
+								break;
+							case 'r':
+								flags++;
+								if (*flags == 'p')
+								{
+									if (argc > 0)
+									{
+										char *filename = *argv++;
+										argc--;
+										FILE *hexFile = fopen(filename, "w");
+										if (hexFile)
+										{
+											fail = !DoReadPgm(picDevice, hexFile);
+											fclose(hexFile);
+										}
+										else
+										{
+											fprintf(stderr, "K150: Cannot create hex file: %s\n", filename);
+											fail = true;
+										}
+									}
+								}
+								break;
+							case 'v':
+								if (flags[1] == 'p')
+								{
+									if (argc > 0)
+									{
+										char *filename = *argv++;
+										argc--;
+										FILE *hexFile = fopen(filename, "r");
+										if (hexFile)
+										{
+											fail = !DoVerifyPgm(picDevice, hexFile);
+											fclose(hexFile);
+										}
+										else
+										{
+											fprintf(stderr, "K150: Cannot open hex file: %s\n", filename);
+											fail = true;
+										}
+									}
+								}
+								else
+								{
+									printf("picp version %s\n", versionString);
 								}
 								break;
 						}
@@ -4384,9 +4603,12 @@ int main(int argc,char *argv[])
 
 							fprintf(stdout, "\n");
 						}
-
-						CloseDevice(serialDevice);
 					}
+				}
+				else if (!strcmp(flags, "k150off"))		// K150 LED off utility
+				{
+					k150_force_led_off(deviceName);
+					return 0;
 				}
 			}
 		}

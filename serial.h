@@ -8,6 +8,8 @@
 //	415 West Huron Street
 //	Chicago, IL   60610
 //	http://www.cosmodog.com
+
+#include <stdbool.h>
 //
 // Maintained at
 // http://home.pacbell.net/theposts/picmicro

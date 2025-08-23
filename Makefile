@@ -6,10 +6,10 @@
 CC=gcc
 APP=picp
 INCLUDES=-I.
-OPTIONS=-O2 -Wall -x c++
+OPTIONS=-O2 -Wall
 CFLAGS=$(INCLUDES) $(OPTIONS)
 SRCS=main.c serial.c record.c parse.c atoi_base.c k150.c
-OBJECTS = main.o serial.o record.o parse.o atoi_base.o k150.o
+OBJECTS = main.o serial.o record.o parse.o atoi_base.o k150.o verify.o
 
 WINCC=/usr/local/cross-tools/bin/i386-mingw32msvc-gcc
 WINCFLAGS=-Wall -O2 -fomit-frame-pointer -s -I/usr/local/cross-tools/include -D_WIN32 -DWIN32
@@ -60,7 +60,7 @@ install: $(APP) convert convertshort
 	@echo "✓ Data file: /usr/local/bin/picdevrc"
 	@echo "✓ Utilities: convert, convertshort"
 	@echo ""
-	@echo "Usage: picp /dev/ttyUSB0 16f628a -ep"
+# @echo "Usage: picp /dev/ttyUSB0 16f628a -ep"
 
 win: $(APP).exe convert.exe convertshort.exe
 

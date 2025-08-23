@@ -18,12 +18,15 @@
 #define K150_CMD_INIT_PIC        1
 #define K150_CMD_PROGRAM_ROM     2
 #define K150_CMD_PROGRAM_EEPROM  3
+#define K150_CMD_PROGRAM_ID      4
 #define K150_CMD_PROGRAM_CONFIG  9
 #define K150_CMD_READ_ROM        11
 #define K150_CMD_READ_EEPROM     12
-#define K150_CMD_READ_CONFIG     13
+#define K150_CMD_READ_ID         13
+#define K150_CMD_READ_CONFIG     14
 #define K150_CMD_ERASE_CHIP      15
 #define K150_CMD_ERASE_CHECK_ROM 16
+#define K150_CMD_GET_CHIP_ID     20
 #define K150_CMD_GET_VERSION     21
 #define K150_CMD_GET_PROTOCOL    22
 
@@ -48,9 +51,13 @@ int k150_erase_chip(void);
 int k150_program_rom(unsigned char *data, int size);
 int k150_read_rom(unsigned char *data, int size);
 int k150_read_rom_immediate(unsigned char *data, int size);
-int k150_verify_rom(unsigned char *programmed_data, int size);
+int k150_verify_rom(unsigned char *expected_data, int size);
 int k150_program_eeprom(unsigned char *data, int size);
 int k150_read_eeprom(unsigned char *data, int size);
+int k150_verify_eeprom(unsigned char *expected_data, int size);
+int k150_program_id_fuses(unsigned char *id_data, unsigned char *fuse_data);
+int k150_read_id_config(unsigned char *id_data, unsigned char *config_data);
+int k150_get_chip_info(unsigned int *chip_id, unsigned char *device_info);
 int k150_program_config(unsigned int config_word);
 int k150_read_config(unsigned int *config_word, unsigned int *device_id);
 int k150_erase_check_rom(void);
@@ -60,5 +67,8 @@ int k150_send_command(unsigned char cmd);
 int k150_send_byte(unsigned char byte);
 int k150_receive_byte(unsigned char *byte);
 int k150_receive_response(void);
+
+// Utility functions
+int k150_force_led_off(const char *device_path);
 
 #endif // __K150_H_
