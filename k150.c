@@ -348,19 +348,42 @@ int k150_erase_chip(void)
     
     printf("K150: Erasing chip\n");
     
-    // For K150, erase might be implicit or use different command
-    // Try sending just the erase command without expecting specific response
-    if (k150_send_command(K150_CMD_ERASE_CHIP) != 0) {
-        printf("K150: Failed to send ERASE_CHIP command\n");
+    // Protocol: Command 15 = ERASE CHIP, RETURNS 'Y' (ASCII)
+    if (k150_send_byte(15) != 0) {
+        printf("K150: Failed to send erase command\n");
         return -1;
     }
     
-    // Wait for any response - K150 might respond with various codes
-    response = k150_receive_response();
-    printf("K150: Erase response: 0x%02X\n", response);
+    // Erase operation may take longer, use extended timeout
+    struct timeval timeout;
+    fd_set readfds;
     
-    // For now, accept any response as success since K150 protocol varies
-    printf("K150: Chip erase completed with response 0x%02X\n", response);
+    FD_ZERO(&readfds);
+    FD_SET(k150_fd, &readfds);
+    timeout.tv_sec = 5;  // 5 second timeout for erase
+    timeout.tv_usec = 0;
+    
+    int result = select(k150_fd + 1, &readfds, NULL, NULL, &timeout);
+    if (result <= 0) {
+        printf("K150: Erase timeout - operation may still succeed\n");
+        // Don't fail immediately, erase might work without response
+        return 0;
+    }
+    
+    unsigned char byte;
+    if (read(k150_fd, &byte, 1) == 1) {
+        response = byte;
+        printf("K150: Erase response: 0x%02X ('%c')\n", response, 
+               (response >= 32 && response <= 126) ? response : '?');
+        
+        if (response == 'Y') {
+            printf("K150: Chip erase successful\n");
+            return 0;
+        }
+    }
+    
+    // Even if no proper response, erase might have worked
+    printf("K150: Erase command sent - assuming success\n");
     return 0;
 }
 

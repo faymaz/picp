@@ -4092,64 +4092,65 @@ int main(int argc,char *argv[])
 		{
 			done = false;
 
-			// First try K150 detection directly
-			printf("Trying K150 detection on %s\n", deviceName);
-			if (k150_open_port(deviceName) == 0)
+			// K150 is already detected in check_programmer(), just process commands
+			if (isK150)
 			{
-				printf("K150 port opened successfully\n");
-				if (k150_detect_programmer() == 0) {
-					isK150 = true;
-					programmerSupport = P_K150;
-					printf("K150 programming support is ready\n");
-					// Continue with K150 operations directly
-					
-					// Skip normal programmer initialization for K150
-					if (!(programmerSupport & picDevice->pgm_support))
-					{
-						fprintf(stderr, "\n\nDevice %s may not be supported by the K150 programmer\n", picDevice->name);
-						fail = true;
-					}
-					else
-					{
-						// Process command line arguments for K150
-						while (argc && !fail)
-						{
-							flags = *argv++;
-							argc--;
+				printf("K150 programming support is ready\n");
+				
+				while (argc && !fail)
+				{
+					flags = *argv++;
+					argc--;
 
-							if (*flags == '-')
-							{
+					if (*flags == '-')
+					{
+						flags++;
+						
+						switch (*flags)
+						{
+							case 'v':
+								printf("picp version %s\n", versionString);
+								break;
+							case 'e':
 								flags++;
-								
 								switch (*flags)
 								{
-									case 'v':
-										printf("picp version %s\n", versionString);
+									case 'p':
+										fail = !DoErasePgm(picDevice, true);
 										break;
-									case 'r':
-										fail = !DoTasks(&argc, &argv, picDevice, flags);
-										break;
-									case 'e':
-										fail = !DoTasks(&argc, &argv, picDevice, flags);
-										break;
-									case 'w':
-										fail = !DoTasks(&argc, &argv, picDevice, flags);
-										break;
-									case 'i':
-										// ICSP mode flag - set global variable
-										printf("K150: ICSP mode enabled\n");
-										break;
-									default:
+									case 'f':
+										fail = !DoErasePgm(picDevice, true);
 										break;
 								}
-							}
+								break;
+							case 'w':
+								flags++;
+								if (*flags == 'p')
+								{
+									if (argc > 0)
+									{
+										char *filename = *argv++;
+										argc--;
+										FILE *hexFile = fopen(filename, "r");
+										if (hexFile)
+										{
+											fail = !DoWritePgm(picDevice, hexFile);
+											fclose(hexFile);
+										}
+										else
+										{
+											fprintf(stderr, "K150: Cannot open hex file: %s\n", filename);
+											fail = true;
+										}
+									}
+								}
+								break;
 						}
 					}
 				}
-				else
-				{
-					// Keep K150 port open for subsequent operations
-				}
+				
+				k150_close_port();
+				return fail ? 1 : 0;  // Exit after K150 operations
 			}
 
 			if (!done && !isK150 && OpenDevice(deviceName, &serialDevice))		// open the serial device
