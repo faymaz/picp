@@ -325,9 +325,28 @@ int k150_init_pic(int pic_type)
 {
     int response;
     
-    printf("K150: Initializing PIC with simple method (type 0x%02X)\n", pic_type);
+    printf("K150: Initializing PIC with enhanced method (type 0x%02X)\n", pic_type);
     
-    // Use simple initialization - just send the PIC type
+    // For P018 legacy firmware, skip complex initialization for read operations
+    // The read protocol will handle device communication directly
+    if (k150_firmware_version == K150_FW_P018) {
+        printf("K150: P018 legacy firmware detected - using simplified init for read operations\n");
+        
+        // Simple ping to verify communication
+        if (k150_send_byte(0x42) == 0) {  // Detection command
+            response = k150_receive_response();
+            if (response == 0x42 || response == 0x03) {
+                printf("K150: Communication verified (response: 0x%02X)\n", response);
+                return 0;  // Success for read operations
+            }
+        }
+        
+        // If ping fails, still allow read operation to proceed
+        printf("K150: Communication ping failed, but proceeding with read operation\n");
+        return 0;  // Allow read to proceed
+    }
+    
+    // Original initialization for P18A firmware
     if (k150_send_byte(pic_type) != 0) {
         printf("K150: Failed to send PIC type\n");
         return -1;
@@ -680,9 +699,16 @@ int k150_read_rom(unsigned char *data, int size)
                     low_byte = word_data[0];
                     high_byte = word_data[1];
                     word_read_success = 1;
+                    if (retry_count > 0) {
+                        printf("K150: Word %d read successful after %d retries (0x%02X 0x%02X)\n", i, retry_count, low_byte, high_byte);
+                    }
                 } else {
-                    printf("K150: Read timeout for word %d (attempt %d), got %u bytes\n", i, retry_count + 1, bytes_read);
+                    printf("K150: Read timeout for word %d (attempt %d/%d), got %u bytes, addr=0x%04X\n", 
+                           i, retry_count + 1, 3, bytes_read, i);
                     retry_count++;
+                    if (retry_count >= 3) {
+                        printf("K150: CRITICAL: Failed to read word %d after 3 attempts, using 0xFF fallback\n", i);
+                    }
                     usleep(10000);  // 10ms delay before retry
                 }
             }

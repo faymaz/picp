@@ -170,6 +170,8 @@ unsigned int ReadBytesWithRetry(int theDevice, unsigned char *theBytes, unsigned
 					}
 				}
 				break;  // Success, exit retry loop
+			} else if (numRead < 0) {
+				perror("K150: Serial read error");
 			}
 		}
 		
