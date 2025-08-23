@@ -2799,9 +2799,12 @@ static bool DoReadPgm(const PIC_DEFINITION *picDevice, FILE *theFile)
 					pic_type = 0x02; // PIC16C54 type code
 				}
 				
+				printf("K150: DEBUG - About to initialize PIC (type 0x%02X)\n", pic_type);
 				if (k150_init_pic(pic_type) == 0)
 				{
+					printf("K150: DEBUG - PIC initialization successful, starting ROM read\n");
 					printf("K150: Reading ROM from %s (%d bytes)\n", picDevice->name, size);
+					printf("K150: DEBUG - Calling k150_read_rom with buffer=%p, size=%d\n", theBuffer, size);
 					if (k150_read_rom(theBuffer, size) == 0)  // size in bytes
 					{
 						// Write both hex and binary formats
@@ -3225,15 +3228,19 @@ static bool DoTasks(int *argc, char **argv[], const PIC_DEFINITION *picDevice, c
 			break;
 
 		case 'r':								// read
+			printf("DEBUG: Entering read command handler\n");
 			flags++;
 
 			if (*flags)
 			{
+				printf("DEBUG: Processing read flags: %s\n", flags);
 				while (*flags && !fail)
 				{
+					printf("DEBUG: Processing flag: %c\n", *flags);
 					switch (*flags)
 					{
 						case 'p':
+							printf("DEBUG: Read program memory requested\n");
 							if ((fileName = GetNextFlag(argc, argv)))
 								theFile = fopen(fileName, "w");
 							else
@@ -3241,6 +3248,7 @@ static bool DoTasks(int *argc, char **argv[], const PIC_DEFINITION *picDevice, c
 
 							if (theFile)
 							{
+								printf("DEBUG: About to call DoReadPgm with picDevice=%p, theFile=%p\n", picDevice, theFile);
 								fail = !DoReadPgm(picDevice, theFile);		// read program data, write to stream
 
 								if (theFile != stdout)		// if we wrote it to a file,
@@ -4191,6 +4199,20 @@ int loadPicDefinitions(void)
 
 int main(int argc,char *argv[])
 {
+	FILE *debug_file = fopen("debug_picp.log", "w");
+	if (debug_file) {
+		fprintf(debug_file, "DEBUG: main() started with argc=%d\n", argc);
+		for (int i = 0; i < argc; i++) {
+			fprintf(debug_file, "DEBUG: argv[%d] = '%s'\n", i, argv[i]);
+		}
+		fflush(debug_file);
+	}
+	
+	printf("DEBUG: main() started with argc=%d\n", argc);
+	for (int i = 0; i < argc; i++) {
+		printf("DEBUG: argv[%d] = '%s'\n", i, argv[i]);
+	}
+	
 	bool				fail;
 	unsigned int	baudRate;
 	unsigned char	dataBits, stopBits, parity;
@@ -4271,15 +4293,19 @@ int main(int argc,char *argv[])
 			if (isK150)
 			{
 				printf("K150 programming support is ready\n");
+				printf("DEBUG: K150 mode - argc=%d before processing\n", argc);
 				
 				while (argc && !fail)
 				{
+					printf("DEBUG: K150 processing argument, argc=%d\n", argc);
 					flags = *argv++;
 					argc--;
+					printf("DEBUG: K150 processing flags='%s'\n", flags);
 
 					if (*flags == '-')
 					{
 						flags++;
+						printf("DEBUG: K150 switch on flag='%c'\n", *flags);
 						
 						switch (*flags)
 						{
@@ -4318,18 +4344,23 @@ int main(int argc,char *argv[])
 								}
 								break;
 							case 'r':
+								printf("DEBUG: K150 read command detected\n");
 								flags++;
 								if (*flags == 'p')
 								{
+									printf("DEBUG: K150 read program memory requested\n");
 									if (argc > 0)
 									{
 										char *filename = *argv++;
 										argc--;
+										printf("DEBUG: K150 opening output file: %s\n", filename);
 										FILE *hexFile = fopen(filename, "w");
 										if (hexFile)
 										{
+											printf("DEBUG: K150 calling DoReadPgm with picDevice=%p, hexFile=%p\n", picDevice, hexFile);
 											fail = !DoReadPgm(picDevice, hexFile);
 											fclose(hexFile);
+											printf("DEBUG: K150 DoReadPgm completed, fail=%d\n", fail);
 										}
 										else
 										{
