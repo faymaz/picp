@@ -20,7 +20,6 @@ all: $(APP) convert convertshort
 
 $(APP): $(OBJECTS)
 	$(CC) $(OBJECTS) -lstdc++ -o $(APP)
-	strip $(APP)
 
 convert: convert.c
 	$(CC) -O2 -Wall -o convert convert.c
