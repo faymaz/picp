@@ -704,46 +704,44 @@ int k150_read_rom(unsigned char *data, int size)
         int words_read = 0;
         int valid_reads = 0;
         
-        // Try different read commands in sequence
-        unsigned char read_commands[] = {0x04, 0x0B, 0x46, 0x11};
-        int cmd_count = sizeof(read_commands);
+        int words = size / 2;  // 2048 words for 4096 bytes (PIC16F628A)
         
-        for (int word_addr = 0; word_addr < words; word_addr++) {
-            int success = 0;
+        for (int word = 0; word < words; word++) {
+            bool word_read_success = false;
             
-            // Try each command until one works
-            for (int cmd_idx = 0; cmd_idx < cmd_count && !success; cmd_idx++) {
+            // Try different read commands until one works
+            for (int cmd_idx = 0; cmd_idx < num_commands && !word_read_success; cmd_idx++) {
                 unsigned char read_cmd = read_commands[cmd_idx];
+                
+                printf("K150: Word %d (cmd 0x%02X): ", word, read_cmd);
                 
                 // Send read command
                 write(k150_fd, &read_cmd, 1);
-                usleep(10000);  // 10ms delay
+                usleep(15000);  // 15ms delay
                 
                 // Send address (low byte first, then high byte)
-                unsigned char addr_low = word_addr & 0xFF;
-                unsigned char addr_high = (word_addr >> 8) & 0xFF;
+                unsigned char addr_low = word & 0xFF;
+                unsigned char addr_high = (word >> 8) & 0xFF;
                 write(k150_fd, &addr_low, 1);
                 write(k150_fd, &addr_high, 1);
-                usleep(20000);  // 20ms delay
+                usleep(30000);  // 30ms delay for address processing
                 
-                // Try to read response - no retries, just attempt once
-                unsigned char response[2];
-                int bytes_read = read(k150_fd, response, 2);
+                // Try to read 2 bytes (14-bit word)
+                unsigned char word_data[2];
+                int bytes_read = ReadBytesWithRetry(k150_fd, word_data, 2, 100, 5);
                 
-                if (bytes_read > 0) {
-                    // Got some data - use it regardless of validity
-                    data[word_addr * 2] = (bytes_read >= 1) ? response[0] : 0xFF;
-                    data[word_addr * 2 + 1] = (bytes_read >= 2) ? (response[1] & 0x3F) : 0x3F;
-                    
-                    if (word_addr < 10 || bytes_read == 2) {
-                        printf("K150: Word %d (cmd 0x%02X): got %d bytes: 0x%02X%02X\n", 
-                               word_addr, read_cmd, bytes_read, 
-                               data[word_addr * 2 + 1], data[word_addr * 2]);
-                    }
-                    
+                if (bytes_read == 2) {
+                    data[word * 2] = word_data[0];      // Low byte
+                    data[word * 2 + 1] = word_data[1] & 0x3F;  // High byte (mask to 6 bits)
+                    printf("SUCCESS 0x%02X%02X\n", word_data[1] & 0x3F, word_data[0]);
                     valid_reads++;
-                    success = 1;
+                    word_read_success = true;
                 } else {
+                    printf("no response, ");
+                    if (cmd_idx < num_commands - 1) {
+                        printf("trying cmd 0x%02X\n", read_commands[cmd_idx + 1]);
+                    } else {
+                        printf("all commands failed\n");
                     // No response - try next command
                     if (cmd_idx == 0 && word_addr < 5) {
                         printf("K150: Word %d (cmd 0x%02X): no response, trying next command\n", 
@@ -779,10 +777,8 @@ int k150_read_rom(unsigned char *data, int size)
         write(k150_fd, &voltage_off, 1);
         usleep(100000);  // Longer delay for voltage discharge
         
-        // Read voltage off ACK
-        if (ReadBytesWithRetry(k150_fd, &ack, 1, 100, 2) == 1) {
-            printf("K150: Voltage off ACK: 0x%02X\n", ack);
-        }
+        // Skip voltage off ACK in minimal mode
+        printf("K150: Skipping voltage off ACK in minimal mode\n");
         
         // Step 6: Send quit command (Command 1)
         unsigned char quit_cmd = 0x01;
@@ -790,10 +786,8 @@ int k150_read_rom(unsigned char *data, int size)
         write(k150_fd, &quit_cmd, 1);
         usleep(100000);
         
-        // Read quit ACK
-        if (ReadBytesWithRetry(k150_fd, &ack, 1, 100, 2) == 1) {
-            printf("K150: Quit ACK: 0x%02X\n", ack);
-        }
+        // Skip quit ACK in minimal mode
+        printf("K150: Skipping quit ACK in minimal mode\n");
     }
     
     // LED off after read operation
