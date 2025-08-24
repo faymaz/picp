@@ -27,8 +27,13 @@
 #include	<stdio.h>
 #include <sys/time.h>
 #include <sys/types.h>
+#include <sys/select.h>
 #include <errno.h>
 #include <string.h>
+
+// Constants for K150 functions
+#define SUCCESS 0
+#define ERROR -1
 
 #ifdef WIN32
 #include	<windows.h>
@@ -140,6 +145,65 @@ unsigned int ReadBytes(int theDevice, unsigned char *theBytes, unsigned int maxB
 #endif
 
 	return((int) numRead);
+}
+
+// Enhanced serial read function for P018 protocol ACK handling
+int read_serial(int theDevice, unsigned char *buf, int len) {
+    int total_read = 0;
+    int retries = 20;  // Increased retries
+    fd_set readfds;
+    struct timeval timeout;
+
+    while (total_read < len && retries > 0) {
+        FD_ZERO(&readfds);
+        FD_SET(theDevice, &readfds);
+        timeout.tv_sec = 0;
+        timeout.tv_usec = 200000;  // 200ms timeout
+        
+        int select_result = select(theDevice + 1, &readfds, NULL, NULL, &timeout);
+        
+        if (select_result > 0 && FD_ISSET(theDevice, &readfds)) {
+            int r = read(theDevice, buf + total_read, len - total_read);
+            if (r > 0) {
+                total_read += r;
+                printf("DEBUG: read_serial got %d bytes: ", r);
+                for (int i = 0; i < r; i++) printf("0x%02x ", buf[total_read - r + i]);
+                printf("\n");
+            } else if (r == 0) {
+                retries--;
+                usleep(50000);  // 50ms
+            } else {
+                printf("ERROR: read_serial failed: %s\n", strerror(errno));
+                return ERROR;
+            }
+        } else if (select_result == 0) {
+            // Timeout - no data available
+            retries--;
+            usleep(50000);  // 50ms
+        } else {
+            printf("ERROR: select failed: %s\n", strerror(errno));
+            return ERROR;
+        }
+    }
+    
+    if (total_read < len) {
+        printf("ERROR: read_serial timeout, got %d/%d bytes\n", total_read, len);
+        return ERROR;
+    }
+    return total_read;
+}
+
+// Enhanced write function for P018 protocol
+int write_serial(int theDevice, unsigned char *buf, int len) {
+    int written = write(theDevice, buf, len);
+    if (written != len) {
+        printf("ERROR: write_serial failed, wrote %d/%d bytes\n", written, len);
+        return ERROR;
+    }
+    printf("DEBUG: write_serial sent %d bytes: ", len);
+    for (int i = 0; i < len; i++) printf("0x%02x ", buf[i]);
+    printf("\n");
+    return written;
 }
 
 // Enhanced ReadBytes with retry mechanism for K150 operations

@@ -4256,6 +4256,16 @@ int main(int argc,char *argv[])
 
 	if (argc > 2)										// need at least four arguments to do anything
 	{
+		// Check for K150 flag first
+		if ((!strcmp(argv[0], "-k150")) || (!strcmp(argv[0], "-K150")))
+		{
+			printf("DEBUG: K150 flag detected\n");
+			isK150 = true;
+			programmerSupport = P_K150;
+			argc--;
+			argv++;
+		}
+		
 		if ((!strcmp(argv[0], "-c")) || (!strcmp(argv[0], "-C")))	// if first argument is '-c', debug comm line
 		{
 			comm_debug = fopen("picpcomm.log", "a");

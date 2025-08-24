@@ -26,6 +26,10 @@
 bool	ByteWaiting(int theDevice, unsigned int timeOut);
 unsigned int	ReadBytes(int theDevice, unsigned char *theBytes, unsigned int maxBytes, unsigned int timeOut);
 unsigned int	ReadBytesWithRetry(int theDevice, unsigned char *theBytes, unsigned int maxBytes, unsigned int timeOut, int maxRetries);
+
+// P018 protocol enhanced serial functions
+int read_serial(int theDevice, unsigned char *buf, int len);
+int write_serial(int theDevice, unsigned char *buf, int len);
 void	WriteBytes(int theDevice, unsigned char *theBytes, unsigned int numBytes);
 void	FlushBytes(int theDevice);
 bool	ConfigureDevice(int theDevice, unsigned int baudRate, unsigned char dataBits, unsigned char stopBits, unsigned char parity, bool cooked);
