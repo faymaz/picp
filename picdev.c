@@ -9558,7 +9558,7 @@ const static PIC_DEFINITION PICrf509AG =
 
 //----------------------------------------
 // external access through this array only
-const PIC_DEFINITION *deviceList[] =
+const PIC_DEFINITION *deviceArray[] =
 {
 	&PIC10F200,
 	&PIC10F202,

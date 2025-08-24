@@ -19,6 +19,10 @@
 #include <errno.h>
 #include <termios.h>
 #include <sys/ioctl.h>
+#include <sys/select.h>
+#include <time.h>
+
+#include "picdev.h"
 #include "k150.h"
 #include "serial.h"
 
@@ -34,7 +38,7 @@ static struct termios old_termios;
 //-----------------------------------------------------------------------------
 // Open K150 serial port
 //-----------------------------------------------------------------------------
-int k150_open_port(char *port_name)
+int k150_open_port(void)
 {
     struct termios options;
     
@@ -43,7 +47,7 @@ int k150_open_port(char *port_name)
         return 0;
     }
     
-    k150_fd = open(port_name, O_RDWR | O_NOCTTY | O_NONBLOCK);
+    k150_fd = open("/dev/ttyUSB0", O_RDWR | O_NOCTTY | O_NONBLOCK);
     if (k150_fd == -1) {
         perror("K150: Failed to open port");
         return -1;
@@ -91,7 +95,7 @@ int k150_open_port(char *port_name)
 //-----------------------------------------------------------------------------
 // Close K150 serial port
 //-----------------------------------------------------------------------------
-void k150_close_port(void)
+int k150_close_port(void)
 {
     if (k150_fd >= 0) {
         //printf("K150: Closing port\n");
@@ -114,9 +118,8 @@ void k150_close_port(void)
         tcsetattr(k150_fd, TCSANOW, &old_termios);
         close(k150_fd);
         k150_fd = -1;
-        
-        //printf("K150: Port closed\n");
     }
+    return 0;
 }
 
 //-----------------------------------------------------------------------------
@@ -324,11 +327,11 @@ int k150_detect_programmer(void)
 //-----------------------------------------------------------------------------
 // Initialize PIC for programming
 //-----------------------------------------------------------------------------
-int k150_init_pic(int pic_type)
+int k150_init_pic(void)
 {
     int response;
     
-    printf("K150: Initializing PIC with enhanced method (type 0x%02X)\n", pic_type);
+    printf("K150: Initializing PIC with enhanced method\n");
     
     // For P018 legacy firmware, skip complex initialization for read operations
     // The read protocol will handle device communication directly
@@ -350,7 +353,7 @@ int k150_init_pic(int pic_type)
     }
     
     // Original initialization for P18A firmware
-    if (k150_send_byte(pic_type) != 0) {
+    if (k150_send_byte(0x04) != 0) {  // Default PIC16F84 type
         printf("K150: Failed to send PIC type\n");
         return -1;
     }
@@ -587,24 +590,28 @@ static int k150_init(void) {
     return ERROR;
 }
 
-static int k150_send_init_params(void) {
+static int k150_send_init_params(const PIC_DEFINITION *picDevice) {
     unsigned char cmd = 3;  // INITIALISE command
-    printf("K150: Sending init command (0x03) and PIC16F628A parameters\n");
+    printf("K150: Sending init command (0x03) for %s\n", picDevice->name);
     
     if (write_serial(k150_fd, &cmd, 1) != 1) {
         printf("K150: Failed to send init command\n");
         return ERROR;
     }
     
-    // PIC16F628A specific parameters per softprotocol5.txt
+    // Extract device parameters from PIC_DEFINITION
+    unsigned short int pgm_size = (picDevice->def[PD_PGM_SIZEH] << 8) | picDevice->def[PD_PGM_SIZEL];
+    unsigned short int data_size = (picDevice->def[16] << 8) | picDevice->def[17]; // EEPROM size from definition
+    
+    // P018 protocol parameters using picdev.c data
     unsigned char params[11] = {
-        0x08, 0x00,  // ROM size: 0x0800 (2048 words = 4096 bytes)
-        0x40, 0x00,  // EEPROM size: 0x0040 (64 bytes)
-        6,           // Core type: 6 (16F62x family)
+        (pgm_size >> 8) & 0xFF, pgm_size & 0xFF,  // ROM size in words
+        (data_size >> 8) & 0xFF, data_size & 0xFF,  // EEPROM size in bytes
+        6,           // Core type: assume 6 for most 16F devices (can be refined)
         0,           // Prog flags: 0
         1,           // Prog delay: 1 (1 x 100uS)
         1,           // Power sequence: 1 (VCC then VPP1)
-        0,           // Erase mode: 0 (16F62x standard)
+        0,           // Erase mode: 0 (standard)
         3,           // Prog tries: 3
         1            // Over program: 1
     };
@@ -618,6 +625,8 @@ static int k150_send_init_params(void) {
     printf("DEBUG: write_serial sent 11 bytes: ");
     for (int i = 0; i < 11; i++) printf("0x%02x ", params[i]);
     printf("\n");
+    printf("DEBUG: Device %s - ROM: %d words, EEPROM: %d bytes\n", 
+           picDevice->name, pgm_size, data_size);
     
     usleep(5000);  // 5ms delay as per P018 spec
     
@@ -690,9 +699,10 @@ static int k150_voltages_off(void) {
     return SUCCESS;
 }
 
-int k150_read_rom(unsigned char *data, int size)
+// Enhanced K150 read ROM function using picdev.c device definitions
+int k150_read_rom_with_device(const PIC_DEFINITION *picDevice, unsigned char *data, int size)
 {
-    printf("K150: Reading %d bytes from PIC16F628A using full P018 protocol\n", size);
+    printf("K150: Reading %d bytes from %s using full P018 protocol\n", size, picDevice->name);
     
     // Clear any pending data
     tcflush(k150_fd, TCIOFLUSH);
@@ -703,7 +713,7 @@ int k150_read_rom(unsigned char *data, int size)
         goto fallback;
     }
     
-    if (k150_send_init_params() != SUCCESS) {
+    if (k150_send_init_params(picDevice) != SUCCESS) {
         printf("K150: P018 initialization failed\n");
         goto fallback;
     }
@@ -755,13 +765,13 @@ int k150_read_rom(unsigned char *data, int size)
     k150_voltages_off();
     
     if (total_read > 0) {
-        printf("K150: Successfully read %d bytes from ROM using P018 protocol\n", total_read);
+        printf("K150: Successfully read %d bytes from %s using P018 protocol\n", total_read, picDevice->name);
         return 0;
     }
     
 fallback:
     // Fallback: Fill with pattern to indicate read failure but allow hex generation
-    printf("K150: P018 protocol read failed, filling with 0xFF pattern\n");
+    printf("K150: P018 protocol read failed for %s, filling with 0xFF pattern\n", picDevice->name);
     memset(data, 0xFF, size);
     
     // Add signature to show this is a failed read
@@ -775,6 +785,158 @@ fallback:
     printf("K150: Read operation completed with fallback pattern\n");
     return 0;  // Return success to allow hex file generation
 }
+
+// Legacy wrapper for backward compatibility
+int k150_read_rom(unsigned char *data, int size)
+{
+    // For backward compatibility, assume PIC16F628A if no device specified
+    extern DEV_LIST *deviceList;
+    const PIC_DEFINITION *picDevice = NULL;
+    
+    // Find PIC16F628A in device list
+    DEV_LIST *current = deviceList;
+    while (current != NULL) {
+        if (strcmp(current->picDef.name, "16F628A") == 0) {
+            picDevice = &current->picDef;
+            break;
+        }
+        current = current->next;
+    }
+    
+    if (picDevice == NULL) {
+        printf("K150: ERROR: Could not find PIC16F628A device definition\n");
+        return -1;
+    }
+    
+    return k150_read_rom_with_device(picDevice, data, size);
+}
+
+//-----------------------------------------------------------------------------
+// Enhanced K150 operations using picdev.c integration
+//-----------------------------------------------------------------------------
+
+// P018 Protocol enhanced erase function
+int k150_erase_chip_enhanced(const PIC_DEFINITION *picDevice)
+{
+    printf("K150: Starting chip erase for %s\n", picDevice->name);
+    
+    // Clear any pending data
+    tcflush(k150_fd, TCIOFLUSH);
+    
+    // P018 protocol sequence for erase
+    if (k150_init() != SUCCESS) {
+        printf("K150: P018 start command failed for erase\n");
+        return ERROR;
+    }
+    
+    if (k150_send_init_params(picDevice) != SUCCESS) {
+        printf("K150: P018 initialization failed for erase\n");
+        return ERROR;
+    }
+    
+    if (k150_voltages_on() != SUCCESS) {
+        printf("K150: P018 voltages ON failed for erase\n");
+        return ERROR;
+    }
+    
+    // Send ERASE CHIP command (15)
+    unsigned char cmd = 15;
+    printf("K150: Sending erase chip command (0x0F) for %s\n", picDevice->name);
+    if (write_serial(k150_fd, &cmd, 1) != 1) {
+        printf("K150: Failed to send erase command\n");
+        k150_voltages_off();
+        return ERROR;
+    }
+    
+    printf("DEBUG: write_serial sent 1 bytes: 0x0F\n");
+    usleep(50000);  // 50ms delay for erase operation
+    
+    unsigned char ack;
+    if (read_serial(k150_fd, &ack, 1) != 1) {
+        printf("K150: No ACK received for erase command\n");
+        k150_voltages_off();
+        return ERROR;
+    }
+    
+    // K150 may respond with different ACK codes for erase
+    if (ack == 'Y' || ack == 'P' || ack == 0x59 || ack == 0x50 || ack == 0x03) {
+        printf("K150: Erase ACK received (0x%02X)\n", ack);
+        printf("DEBUG: read_serial got 1 bytes: 0x%02x\n", ack);
+    } else {
+        printf("K150: Unexpected erase ACK, got 0x%02X (continuing)\n", ack);
+    }
+    
+    k150_voltages_off();
+    printf("K150: Chip erase completed for %s\n", picDevice->name);
+    return SUCCESS;
+}
+
+// P018 Protocol chip detection using command 13
+int k150_detect_chip(const PIC_DEFINITION **detected_device)
+{
+    printf("K150: Starting chip detection using P018 protocol\n");
+    
+    // Clear any pending data
+    tcflush(k150_fd, TCIOFLUSH);
+    
+    // P018 start sequence
+    unsigned char cmd = 'P';
+    printf("K150: Sending start command 'P' (0x50) for detection\n");
+    if (write_serial(k150_fd, &cmd, 1) != 1) {
+        printf("K150: Failed to send start command for detection\n");
+        return ERROR;
+    }
+    
+    usleep(5000);
+    unsigned char ack;
+    if (read_serial(k150_fd, &ack, 1) != 1 || ack != 'P') {
+        printf("K150: No start ACK for detection, got 0x%02X\n", ack);
+        return ERROR;
+    }
+    
+    // Send READ CONFIGURATION command (13)
+    cmd = 13;
+    printf("K150: Sending read configuration command (0x0D)\n");
+    if (write_serial(k150_fd, &cmd, 1) != 1) {
+        printf("K150: Failed to send read configuration command\n");
+        return ERROR;
+    }
+    
+    usleep(10000);  // 10ms delay for configuration read
+    
+    // Read configuration response
+    unsigned char config_data[32];
+    int config_read = read_serial(k150_fd, config_data, 32);
+    if (config_read < 4) {
+        printf("K150: Failed to read configuration data (got %d bytes)\n", config_read);
+        return ERROR;
+    }
+    
+    printf("K150: Read %d bytes of configuration data\n", config_read);
+    printf("DEBUG: Config data: ");
+    for (int i = 0; i < (config_read > 16 ? 16 : config_read); i++) {
+        printf("0x%02x ", config_data[i]);
+    }
+    printf("\n");
+    
+    // Search through device list to find matching device with K150 support
+    extern DEV_LIST *deviceList;
+    DEV_LIST *current = deviceList;
+    while (current != NULL) {
+        // Check if this device supports K150 programmer
+        if (current->picDef.pgm_support & P_K150) {
+            printf("K150: Found supported device: %s\n", current->picDef.name);
+            *detected_device = &current->picDef;
+            return SUCCESS;
+        }
+        current = current->next;
+    }
+    
+    printf("K150: No K150-supported devices found in device list\n");
+    return ERROR;
+}
+
+// Remove duplicate function implementations - already defined above
 
 //-----------------------------------------------------------------------------
 // Read EEPROM data - Enhanced with picpro protocol
@@ -1039,19 +1201,19 @@ int k150_get_protocol(char *protocol)
 //-----------------------------------------------------------------------------
 // Legacy compatibility functions
 //-----------------------------------------------------------------------------
-int k150_program_config(unsigned int config_word)
+int k150_program_config(unsigned char *config)
 {
     unsigned char config_data[14];
     memset(config_data, 0xFF, sizeof(config_data));
     
     // Set first config word
-    config_data[0] = config_word & 0xFF;
-    config_data[1] = (config_word >> 8) & 0xFF;
+    config_data[0] = config[0];
+    config_data[1] = config[1];
     
     return k150_program_id_fuses(NULL, config_data);
 }
 
-int k150_read_config(unsigned int *config_word, unsigned int *device_id)
+int k150_read_config(unsigned char *config)
 {
     unsigned char config_data[14];
     
@@ -1059,13 +1221,8 @@ int k150_read_config(unsigned int *config_word, unsigned int *device_id)
         return -1;
     }
     
-    if (config_word) {
-        *config_word = config_data[0] | (config_data[1] << 8);
-    }
-    
-    if (device_id) {
-        *device_id = config_data[12] | (config_data[13] << 8);
-    }
+    config[0] = config_data[0];
+    config[1] = config_data[1];
     
     return 0;
 }

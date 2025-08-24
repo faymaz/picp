@@ -55,27 +55,33 @@
 #define K150_VERSION             3
 
 // Function declarations
-int k150_open_port(char *port_name);
-void k150_close_port(void);
-int k150_is_port_open(void);
+int k150_open_port(void);
+int k150_close_port(void);
+int k150_detect(void);
+int k150_init_pic(void);
 int k150_detect_programmer(void);
-int k150_get_version(void);
-int k150_get_protocol(char *protocol);
-int k150_init_pic(int pic_type);
+int k150_is_port_open(void);
 int k150_erase_chip(void);
-int k150_program_rom(unsigned char *data, int size);
 int k150_read_rom(unsigned char *data, int size);
-int k150_read_rom_immediate(unsigned char *data, int size);
-int k150_verify_rom(unsigned char *expected_data, int size);
-int k150_program_eeprom(unsigned char *data, int size);
 int k150_read_eeprom(unsigned char *data, int size);
-int k150_verify_eeprom(unsigned char *expected_data, int size);
-int k150_program_id_fuses(unsigned char *id_data, unsigned char *fuse_data);
-int k150_read_id_config(unsigned char *id_data, unsigned char *config_data);
-int k150_get_chip_info(unsigned int *chip_id, unsigned char *device_info);
-int k150_program_config(unsigned int config_word);
-int k150_read_config(unsigned int *config_word, unsigned int *device_id);
-int k150_erase_check_rom(void);
+int k150_program_rom(unsigned char *data, int size);
+int k150_program_eeprom(unsigned char *data, int size);
+int k150_verify_rom(unsigned char *expected, int size);
+int k150_verify_eeprom(unsigned char *expected, int size);
+int k150_read_config(unsigned char *config);
+int k150_program_config(unsigned char *config);
+
+// Enhanced functions using picdev.c integration
+#include "picdev.h"
+int k150_read_rom_with_device(const PIC_DEFINITION *picDevice, unsigned char *data, int size);
+int k150_erase_chip_enhanced(const PIC_DEFINITION *picDevice);
+int k150_program_rom_enhanced(const PIC_DEFINITION *picDevice, const unsigned char *data, int size);
+int k150_verify_rom_enhanced(const PIC_DEFINITION *picDevice, const unsigned char *expected_data, int size);
+int k150_perform_operation(const char *device_name, const char *operation, const char *filename);
+
+// Chip detection functions
+int k150_detect_chip(const PIC_DEFINITION **detected_device);
+int k150_check_chip_in_socket(void);
 
 // Internal helper functions
 int k150_send_command(unsigned char cmd);

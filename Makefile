@@ -9,7 +9,7 @@ INCLUDES=-I.
 OPTIONS=-O2 -Wall
 CFLAGS=$(INCLUDES) $(OPTIONS)
 SRCS=main.c serial.c record.c parse.c atoi_base.c k150.c
-OBJECTS = main.o serial.o record.o parse.o atoi_base.o k150.o verify.o
+OBJS = main.o parse.o record.o atoi_base.o picdev.o serial.o k150.o
 
 WINCC=/usr/local/cross-tools/bin/i386-mingw32msvc-gcc
 WINCFLAGS=-Wall -O2 -fomit-frame-pointer -s -I/usr/local/cross-tools/include -D_WIN32 -DWIN32
@@ -18,8 +18,8 @@ WINOBJECTS = main.obj serial.obj record.obj parse.obj atoi_base.obj k150.obj
 
 all: $(APP) convert convertshort
 
-$(APP): $(OBJECTS)
-	$(CC) $(OBJECTS) -lstdc++ -o $(APP)
+$(APP): $(OBJS)
+	$(CC) $(OBJS) -lstdc++ -o $(APP)
 
 convert: convert.c
 	$(CC) -O2 -Wall -o convert convert.c
