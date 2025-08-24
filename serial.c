@@ -160,7 +160,13 @@ unsigned int ReadBytesWithRetry(int theDevice, unsigned char *theBytes, unsigned
 		if (ByteWaiting(theDevice, timeOut)) {
 			numRead = read(theDevice, theBytes, maxBytes);
 			if (numRead > 0) {
-				// Debug output for successful reads
+				// Enhanced debug output with detailed byte logging
+				printf("K150: Read %d bytes, total %d/%d: ", numRead, numRead, maxBytes);
+				for (unsigned int i = 0; i < numRead; i++) {
+					printf("0x%02X ", theBytes[i]);
+				}
+				printf("\n");
+				
 				if (comm_debug) {
 					for (unsigned int i = 0; i < numRead; i++) {
 						fprintf(comm_debug, " I-0x%02x", theBytes[i]);
@@ -185,7 +191,7 @@ unsigned int ReadBytesWithRetry(int theDevice, unsigned char *theBytes, unsigned
 		
 		retry_count++;
 		if (retry_count < maxRetries) {
-			usleep(50000);  // 50ms delay between retries
+			usleep(100000);  // 100ms delay between retries
 		}
 	}
 	
