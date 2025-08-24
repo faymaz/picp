@@ -27,6 +27,8 @@
 #include	<stdio.h>
 #include <sys/time.h>
 #include <sys/types.h>
+#include <errno.h>
+#include <string.h>
 
 #ifdef WIN32
 #include	<windows.h>
@@ -147,6 +149,12 @@ unsigned int ReadBytesWithRetry(int theDevice, unsigned char *theBytes, unsigned
 #ifndef WIN32
 	unsigned int numRead = 0;
 	int retry_count = 0;
+	struct termios tio;
+	
+	// Full buffer flush before reading
+	tcgetattr(theDevice, &tio);
+	tcflush(theDevice, TCIOFLUSH);  // Input + output flush
+	tcsetattr(theDevice, TCSANOW, &tio);
 	
 	while (retry_count < maxRetries && numRead == 0) {
 		if (ByteWaiting(theDevice, timeOut)) {
@@ -171,14 +179,18 @@ unsigned int ReadBytesWithRetry(int theDevice, unsigned char *theBytes, unsigned
 				}
 				break;  // Success, exit retry loop
 			} else if (numRead < 0) {
-				perror("K150: Serial read error");
+				fprintf(stderr, "K150: Serial read error: %s\n", strerror(errno));
 			}
 		}
 		
 		retry_count++;
 		if (retry_count < maxRetries) {
-			usleep(5000);  // 5ms delay between retries
+			usleep(50000);  // 50ms delay between retries
 		}
+	}
+	
+	if (numRead == 0) {
+		fprintf(stderr, "K150: Read timeout after %d retries, wanted %d bytes, got %d\n", maxRetries, maxBytes, numRead);
 	}
 	
 	return numRead;
