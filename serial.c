@@ -150,7 +150,7 @@ unsigned int ReadBytes(int theDevice, unsigned char *theBytes, unsigned int maxB
 // Enhanced serial read function for P018 protocol ACK handling
 int read_serial(int theDevice, unsigned char *buf, int len) {
     int total_read = 0;
-    int retries = 20;  // Increased retries
+    int retries = 10;  // Reduced retries for faster ACK response
     fd_set readfds;
     struct timeval timeout;
 
@@ -158,7 +158,7 @@ int read_serial(int theDevice, unsigned char *buf, int len) {
         FD_ZERO(&readfds);
         FD_SET(theDevice, &readfds);
         timeout.tv_sec = 0;
-        timeout.tv_usec = 200000;  // 200ms timeout
+        timeout.tv_usec = 100000;  // 100ms timeout for P018 ACK timing
         
         int select_result = select(theDevice + 1, &readfds, NULL, NULL, &timeout);
         
@@ -171,7 +171,7 @@ int read_serial(int theDevice, unsigned char *buf, int len) {
                 printf("\n");
             } else if (r == 0) {
                 retries--;
-                usleep(50000);  // 50ms
+                usleep(10000);  // 10ms for P018 timing
             } else {
                 printf("ERROR: read_serial failed: %s\n", strerror(errno));
                 return ERROR;
@@ -179,7 +179,7 @@ int read_serial(int theDevice, unsigned char *buf, int len) {
         } else if (select_result == 0) {
             // Timeout - no data available
             retries--;
-            usleep(50000);  // 50ms
+            usleep(10000);  // 10ms for P018 timing
         } else {
             printf("ERROR: select failed: %s\n", strerror(errno));
             return ERROR;
