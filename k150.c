@@ -697,17 +697,16 @@ int k150_read_rom(unsigned char *data, int size)
         // Skip voltage ACK in minimal mode
         printf("K150: Skipping voltage ACK in minimal mode\n");
         
-        // Step 4: MINIMAL ROM READ - Direct dump without validation
-        printf("K150: Starting minimal ROM read - direct dump mode\n");
+        // Step 4: Enhanced ROM READ with multiple command fallbacks
+        printf("K150: Starting enhanced ROM read with multiple command fallbacks\n");
         
         int words = size / 2;  // 2048 words for 4096 bytes (PIC16F628A)
-        int words_read = 0;
         int valid_reads = 0;
-        
-        int words = size / 2;  // 2048 words for 4096 bytes (PIC16F628A)
+        unsigned char read_commands[] = {0x0B, 0x04, 0x11, 0x46};  // Different read commands to try
+        int num_commands = sizeof(read_commands) / sizeof(read_commands[0]);
         
         for (int word = 0; word < words; word++) {
-            bool word_read_success = false;
+            int word_read_success = 0;
             
             // Try different read commands until one works
             for (int cmd_idx = 0; cmd_idx < num_commands && !word_read_success; cmd_idx++) {
@@ -735,37 +734,38 @@ int k150_read_rom(unsigned char *data, int size)
                     data[word * 2 + 1] = word_data[1] & 0x3F;  // High byte (mask to 6 bits)
                     printf("SUCCESS 0x%02X%02X\n", word_data[1] & 0x3F, word_data[0]);
                     valid_reads++;
-                    word_read_success = true;
+                    word_read_success = 1;
                 } else {
                     printf("no response, ");
                     if (cmd_idx < num_commands - 1) {
                         printf("trying cmd 0x%02X\n", read_commands[cmd_idx + 1]);
                     } else {
                         printf("all commands failed\n");
-                    // No response - try next command
-                    if (cmd_idx == 0 && word_addr < 5) {
-                        printf("K150: Word %d (cmd 0x%02X): no response, trying next command\n", 
-                               word_addr, read_cmd);
                     }
                 }
                 
-                // Small delay before trying next command
-                usleep(5000);
+                // Small delay between command attempts
+                if (!word_read_success && cmd_idx < num_commands - 1) {
+                    usleep(10000);
+                }
             }
             
-            // If no command worked, fill with 0xFF
-            if (!success) {
-                data[word_addr * 2] = 0xFF;
-                data[word_addr * 2 + 1] = 0x3F;
+            // If no command worked, fill with default values
+            if (!word_read_success) {
+                data[word * 2] = 0xFF;
+                data[word * 2 + 1] = 0x3F;
             }
             
-            words_read++;
-            
-            // Progress reporting every 128 words
-            if (word_addr % 128 == 0) {
+            // Progress indicator and sync every 64 words
+            if (word % 64 == 0 && word > 0) {
                 printf("K150: Progress: %d/%d words, %d valid reads (%.1f%%)\n", 
-                       words_read, words, valid_reads, 
-                       (float)valid_reads / words_read * 100.0);
+                       word + 1, words, valid_reads, (float)valid_reads / (word + 1) * 100);
+                
+                // Send sync command to prevent buffer overflow
+                unsigned char sync_cmd = 0x50;
+                write(k150_fd, &sync_cmd, 1);
+                usleep(20000);
+                printf("K150: Sync command sent at word %d\n", word);
             }
         }
         
