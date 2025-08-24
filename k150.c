@@ -240,6 +240,54 @@ static int k150_detect_chip_enhanced(const PIC_DEFINITION **detected_device)
     return ERROR;
 }
 
+// Command line chip detection function (pk2cmd -P equivalent)
+int k150_detect_chip_command_line(void)
+{
+    printf("K150: Detecting connected PIC device...\n");
+    
+    if (k150_open_port() != SUCCESS) {
+        printf("ERROR: Failed to open K150 port\n");
+        return ERROR;
+    }
+    
+    if (k150_detect_programmer() != SUCCESS) {
+        printf("ERROR: K150 programmer not detected\n");
+        k150_close_port();
+        return ERROR;
+    }
+    
+    const PIC_DEFINITION *detected_device = NULL;
+    int result = k150_detect_chip_enhanced(&detected_device);
+    
+    if (result == SUCCESS && detected_device) {
+        printf("\nDetected PIC: %s\n", detected_device->name);
+        
+        // Extract chip ID from device definition for display
+        int chip_id = (detected_device->def[22] << 8) | detected_device->def[23];
+        printf("Chip ID: 0x%04X\n", chip_id);
+        
+        // Extract program memory size from definition
+        int pgm_size = (detected_device->def[0] << 8) | detected_device->def[1];
+        printf("Program Memory: %d words\n", pgm_size);
+        
+        // Extract data memory size from definition
+        int data_size = (detected_device->def[34] << 8) | detected_device->def[35];
+        printf("Data Memory: %d bytes\n", data_size);
+        
+        k150_close_port();
+        return SUCCESS;
+    } else {
+        printf("\nNo PIC detected or unknown device\n");
+        printf("Please check:\n");
+        printf("- PIC chip is properly inserted in socket\n");
+        printf("- ICSP connections are correct\n");
+        printf("- Power supply is adequate (5V)\n");
+        
+        k150_close_port();
+        return ERROR;
+    }
+}
+
 // Erase chip
 int k150_erase_chip_enhanced(const PIC_DEFINITION *device)
 {
