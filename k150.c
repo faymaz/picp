@@ -637,78 +637,74 @@ int k150_read_rom(unsigned char *data, int size)
         usleep(50000);
         
     } else {
-        // P018 Legacy protocol using P014 command set (READ ROM = command 11)
-        printf("K150: Using P018 legacy protocol (P014 command set) for firmware 0x%02X\n", k150_firmware_version);
+        // P018 Legacy firmware with proper P014 protocol initialization
+        printf("K150: Using P018 legacy firmware with P014 protocol for firmware 0x%02X\n", k150_firmware_version);
         
-        // Step 1: Reset and enter programming mode with 'P' (0x50)
-        // First flush any pending data
+        // Step 1: Hardware reset and serial flush
+        printf("K150: Performing hardware reset\n");
+        int dtr_flag = TIOCM_DTR;
+        ioctl(k150_fd, TIOCMBIC, &dtr_flag);  // Clear DTR (reset)
+        usleep(100000);
+        ioctl(k150_fd, TIOCMBIS, &dtr_flag);  // Set DTR (ready)
+        usleep(200000);
         tcflush(k150_fd, TCIOFLUSH);
-        usleep(100000);  // 100ms delay for reset
         
-        // MINIMAL PROTOCOL BYPASS - DIRECT ROM DUMP WITHOUT ACK
-        printf("K150: WARNING: Using minimal protocol bypass - no ACK validation\n");
-        printf("K150: This may produce invalid data but will attempt raw communication\n");
+        // Step 2: Send detect command and wait for ACK
+        unsigned char detect_cmd = 0x42;
+        printf("K150: Sending detect command (0x42)\n");
+        write(k150_fd, &detect_cmd, 1);
+        usleep(50000);
         
-        // Simple hardware reset
-        printf("K150: Performing minimal hardware reset\n");
-        ioctl(k150_fd, TIOCMBIS, &dtr_flag);  // DTR high
-        usleep(100000);  // 100ms
-        tcflush(k150_fd, TCIOFLUSH);
-        ioctl(k150_fd, TIOCMBIC, &dtr_flag);  // DTR low
-        usleep(100000);  // 100ms
-        ioctl(k150_fd, TIOCMBIS, &dtr_flag);  // DTR high again
-        usleep(50000);  // 50ms
-        
-        // Send basic commands without waiting for ACK
-        printf("K150: Sending basic command sequence without ACK validation\n");
-        unsigned char cmd_sequence[] = {0x42, 0x50, 0x03, 0x04, 0x19, 0x19, 0x04};
-        for (int i = 0; i < sizeof(cmd_sequence); i++) {
-            write(k150_fd, &cmd_sequence[i], 1);
-            usleep(20000);  // 20ms between commands
+        unsigned char detect_ack[2];
+        if (ReadBytesWithRetry(k150_fd, detect_ack, 2, 200, 3) == 2) {
+            printf("K150: Detect ACK: 0x%02X 0x%02X\n", detect_ack[0], detect_ack[1]);
+        } else {
+            printf("K150: ERROR: No detect ACK - trying fallback protocol\n");
+            // Continue with fallback
         }
         
-        // Clear any pending responses
-        tcflush(k150_fd, TCIFLUSH);
-        usleep(100000);  // 100ms settle time
+        // Step 3: Send start command 'P' and wait for ACK
+        unsigned char start_cmd = 0x50;
+        printf("K150: Sending start command 'P' (0x50)\n");
+        write(k150_fd, &start_cmd, 1);
+        usleep(50000);
         
-        // Step 2: Initialize programming variables (command 3)
-        printf("K150: Sending init command (3)\n");
+        unsigned char start_ack;
+        if (ReadBytesWithRetry(k150_fd, &start_ack, 1, 200, 5) == 1) {
+            printf("K150: Start ACK: 0x%02X\n", start_ack);
+        } else {
+            printf("K150: ERROR: No start ACK - continuing anyway\n");
+        }
+        
+        // Step 4: Send initialization parameters
         unsigned char init_cmd = 0x03;
-        unsigned char pic_type = 0x04;  // PIC16F628A type code
-        unsigned char prog_multiplier = 0x19;  // Programming pulse multiplier
-        unsigned char prog_count = 0x19;  // Programming pulse count
+        unsigned char pic_type = 0x0C;        // PIC16F628A type
+        unsigned char prog_multiplier = 0x08;
+        unsigned char prog_count = 0x20;
         
-        printf("K150: Sending init command (0x03) with PIC16F628A parameters\n");
+        printf("K150: Sending init sequence (0x03)\n");
         write(k150_fd, &init_cmd, 1);
         write(k150_fd, &pic_type, 1);
         write(k150_fd, &prog_multiplier, 1);
         write(k150_fd, &prog_count, 1);
-        usleep(100000);  // Longer delay for init
+        usleep(100000);
         
-        // Skip ACK reading in minimal mode
-        printf("K150: Skipping init ACK in minimal mode\n");
-        
-        // Step 3: Turn on programming voltages (Command 4)
+        // Step 5: Turn on programming voltages
         unsigned char voltage_on = 0x04;
         printf("K150: Turning on programming voltages (0x04)\n");
         write(k150_fd, &voltage_on, 1);
-        usleep(100000);  // Longer delay for voltage stabilization
+        usleep(200000);
         
-        // Skip voltage ACK in minimal mode
-        printf("K150: Skipping voltage ACK in minimal mode\n");
-        
-        // Step 4: Enhanced ROM READ with multiple command fallbacks
-        printf("K150: Starting enhanced ROM read with multiple command fallbacks\n");
-        
-        int words = size / 2;  // 2048 words for 4096 bytes (PIC16F628A)
+        // Step 6: ROM read with multiple command attempts
+        printf("K150: Starting ROM read with command fallbacks\n");
+        int words = size / 2;
         int valid_reads = 0;
-        unsigned char read_commands[] = {0x0B, 0x04, 0x11, 0x46};  // Different read commands to try
+        unsigned char read_commands[] = {0x0B, 0x04, 0x11, 0x46};
         int num_commands = sizeof(read_commands) / sizeof(read_commands[0]);
         
         for (int word = 0; word < words; word++) {
             int word_read_success = 0;
             
-            // Try different read commands until one works
             for (int cmd_idx = 0; cmd_idx < num_commands && !word_read_success; cmd_idx++) {
                 unsigned char read_cmd = read_commands[cmd_idx];
                 
