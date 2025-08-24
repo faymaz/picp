@@ -35,10 +35,6 @@
 #define P018_CMD_READ_CONFIG    13   // Read configuration (chip detection)
 #define P018_CMD_ERASE_CHIP     15   // Erase chip
 
-// P018 Protocol Commands for EEPROM operations
-#define P018_CMD_READ_EEPROM    12   // Read EEPROM
-#define P018_CMD_PROGRAM_EEPROM 9    // Program EEPROM
-
 // P018 Protocol ACK responses
 #define P018_ACK_START          'P'  // 0x50 - Start ACK
 #define P018_ACK_INIT           'I'  // 0x49 - Init ACK
@@ -58,9 +54,8 @@
 #define ERROR -1
 
 // Global variables
-static int k150_fd = -1;
-static PIC_DEFINITION *current_device = NULL;
-static int k150_firmware_version = 0;
+static int k150_fd = -1;  // File descriptor for K150 serial port
+static PIC_DEFINITION *current_device = NULL;  // Currently selected device
 
 // External device list from picdev.c
 extern const PIC_DEFINITION *deviceArray[];
@@ -129,7 +124,7 @@ static int k150_start_communication(void)
 }
 
 // Send device initialization parameters from picdev.c
-static int k150_send_device_params(const PIC_DEFINITION *device)
+static int k150_send_device_params(PIC_DEFINITION *device)
 {
     unsigned char cmd = P018_CMD_INIT;
     unsigned char params[11];
@@ -203,7 +198,7 @@ static int k150_voltages_off(void)
 }
 
 // Chip detection using P018 command 13
-static int k150_detect_chip_enhanced(const PIC_DEFINITION **detected_device)
+static int k150_detect_chip_enhanced(PIC_DEFINITION **detected_device)
 {
     if (k150_start_communication() != SUCCESS) return ERROR;
     
@@ -232,7 +227,7 @@ static int k150_detect_chip_enhanced(const PIC_DEFINITION **detected_device)
         int dev_chip_id = (deviceArray[i]->def[22] << 8) | deviceArray[i]->def[23];
         if (dev_chip_id == chip_id) {
             printf("K150: Detected device: %s\n", deviceArray[i]->name);
-            *detected_device = (const PIC_DEFINITION *)deviceArray[i];
+            *detected_device = (PIC_DEFINITION *)deviceArray[i];
             return SUCCESS;
         }
     }
@@ -241,7 +236,7 @@ static int k150_detect_chip_enhanced(const PIC_DEFINITION **detected_device)
 }
 
 // Erase chip
-int k150_erase_chip_enhanced(const PIC_DEFINITION *device)
+static int k150_erase_chip_enhanced(PIC_DEFINITION *device)
 {
     printf("K150: Erasing chip %s\n", device->name);
     
@@ -271,7 +266,7 @@ int k150_erase_chip_enhanced(const PIC_DEFINITION *device)
 }
 
 // Read ROM using P018 protocol
-static int k150_read_rom_enhanced(const PIC_DEFINITION *device, unsigned char *buffer, int size)
+static int k150_read_rom_enhanced(PIC_DEFINITION *device, unsigned char *buffer, int size)
 {
     printf("K150: Reading %d bytes from %s using P018 protocol\n", size, device->name);
     tcflush(k150_fd, TCIOFLUSH);
@@ -306,7 +301,7 @@ static int k150_read_rom_enhanced(const PIC_DEFINITION *device, unsigned char *b
 }
 
 // Program ROM using P018 protocol
-int k150_program_rom_enhanced(const PIC_DEFINITION *device, const unsigned char *buffer, int size)
+static int k150_program_rom_enhanced(PIC_DEFINITION *device, const unsigned char *buffer, int size)
 {
     printf("K150: Programming %d bytes to %s using P018 protocol\n", size, device->name);
     tcflush(k150_fd, TCIOFLUSH);
@@ -356,7 +351,7 @@ int k150_program_rom_enhanced(const PIC_DEFINITION *device, const unsigned char 
 }
 
 // Verify ROM by reading back and comparing
-int k150_verify_rom_enhanced(const PIC_DEFINITION *device, const unsigned char *original_buffer, int size)
+static int k150_verify_rom_enhanced(PIC_DEFINITION *device, const unsigned char *original_buffer, int size)
 {
     unsigned char read_buffer[MAX_ROM_SIZE];
     printf("K150: Verifying programmed data...\n");
@@ -460,226 +455,55 @@ static int save_hex_file(const char* filename, const unsigned char* buffer, int 
     return SUCCESS;
 }
 
+//-----------------------------------------------------------------------------
 // Public interface functions
 //-----------------------------------------------------------------------------
 
 // Open K150 serial port
-static int k150_open_serial_port(void)
+int k150_open_port(void)
 {
     struct termios options;
     
-    printf("DEBUG: Opening K150 port /dev/ttyUSB0\n");
+    if (k150_fd != -1) {
+        printf("K150: Port already open\n");
+        return SUCCESS;
+    }
+    
     k150_fd = open("/dev/ttyUSB0", O_RDWR | O_NOCTTY | O_NDELAY);
     if (k150_fd == -1) {
-        printf("ERROR: Unable to open /dev/ttyUSB0: %s\n", strerror(errno));
+        printf("ERROR: Cannot open /dev/ttyUSB0: %s\n", strerror(errno));
         return ERROR;
     }
     
-    // Configure serial port
+    // Configure serial port for P018 protocol (19200,N,8,1)
     tcgetattr(k150_fd, &options);
     cfsetispeed(&options, B19200);
     cfsetospeed(&options, B19200);
-    options.c_cflag |= (CLOCAL | CREAD);
-    options.c_cflag &= ~PARENB;
-    options.c_cflag &= ~CSTOPB;
-    options.c_cflag &= ~CSIZE;
-    options.c_cflag |= CS8;
-    options.c_cflag &= ~CRTSCTS;
-    options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
-    options.c_iflag &= ~(IXON | IXOFF | IXANY);
-    options.c_oflag &= ~OPOST;
+    
+    options.c_cflag = CS8 | CLOCAL | CREAD;
+    options.c_iflag = IGNPAR;
+    options.c_oflag = 0;
+    options.c_lflag = 0;
+    options.c_cc[VTIME] = 1; // 100ms timeout
     options.c_cc[VMIN] = 0;
-    options.c_cc[VTIME] = 1;
     
     tcsetattr(k150_fd, TCSANOW, &options);
     tcflush(k150_fd, TCIOFLUSH);
     
-    // Set RTS and DTR for hardware control
-    int flags = TIOCM_RTS | TIOCM_DTR;
-    ioctl(k150_fd, TIOCMBIS, &flags);
-    
-    printf("DEBUG: K150 port opened successfully\n");
+    printf("DEBUG: Serial port /dev/ttyUSB0 initialized at 19200,N,8,1\n");
     return SUCCESS;
 }
 
-static int k150_close_serial_port(void)
+// Close K150 serial port
+int k150_close_port(void)
 {
-    if (k150_fd >= 0) {
+    if (k150_fd != -1) {
         // Turn off RTS to disable yellow LED
         int rts_flag = TIOCM_RTS;
         ioctl(k150_fd, TIOCMBIC, &rts_flag);
         close(k150_fd);
         k150_fd = -1;
         printf("DEBUG: K150 port closed\n");
-    }
-    return SUCCESS;
-}
-
-// Standard K150 interface functions called by main.c
-
-int k150_open_port(void)
-{
-    return k150_open_serial_port();
-}
-
-int k150_close_port(void)
-{
-    return k150_close_serial_port();
-}
-
-int k150_detect_programmer(void)
-{
-    unsigned char cmd = K150_P18A_DETECT;
-    unsigned char response[2];
-    
-    printf("K150: Detecting programmer...\n");
-    if (k150_write_serial(&cmd, 1) != SUCCESS) return ERROR;
-    usleep(DELAY_US);
-    
-    if (k150_read_serial(response, 2) != SUCCESS || response[0] != K150_P18A_DETECT) {
-        printf("K150: ERROR: Programmer detection failed, got 0x%02x 0x%02x\n", response[0], response[1]);
-        return ERROR;
-    }
-    
-    printf("K150: Programmer detected, firmware version 0x%02x\n", response[1]);
-    k150_firmware_version = response[1];
-    return SUCCESS;
-}
-
-int k150_is_port_open(void)
-{
-    return (k150_fd >= 0) ? 1 : 0;
-}
-
-int k150_init_pic(void)
-{
-    return k150_start_communication();
-}
-
-int k150_erase_chip(void)
-{
-    if (!current_device) {
-        printf("K150: ERROR: No device detected for erase operation\n");
-        return ERROR;
-    }
-    return k150_erase_chip_enhanced(current_device);
-}
-
-int k150_read_rom(unsigned char *buffer, int size)
-{
-    if (!current_device) {
-        printf("K150: ERROR: No device detected for read operation\n");
-        return ERROR;
-    }
-    return k150_read_rom_enhanced(current_device, buffer, size);
-}
-
-int k150_read_eeprom(unsigned char *buffer, int size)
-{
-    printf("K150: Reading EEPROM (%d bytes)\n", size);
-    
-    if (k150_start_communication() != SUCCESS) return ERROR;
-    if (!current_device) {
-        printf("K150: ERROR: No device detected for EEPROM read\n");
-        return ERROR;
-    }
-    
-    if (k150_send_device_params(current_device) != SUCCESS) return ERROR;
-    if (k150_voltages_on() != SUCCESS) return ERROR;
-
-    unsigned char cmd = P018_CMD_READ_EEPROM;
-    printf("K150: Sending read EEPROM command (0x0C)\n");
-    if (k150_write_serial(&cmd, 1) != SUCCESS) {
-        k150_voltages_off();
-        return ERROR;
-    }
-    usleep(DELAY_US);
-
-    int total_read = 0;
-    while (total_read < size) {
-        int chunk_size = (size - total_read > CHUNK_SIZE) ? CHUNK_SIZE : size - total_read;
-        if (k150_read_serial(buffer + total_read, chunk_size) != SUCCESS) {
-            printf("K150: EEPROM read timeout at byte %d\n", total_read);
-            k150_voltages_off();
-            return ERROR;
-        }
-        total_read += chunk_size;
-        printf("K150: EEPROM read progress: %d/%d bytes\n", total_read, size);
-    }
-
-    k150_voltages_off();
-    printf("K150: Successfully read %d bytes from EEPROM\n", size);
-    return SUCCESS;
-}
-
-int k150_program_rom(unsigned char *buffer, int size)
-{
-    if (!current_device) {
-        printf("K150: ERROR: No device detected for program operation\n");
-        return ERROR;
-    }
-    return k150_program_rom_enhanced(current_device, buffer, size);
-}
-
-int k150_program_eeprom(unsigned char *buffer, int size)
-{
-    printf("K150: Programming EEPROM (%d bytes)\n", size);
-    
-    if (k150_start_communication() != SUCCESS) return ERROR;
-    if (!current_device) {
-        printf("K150: ERROR: No device detected for EEPROM program\n");
-        return ERROR;
-    }
-    
-    if (k150_send_device_params(current_device) != SUCCESS) return ERROR;
-    if (k150_voltages_on() != SUCCESS) return ERROR;
-
-    unsigned char cmd = P018_CMD_PROGRAM_EEPROM;
-    printf("K150: Sending program EEPROM command (0x09)\n");
-    if (k150_write_serial(&cmd, 1) != SUCCESS) {
-        k150_voltages_off();
-        return ERROR;
-    }
-    usleep(DELAY_US);
-    
-    unsigned char ack;
-    if (k150_read_serial(&ack, 1) != SUCCESS || ack != P018_ACK_PROGRAM) {
-        printf("K150: ERROR: Expected 'Y' ACK for EEPROM program, got 0x%02x\n", ack);
-        k150_voltages_off();
-        return ERROR;
-    }
-
-    int total_written = 0;
-    while (total_written < size) {
-        int chunk_size = (size - total_written > CHUNK_SIZE) ? CHUNK_SIZE : size - total_written;
-        if (k150_write_serial(buffer + total_written, chunk_size) != SUCCESS) {
-            printf("K150: EEPROM program write failed at byte %d\n", total_written);
-            k150_voltages_off();
-            return ERROR;
-        }
-        total_written += chunk_size;
-        printf("K150: EEPROM program progress: %d/%d bytes\n", total_written, size);
-        usleep(DELAY_US);
-    }
-
-    if (k150_read_serial(&ack, 1) != SUCCESS || ack != P018_ACK_PROGRAM_DONE) {
-        printf("K150: ERROR: Expected 'P' ACK for EEPROM program complete, got 0x%02x\n", ack);
-        k150_voltages_off();
-        return ERROR;
-    }
-    
-    k150_voltages_off();
-    printf("K150: EEPROM programming completed successfully\n");
-    return SUCCESS;
-}
-
-int k150_force_led_off(const char *device_path)
-{
-    printf("K150: Forcing LED off for device %s\n", device_path ? device_path : "default");
-    
-    if (k150_open_serial_port() == SUCCESS) {
-        k150_voltages_off();
-        k150_close_serial_port();
     }
     return SUCCESS;
 }
@@ -691,12 +515,12 @@ int DoDetectChip_Enhanced(char** detected_name)
 {
     if (k150_open_port() != SUCCESS) return ERROR;
     
-    const PIC_DEFINITION *device = NULL;
+    PIC_DEFINITION *device = NULL;
     int result = k150_detect_chip_enhanced(&device);
     
     if (result == SUCCESS && device) {
         *detected_name = strdup(device->name);
-        current_device = (PIC_DEFINITION *)device;
+        current_device = device;
     }
     
     k150_close_port();
