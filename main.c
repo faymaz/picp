@@ -4247,15 +4247,12 @@ int main(int argc,char *argv[])
 		printf("DEBUG: argv[%d] = '%s'\n", i, argv[i]);
 		fflush(stdout);
 	}
-	
+
 	bool				fail;
 	unsigned int	baudRate;
 	unsigned char	dataBits, stopBits, parity;
 	bool				done;
 	char				*flags;
-	time_t			tp;
-	struct tm		*date_time;
-	int				i, year;
 	const PIC_DEFINITION	*picDevice = NULL;
 
 #ifdef BETA
@@ -4264,11 +4261,15 @@ int main(int argc,char *argv[])
 	strcpy(versionString, "0.6.9");
 #endif
 
-	comm_debug = NULL;
 	signal(SIGINT, SigHandler);					// set up a signal handler
 
 	programName = *argv++;							// name of the application
 	argc--;
+
+	fprintf(stderr, "DEBUG: argc=%d after program name removal\n", argc);
+	for (int i = 0; i < argc; i++) {
+		fprintf(stderr, "DEBUG: argv[%d]='%s'\n", i, argv[i]);
+	}
 
 	fail = false;
 	verboseOutput = true;							// be verbose unless told otherwise
@@ -4282,7 +4283,7 @@ int main(int argc,char *argv[])
 		return 1;
 	}
 
-	if (argc > 2)										// need at least four arguments to do anything
+	if (argc >= 2)										// need at least three arguments to do anything
 	{
 		// Check for K150 flag first
 		if ((!strcmp(argv[0], "-k150")) || (!strcmp(argv[0], "-K150")))
