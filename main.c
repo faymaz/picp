@@ -4588,9 +4588,10 @@ int main(int argc,char *argv[])
 			else
 				fprintf(stderr, "failed to open device '%s'\n", deviceName);
 		}
-		else
-		{
-			fprintf(stderr, "unrecognized PIC device type: '%s'\n", picName);		// don't know that one;
+		else {
+			printf("unrecognized PIC device type: %s\n", picName);
+			printf("DEBUG: Available PIC types include: PIC16F628A, 16F628A\n");
+		}
 			ShowDevices();														// give a helpful list of supported devices
 		}
 	}
