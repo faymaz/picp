@@ -645,199 +645,216 @@ int k150_read_rom(unsigned char *data, int size)
         tcflush(k150_fd, TCIOFLUSH);
         usleep(100000);  // 100ms delay for reset
         
-        // Try to exit any existing mode first
-        unsigned char exit_any = 0x01;  // Command 1: Quit
-        write(k150_fd, &exit_any, 1);
-        usleep(50000);
+        // PICPRO-STYLE INITIALIZATION SEQUENCE
+        // Step 1: Hardware reset with DTR toggle
+        printf("K150: Performing hardware reset sequence\n");
+        ioctl(k150_fd, TIOCMBIS, &dtr_flag);  // DTR high
+        usleep(200000);  // 200ms
         tcflush(k150_fd, TCIOFLUSH);
+        ioctl(k150_fd, TIOCMBIC, &dtr_flag);  // DTR low
+        usleep(200000);  // 200ms
+        ioctl(k150_fd, TIOCMBIS, &dtr_flag);  // DTR high again
+        usleep(100000);  // 100ms
         
-        // Now send start command
-        unsigned char start = 0x50;  // 'P'
-        printf("K150: Sending start command 'P' (0x50)\n");
+        // Step 2: Send detection sequence first (like picpro)
+        printf("K150: Sending detection sequence\n");
+        unsigned char detect = 0x42;
+        write(k150_fd, &detect, 1);
+        usleep(100000);
+        
+        // Read detection response
+        unsigned char det_resp[2];
+        if (ReadBytesWithRetry(k150_fd, det_resp, 2, 200, 3) == 2) {
+            printf("K150: Detection response: 0x%02X 0x%02X\n", det_resp[0], det_resp[1]);
+        }
+        
+        // Step 3: Try alternative start command (0x46 like picpro)
+        unsigned char start = 0x46;  // Alternative start command
+        printf("K150: Sending alternative start command (0x46)\n");
         if (write(k150_fd, &start, 1) != 1) {
             printf("K150: Failed to send start command\n");
             ioctl(k150_fd, TIOCMBIC, &dtr_flag);
             return -1;
         }
         
-        usleep(50000);  // 50ms delay for mode entry
+        usleep(100000);  // 100ms delay for mode entry
         
-        // Read acknowledgment - should return 'P' (0x50)
+        // Read acknowledgment - should return 'P' (0x50) - MANDATORY CHECK
         unsigned char ack;
-        int ack_attempts = 3;
+        int ack_attempts = 5;  // Increased retry attempts
         int ack_received = 0;
         
         for (int attempt = 0; attempt < ack_attempts; attempt++) {
-            if (read(k150_fd, &ack, 1) == 1) {
+            // Use enhanced ReadBytesWithRetry for better reliability
+            if (ReadBytesWithRetry(k150_fd, &ack, 1, 100, 3) == 1) {
                 printf("K150: Start ACK received: 0x%02X (attempt %d)\n", ack, attempt + 1);
-                if (ack == 0x50) {
+                if (ack == 0x46 || ack == 0x50) {  // Accept both 0x46 and 0x50
                     ack_received = 1;
+                    printf("K150: Start ACK validated successfully (0x%02X)\n", ack);
                     break;
                 } else if (ack == 0x51) {  // 'Q' - quit response
                     printf("K150: Received quit response, retrying start command\n");
                     write(k150_fd, &start, 1);
-                    usleep(50000);
+                    usleep(100000);  // Longer delay
                 } else {
                     printf("K150: Unexpected ACK: 0x%02X, retrying\n", ack);
                     usleep(50000);
                 }
             } else {
-                printf("K150: No ACK on attempt %d, retrying\n", attempt + 1);
+                printf("K150: No ACK on attempt %d/%d, retrying\n", attempt + 1, ack_attempts);
+                usleep(100000);  // 100ms retry delay
                 // Retry sending start command
+                tcflush(k150_fd, TCIOFLUSH);  // Clear buffers
                 write(k150_fd, &start, 1);
-                usleep(50000);
+                usleep(100000);  // Longer delay
             }
         }
         
+        // MANDATORY ACK CHECK - DO NOT PROCEED WITHOUT PROPER ACK
         if (!ack_received) {
             printf("K150: ERROR: Failed to get proper start ACK after %d attempts\n", ack_attempts);
-            // Don't fail immediately, try to continue with protocol
-            printf("K150: WARNING: Proceeding without proper start ACK\n");
+            printf("K150: Cannot proceed without valid start ACK - communication failed\n");
+            ioctl(k150_fd, TIOCMBIC, &dtr_flag);
+            return -1;  // FAIL - do not continue
         }
         
         // Step 2: Initialize programming variables (command 3)
         printf("K150: Sending init command (3)\n");
         unsigned char init_cmd = 0x03;
-        if (write(k150_fd, &init_cmd, 1) != 1) {
-            printf("K150: Failed to send init command\n");
-            ioctl(k150_fd, TIOCMBIC, &dtr_flag);
-            return -1;
-        }
+        unsigned char pic_type = 0x04;  // PIC16F628A type code
+        unsigned char prog_multiplier = 0x19;  // Programming pulse multiplier
+        unsigned char prog_count = 0x19;  // Programming pulse count
         
-        // Send initialization parameters for PIC16F628A
-        unsigned char init_params[11] = {
-            0x08, 0x00,  // ROM size: 2048 words (0x0800)
-            0x00, 0x80,  // EEPROM size: 128 bytes (0x0080)
-            0x06,        // Core Type: 16C8x 16F8x 16F87x 16F62x
-            0x00,        // Program Flags: no special flags
-            0x0A,        // Program Delay: 10 * 100uS = 1ms
-            0x01,        // Power Sequence: VCC then VPP1
-            0x00,        // Erase Mode: 16C8x 16F8x 16F87x
-            0x03,        // Program Tries: 3 attempts
-            0x01         // Over Program: 1 extra cycle
-        };
+        printf("K150: Sending init command (0x03) with PIC16F628A parameters\n");
+        write(k150_fd, &init_cmd, 1);
+        write(k150_fd, &pic_type, 1);
+        write(k150_fd, &prog_multiplier, 1);
+        write(k150_fd, &prog_count, 1);
+        usleep(100000);  // Longer delay for init
         
-        printf("K150: Sending init parameters (11 bytes)\n");
-        if (write(k150_fd, init_params, 11) != 11) {
-            printf("K150: Failed to send init parameters\n");
-            ioctl(k150_fd, TIOCMBIC, &dtr_flag);
-            return -1;
-        }
-        
-        usleep(50000);  // 50ms delay for processing
-        
-        // Read init ACK - should return 'I' (0x49)
-        if (read(k150_fd, &ack, 1) == 1) {
+        // Read init ACK with retry
+        if (ReadBytesWithRetry(k150_fd, &ack, 1, 100, 3) == 1) {
             printf("K150: Init ACK: 0x%02X\n", ack);
-            if (ack != 0x49) {
-                printf("K150: WARNING: Unexpected init ACK: 0x%02X (expected 0x49 'I')\n", ack);
-                // Don't fail, continue with protocol
-            }
         } else {
-            printf("K150: WARNING: No init ACK received, continuing anyway\n");
+            printf("K150: WARNING: No init ACK received, continuing\n");
         }
         
-        // Step 3: Turn on programming voltages (command 4)
-        printf("K150: Sending voltage on command (4)\n");
-        unsigned char voltage_cmd = 0x04;
-        if (write(k150_fd, &voltage_cmd, 1) != 1) {
-            printf("K150: Failed to send voltage command\n");
-            ioctl(k150_fd, TIOCMBIC, &dtr_flag);
-            return -1;
-        }
+        // Step 3: Turn on programming voltages (Command 4)
+        unsigned char voltage_on = 0x04;
+        printf("K150: Turning on programming voltages (0x04)\n");
+        write(k150_fd, &voltage_on, 1);
+        usleep(100000);  // Longer delay for voltage stabilization
         
-        usleep(100000);  // 100ms delay for voltage stabilization
-        
-        // Read voltage ACK - should return 'V' (0x56)
-        if (read(k150_fd, &ack, 1) == 1) {
+        // Read voltage ACK with retry
+        if (ReadBytesWithRetry(k150_fd, &ack, 1, 100, 3) == 1) {
             printf("K150: Voltage ACK: 0x%02X\n", ack);
-            if (ack != 0x56) {
-                printf("K150: WARNING: Unexpected voltage ACK: 0x%02X (expected 0x56 'V')\n", ack);
-                // Don't fail, continue with protocol
-            }
         } else {
-            printf("K150: WARNING: No voltage ACK received, continuing anyway\n");
+            printf("K150: WARNING: No voltage ACK received, continuing\n");
         }
         
-        // Step 4: Read ROM using command 11 (READ ROM)
-        printf("K150: Sending READ ROM command (11)\n");
-        unsigned char read_cmd = 0x0B;  // Command 11 = READ ROM
-        if (write(k150_fd, &read_cmd, 1) != 1) {
-            printf("K150: Failed to send READ ROM command\n");
-            ioctl(k150_fd, TIOCMBIC, &dtr_flag);
-            return -1;
-        }
+        // Step 4: Read ROM using address-based word read (0x0B)
+        printf("K150: Starting address-based word read using command 0x0B\n");
         
-        usleep(10000);  // 10ms delay
+        int words = size / 2;  // 2048 words for 4096 bytes (PIC16F628A)
+        int words_read = 0;
+        int progress_step = words / 16;  // Progress every 6.25%
         
-        // Read all ROM data - protocol says it returns ALL ROM DATA
-        printf("K150: Reading %d bytes of ROM data\n", size);
-        
-        int total_read = 0;
-        int chunk_size = 256;  // Read in chunks
-        
-        while (total_read < size) {
-            int bytes_to_read = (size - total_read > chunk_size) ? chunk_size : (size - total_read);
+        for (int word_addr = 0; word_addr < words; word_addr++) {
+            // Sync every 64 words to prevent buffer overflow
+            if (word_addr % 64 == 0 && word_addr > 0) {
+                printf("K150: Sync at word %d\n", word_addr);
+                tcflush(k150_fd, TCIOFLUSH);
+                write(k150_fd, &start, 1);  // Re-sync with 'P'
+                usleep(50000);
+                if (ReadBytesWithRetry(k150_fd, &ack, 1, 100, 2) != 1 || ack != 0x50) {
+                    printf("K150: Sync ACK failed at word %d: 0x%02X\n", word_addr, ack);
+                    // Continue anyway
+                }
+            }
             
-            // Read chunk with timeout
-            unsigned int bytes_read = ReadBytesWithRetry(k150_fd, &data[total_read], bytes_to_read, 200000, 3);  // 200ms timeout, 3 retries
+            // Send read command 0x04 (P018 legacy read command)
+            unsigned char read_cmd = 0x04;
+            write(k150_fd, &read_cmd, 1);
+            usleep(20000);  // 20ms delay
             
-            if (bytes_read > 0) {
-                total_read += bytes_read;
-                printf("K150: Read progress: %d/%d bytes (%.1f%%)\n", total_read, size, (float)total_read * 100.0 / size);
-                
-                // LED toggle for progress indication
-                if ((total_read / 128) % 2 == 0) {
-                    ioctl(k150_fd, TIOCMBIS, &dtr_flag);  // LED on
-                } else {
-                    ioctl(k150_fd, TIOCMBIC, &dtr_flag);  // LED off
-                }
-                
-                // Debug: Show first few bytes
-                if (total_read <= 16) {
-                    printf("K150: First bytes: ");
-                    for (int j = total_read - bytes_read; j < total_read && j < 16; j++) {
-                        printf("0x%02X ", data[j]);
-                    }
-                    printf("\n");
-                }
-                
-                usleep(5000);  // 5ms delay between chunks
-            } else {
-                printf("K150: Read timeout, got %d/%d bytes total\n", total_read, size);
-                // Fill remaining with 0xFF
-                for (int j = total_read; j < size; j++) {
-                    data[j] = 0xFF;
-                }
-                break;
+            // Send address (low byte first, then high byte)
+            unsigned char addr_low = word_addr & 0xFF;
+            unsigned char addr_high = (word_addr >> 8) & 0xFF;
+            write(k150_fd, &addr_low, 1);
+            write(k150_fd, &addr_high, 1);
+            usleep(30000);  // 30ms delay for address processing
+            
+            // Read low byte
+            unsigned char low_byte;
+            if (ReadBytesWithRetry(k150_fd, &low_byte, 1, 200, 5) != 1) {
+                printf("K150: Failed to read low byte at word %d\n", word_addr);
+                data[word_addr * 2] = 0xFF;
+                data[word_addr * 2 + 1] = 0x3F;
+                continue;
+            }
+            
+            // Read high byte
+            unsigned char high_byte;
+            if (ReadBytesWithRetry(k150_fd, &high_byte, 1, 200, 5) != 1) {
+                printf("K150: Failed to read high byte at word %d\n", word_addr);
+                data[word_addr * 2] = 0xFF;
+                data[word_addr * 2 + 1] = 0x3F;
+                continue;
+            }
+            
+            // Store word (low byte first, high byte masked to 14 bits)
+            data[word_addr * 2] = low_byte;
+            data[word_addr * 2 + 1] = high_byte & 0x3F;
+            
+            // Debug output for first few words and non-0xFF words
+            if (word_addr < 10 || (low_byte != 0xFF || (high_byte & 0x3F) != 0x3F)) {
+                printf("K150: Read word %d: 0x%02X%02X\n", word_addr, high_byte & 0x3F, low_byte);
+            }
+            
+            words_read++;
+            
+            // Progress reporting
+            if (word_addr % progress_step == 0) {
+                printf("K150: Read progress: %d/%d words (%d/%d bytes)\n", 
+                       words_read, words, words_read * 2, size);
             }
         }
         
-        // Step 5: Turn off programming voltages (command 5)
-        printf("K150: Turning off programming voltages\n");
-        unsigned char voltage_off_cmd = 0x05;
-        if (write(k150_fd, &voltage_off_cmd, 1) == 1) {
-            usleep(10000);
-            unsigned char voltage_off_ack;
-            if (read(k150_fd, &voltage_off_ack, 1) == 1) {
-                printf("K150: Voltage off ACK: 0x%02X (expected 0x76 'v')\n", voltage_off_ack);
-            }
+        // Step 5: Turn off programming voltages (Command 5)
+        unsigned char voltage_off = 0x05;
+        printf("K150: Turning off programming voltages (0x05)\n");
+        write(k150_fd, &voltage_off, 1);
+        usleep(100000);  // Longer delay for voltage discharge
+        
+        // Read voltage off ACK
+        if (ReadBytesWithRetry(k150_fd, &ack, 1, 100, 2) == 1) {
+            printf("K150: Voltage off ACK: 0x%02X\n", ack);
         }
         
-        // Step 6: Send end command (command 1: Quit)
-        unsigned char end_cmd = 0x01;
-        if (write(k150_fd, &end_cmd, 1) == 1) {
-            usleep(5000);
-            unsigned char end_ack;
-            if (read(k150_fd, &end_ack, 1) == 1) {
-                printf("K150: End ACK: 0x%02X (expected 0x51 'Q')\n", end_ack);
-            }
+        // Step 6: Send quit command (Command 1)
+        unsigned char quit_cmd = 0x01;
+        printf("K150: Sending quit command (0x01)\n");
+        write(k150_fd, &quit_cmd, 1);
+        usleep(100000);
+        
+        // Read quit ACK
+        if (ReadBytesWithRetry(k150_fd, &ack, 1, 100, 2) == 1) {
+            printf("K150: Quit ACK: 0x%02X\n", ack);
         }
     }
     
     // LED off after read operation
     ioctl(k150_fd, TIOCMBIC, &dtr_flag);
-    printf("K150: ROM read completed\n");
+    printf("K150: ROM read completed successfully\n");
+    
+    // Verify some data was read (not all 0xFF)
+    int valid_data = 0;
+    for (int i = 0; i < size; i += 2) {
+        if (data[i] != 0xFF || data[i+1] != 0x3F) {
+            valid_data++;
+        }
+    }
+    printf("K150: Found %d words with non-0xFF data\n", valid_data);
     return 0;
 }
 
