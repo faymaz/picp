@@ -86,6 +86,12 @@
 #include "picdev.h"
 #include "k150.h"
 
+// K150 constants
+#ifndef SUCCESS
+#define SUCCESS 0
+#define ERROR -1
+#endif
+
 // Function declarations for K150 verification
 bool DoVerifyPgm(const PIC_DEFINITION *picDevice, FILE *theFile);
 bool DoVerifyData(const PIC_DEFINITION *picDevice, FILE *theFile);
@@ -4286,6 +4292,16 @@ int main(int argc,char *argv[])
 			programmerSupport = P_K150;
 			argc--;
 			argv++;
+			
+			// Check for chip detection command (pk2cmd -P equivalent)
+			if (argc > 0 && (!strcmp(argv[0], "detect") || !strcmp(argv[0], "-detect") || !strcmp(argv[0], "-d"))) {
+				printf("DEBUG: K150 chip detection command detected\n");
+				if (k150_detect_chip_command_line() == SUCCESS) {
+					return 0; // Success, exit program
+				} else {
+					return 1; // Error, exit with error code
+				}
+			}
 		}
 		
 		if ((!strcmp(argv[0], "-c")) || (!strcmp(argv[0], "-C")))	// if first argument is '-c', debug comm line
@@ -4356,6 +4372,17 @@ int main(int argc,char *argv[])
 						
 						switch (*flags)
 						{
+							case 'd':
+								// Check if it's "detect" command
+								if (strncmp(flags, "detect", 6) == 0) {
+									printf("DEBUG: K150 chip detection requested\n");
+									if (k150_detect_chip_command_line() == SUCCESS) {
+										return 0; // Success, exit program
+									} else {
+										return 1; // Error, exit with error code
+									}
+								}
+								break;
 							case 'e':
 								flags++;
 								switch (*flags)

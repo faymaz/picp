@@ -82,6 +82,7 @@ int k150_perform_operation(const char *device_name, const char *operation, const
 // Chip detection functions
 int k150_detect_chip(const PIC_DEFINITION **detected_device);
 int k150_check_chip_in_socket(void);
+int k150_detect_chip_command_line(void);
 
 // Internal helper functions
 int k150_send_command(unsigned char cmd);
