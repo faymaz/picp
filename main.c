@@ -4360,10 +4360,15 @@ int main(int argc,char *argv[])
 								break;
 							case 'r':
 								printf("DEBUG: K150 read command detected\n");
-								flags++;
-								if (*flags == 'p')
+								// Check if next argument is -p or if we have combined -rp
+								if (flags[1] == 'p' || (argc > 0 && strcmp(*argv, "-p") == 0))
 								{
 									printf("DEBUG: K150 read program memory requested\n");
+									// Skip -p if it's a separate argument
+									if (argc > 0 && strcmp(*argv, "-p") == 0) {
+										argv++;
+										argc--;
+									}
 									if (argc > 0)
 									{
 										char *filename = *argv++;
@@ -4591,7 +4596,6 @@ int main(int argc,char *argv[])
 		else {
 			printf("unrecognized PIC device type: %s\n", picName);
 			printf("DEBUG: Available PIC types include: PIC16F628A, 16F628A\n");
-		}
 			ShowDevices();														// give a helpful list of supported devices
 		}
 	}
