@@ -78,6 +78,11 @@ int theDevice = -1; // Global device handle for compatibility
 // External device list from picdev.c
 extern const PIC_DEFINITION *deviceArray[];
 
+// Configuration memory commands (P018 protocol)
+#define P018_CMD_READ_CONFIG     0x0E
+#define P018_CMD_WRITE_CONFIG    0x09
+#define P018_ACK_CONFIG          0x43  // 'C'
+
 //-----------------------------------------------------------------------------
 // Serial communication functions
 //-----------------------------------------------------------------------------
