@@ -4320,6 +4320,22 @@ int main(int argc,char *argv[])
 					fprintf(stderr, "ERROR: Invalid config value: %s\n", argv[i]);
 					return 1;
 				}
+			} else if (strcmp(argv[i], "-rc") == 0 && i + 1 < argc) {
+				// Read config to HEX file: -rc config.hex
+				char *output_file = argv[++i];
+				isK150 = true;
+				programmerSupport = P_K150;
+				fprintf(stderr, "DEBUG: Config read requested to file: %s\n", output_file);
+				
+				// Read configuration memory and save to HEX file
+				extern int k150_read_config_to_hex(const char *filename, unsigned int config_addr);
+				if (k150_read_config_to_hex(output_file, 0x2007) == 0) {
+					fprintf(stderr, "K150: Configuration memory read completed successfully\n");
+					return 0;
+				} else {
+					fprintf(stderr, "ERROR: Configuration memory read failed\n");
+					return 1;
+				}
 			} else if (strcmp(argv[i], "-k150") == 0 && i + 1 < argc && strcmp(argv[i + 1], "detect") == 0) {
 				fprintf(stderr, "DEBUG: K150 chip detection command detected\n");
 				k150_detect_requested = true;

@@ -96,6 +96,17 @@ int k150_send_byte(unsigned char byte);
 int k150_receive_byte(unsigned char *byte);
 int k150_receive_response(void);
 
+// Serial communication functions
+int k150_write_serial(const unsigned char *buf, int len);
+int k150_read_serial(unsigned char *buf, int len);
+
+// Configuration memory functions (fuse bit programming)
+int k150_read_config(unsigned char *config);
+int k150_program_config(unsigned char *config);
+int k150_write_config_with_verify(unsigned int config_value);
+int k150_parse_fuse_string(const char *fuse_string, const char *device_name, unsigned int *config_value);
+int k150_read_config_to_hex(const char *filename, unsigned int config_addr);
+
 // Utility functions
 int k150_force_led_off(const char *device_path);
 
