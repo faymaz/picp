@@ -80,10 +80,9 @@
 
 #include "atoi_base.h"
 #include "parse.h"
-#include "serial.h"
-#include "parse.h"
 #include "record.h"
 #include "picdev.h"
+#include "serial.h"
 #include "k150.h"
 
 // K150 constants
@@ -586,7 +585,7 @@ static void check_jupic(void)
 // four byte command with 0x02.
 //
 
-static void check_programmer(void)
+static void check_programmer_legacy(void)
 {
 	int	i;
 	unsigned int	to;
@@ -598,7 +597,7 @@ static void check_programmer(void)
 
 	// First check for K150 programmer
 	strcpy(port_name, "/dev/ttyUSB0");  // K150 typically uses ttyUSB0
-	if (k150_open_port() == 0)
+	if (k150_open_port("/dev/ttyUSB0") == 0)
 	{
 		if (k150_detect_programmer() == 0)
 		{
@@ -1520,7 +1519,7 @@ static bool DoErasePgm(const PIC_DEFINITION *picDevice, bool flag)
 	// Handle K150 programmer
 	if (isK150)
 	{
-		if (k150_open_port() == 0)
+		if (k150_open_port("/dev/ttyUSB0") == 0)
 		{
 			// Determine PIC type code based on device
 			unsigned char pic_type = 0x04; // Default PIC16F84
@@ -2518,7 +2517,7 @@ static bool DoWritePgm(const PIC_DEFINITION *picDevice, FILE *theFile)
 		fflush(stdout);
 		if (!k150_is_port_open()) {
 			printf("K150: Port closed, reopening for programming\n");
-			if (k150_open_port() != 0) {
+			if (k150_open_port("/dev/ttyUSB0") != 0) {
 				printf("K150: Failed to reopen port for programming\n");
 				return false;
 			}
@@ -2621,7 +2620,7 @@ static bool DoWritePgm(const PIC_DEFINITION *picDevice, FILE *theFile)
 					fflush(stdout);
 					
 					// Programming successful - K150 verification requires separate operation
-					printf("K150: ✅ Programming completed successfully!\n");
+					printf("K150: Programming completed successfully!\n");
 					printf("K150: %s programmed with %d bytes\n", picDevice->name, pgmsize);
 					printf("K150: Programming operation finished\n");
 					// Note removed - verification integrated
@@ -2813,7 +2812,7 @@ static bool DoReadPgm(const PIC_DEFINITION *picDevice, FILE *theFile)
 	{
 		if ((theBuffer = (unsigned char *) malloc(size)))
 		{
-			if (k150_open_port() == 0)
+			if (k150_open_port("/dev/ttyUSB0") == 0)
 			{
 				// Determine PIC type code based on device
 				unsigned char pic_type = 0x04; // Default PIC16F84
@@ -4254,6 +4253,10 @@ int main(int argc,char *argv[])
 	bool				done;
 	char				*flags;
 	const PIC_DEFINITION	*picDevice = NULL;
+	time_t tp;
+	struct tm *date_time;
+	int year;
+	int i;
 
 #ifdef BETA
 	sprintf(versionString, "0.6.9 - beta %d", BETA);
@@ -4283,36 +4286,65 @@ int main(int argc,char *argv[])
 		return 1;
 	}
 
-	if (argc >= 2)										// need at least three arguments to do anything
-	{
-		// Check for K150 flag first
-		if ((!strcmp(argv[0], "-k150")) || (!strcmp(argv[0], "-K150")))
-		{
-			printf("DEBUG: K150 flag detected\n");
-			isK150 = true;
-			programmerSupport = P_K150;
-			argc--;
-			argv++;
-			
-			// Check for chip detection command (pk2cmd -P equivalent)
-			if (argc > 0 && (!strcmp(argv[0], "detect") || !strcmp(argv[0], "-detect") || !strcmp(argv[0], "-d"))) {
-				printf("DEBUG: K150 chip detection command detected\n");
-				if (k150_detect_chip_command_line() == SUCCESS) {
-					return 0; // Success, exit program
-				} else {
-					return 1; // Error, exit with error code
-				}
+	// Parse command line arguments
+	char *port = "/dev/ttyUSB0"; // Default port
+	bool k150_detect_requested = false;
+	
+	for (int i = 0; i < argc; i++) {
+		if (argv[i][0] == '-') {
+			if (strcmp(argv[i], "-p") == 0 && i + 1 < argc) {
+				port = argv[++i]; // User-specified port
+				fprintf(stderr, "DEBUG: User-specified port: %s\n", port);
+			} else if (strcmp(argv[i], "-k150") == 0 && i + 1 < argc && strcmp(argv[i + 1], "detect") == 0) {
+				fprintf(stderr, "DEBUG: K150 chip detection command detected\n");
+				k150_detect_requested = true;
+				isK150 = true;
+				programmerSupport = P_K150;
+				i++; // Skip "detect" argument
+				break; // Exit parsing loop for detection
 			}
 		}
+	}
+	
+	// Handle K150 chip detection
+	if (k150_detect_requested) {
+		fprintf(stderr, "K150: Detecting connected PIC device...\n");
+		fprintf(stderr, "DEBUG: Opening K150 port %s\n", port);
 		
+		if (init_serial(port) != SUCCESS) {
+			fprintf(stderr, "ERROR: Failed to initialize serial port %s\n", port);
+			return 1;
+		}
+		fprintf(stderr, "DEBUG: K150 port opened successfully\n");
+		
+		fprintf(stderr, "K150: Detecting programmer...\n");
+		if (check_programmer() != SUCCESS) {
+			fprintf(stderr, "ERROR: K150 programmer detection failed\n");
+			k150_close_port();
+			return 1;
+		}
+		
+		if (k150_detect_chip_command_line() == SUCCESS) {
+			fprintf(stderr, "DEBUG: K150 port closed\n");
+			k150_close_port();
+			return 0;
+		} else {
+			fprintf(stderr, "DEBUG: K150 port closed\n");
+			k150_close_port();
+			return 1;
+		}
+	}
+	
+	if (argc >= 2)										// need at least three arguments to do anything
+	{
 		if ((!strcmp(argv[0], "-c")) || (!strcmp(argv[0], "-C")))	// if first argument is '-c', debug comm line
 		{
 			comm_debug = fopen("picpcomm.log", "a");
 
 			if (comm_debug)
 			{
-				time(&tp);								// get current time
-				date_time = localtime(&tp);		// convert to hr/min/day etc
+				time(&tp);														// get current time
+				date_time = localtime(&tp);			// convert to hr/min/day etc
 				year = date_time->tm_year;
 
 				while (year > 100)

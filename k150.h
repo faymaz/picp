@@ -55,7 +55,7 @@
 #define K150_VERSION             3
 
 // Function declarations
-int k150_open_port(void);
+int k150_open_port(const char *device);
 int k150_close_port(void);
 int k150_detect(void);
 int k150_init_pic(void);
@@ -79,8 +79,13 @@ int k150_program_rom_enhanced(const PIC_DEFINITION *picDevice, const unsigned ch
 int k150_verify_rom_enhanced(const PIC_DEFINITION *picDevice, const unsigned char *expected_data, int size);
 int k150_perform_operation(const char *device_name, const char *operation, const char *filename);
 
+// Serial port functions
+int init_serial(const char *device);
+int check_programmer(void);
+
 // Chip detection functions
-int k150_detect_chip(const PIC_DEFINITION **detected_device);
+struct pic_device;
+int k150_detect_chip(struct pic_device **detected_device);
 int k150_check_chip_in_socket(void);
 int k150_detect_chip_command_line(void);
 
@@ -92,5 +97,8 @@ int k150_receive_response(void);
 
 // Utility functions
 int k150_force_led_off(const char *device_path);
+
+// Global variables
+extern int theDevice;
 
 #endif // __K150_H_
