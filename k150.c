@@ -51,8 +51,8 @@
 
 #define MAX_ROM_SIZE 16384  // Maximum ROM size in bytes (8192 words)
 #define CHUNK_SIZE 64       // Read/write chunk size
-#define TIMEOUT_RETRIES 50  // Increased serial timeout retries for PL2303
-#define DELAY_US 10000      // 10ms delay between operations
+#define TIMEOUT_RETRIES 100  // Retry sayısını artırdık
+#define DELAY_US 20000       // 20ms gecikme
 
 // Constants for K150 functions
 #define SUCCESS 0
@@ -94,7 +94,7 @@ static int k150_read_serial(unsigned char *buf, int len)
         FD_ZERO(&rfds);
         FD_SET(k150_fd, &rfds);
         tv.tv_sec = 0;
-        tv.tv_usec = 100000; // 100ms timeout
+        tv.tv_usec = 200000; // 200ms timeout
 
         int r = select(k150_fd + 1, &rfds, NULL, NULL, &tv);
         if (r > 0) {
@@ -572,29 +572,39 @@ static int k150_open_serial_port(const char *device)
     
     // Configure serial port for K150 (19200 baud, 8N1)
     tcgetattr(k150_fd, &options);
-    cfsetispeed(&options, B19200);
-    cfsetospeed(&options, B19200);
+    // Try different baud rates for PL2303 compatibility
+    cfsetispeed(&options, B9600);
+    cfsetospeed(&options, B9600);
     options.c_cflag = CS8 | CLOCAL | CREAD; // 8N1, no parity
     options.c_iflag = IGNPAR;
     options.c_oflag = 0;
     options.c_lflag = 0;
-    options.c_cc[VTIME] = 5; // 500ms timeout
+    options.c_cc[VTIME] = 10; // 1 saniye timeout
     options.c_cc[VMIN] = 0; // Minimum 0 bytes, timeout-based
     
     tcsetattr(k150_fd, TCSANOW, &options);
     tcflush(k150_fd, TCIOFLUSH);
     fcntl(k150_fd, F_SETFL, 0); // Clear non-blocking flags
     
-    // Simple DTR reset (revert to working version)
+    // Enhanced DTR/RTS reset for PL2303 compatibility
     int dtr_flag = TIOCM_DTR;
+    int rts_flag = TIOCM_RTS;
+    
+    // Clear all signals first
+    ioctl(k150_fd, TIOCMBIC, &dtr_flag);
+    ioctl(k150_fd, TIOCMBIC, &rts_flag);
+    usleep(200000); // 200ms
+    tcflush(k150_fd, TCIOFLUSH);
+    
+    // DTR reset cycle
     ioctl(k150_fd, TIOCMBIS, &dtr_flag);  // DTR high
     usleep(100000); // 100ms
-    tcflush(k150_fd, TCIOFLUSH);
     ioctl(k150_fd, TIOCMBIC, &dtr_flag);  // DTR low
-    usleep(100000); // 100ms
+    usleep(200000); // 200ms
+    
+    tcflush(k150_fd, TCIOFLUSH);
     
     // Set RTS for LED control
-    int rts_flag = TIOCM_RTS;
     ioctl(k150_fd, TIOCMBIS, &rts_flag);
     
     fprintf(stderr, "DEBUG: Serial port %s initialized at 19200,8,N,1 with DTR reset\n", device);
@@ -656,14 +666,24 @@ int k150_detect_programmer(void)
     if (k150_write_serial(&cmd, 1) != SUCCESS) return ERROR;
     usleep(DELAY_US);
     
-    if (k150_read_serial(response, 2) != SUCCESS || response[0] != 0x42) {
-        fprintf(stderr, "K150: ERROR: Programmer detection failed, got 0x%02x 0x%02x\n", response[0], response[1]);
-        return ERROR;
+    // Try multiple times with different delays for stubborn hardware
+    for (int attempt = 0; attempt < 3; attempt++) {
+        if (attempt > 0) {
+            fprintf(stderr, "K150: Retry attempt %d/3\n", attempt + 1);
+            usleep(DELAY_US * 2); // Longer delay for retries
+        }
+        
+        if (k150_read_serial(response, 2) == SUCCESS && response[0] == 0x42) {
+            fprintf(stderr, "K150: Programmer detected, firmware 0x%02x\n", response[1]);
+            return SUCCESS;
+        }
+        
+        // Flush and retry
+        tcflush(k150_fd, TCIOFLUSH);
     }
     
-    fprintf(stderr, "K150: Programmer detected, firmware 0x%02x\n", response[1]);
-    k150_firmware_version = response[1];
-    return SUCCESS;
+    fprintf(stderr, "K150: ERROR: Programmer detection failed after 3 attempts, got 0x%02x 0x%02x\n", response[0], response[1]);
+    return ERROR;
 }
 
 int k150_is_port_open(void)
