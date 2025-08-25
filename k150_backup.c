@@ -169,7 +169,7 @@ void k150_close_port(void)
         ioctl(k150_fd, TIOCMBIC, &rts_flag);
         close(k150_fd);
         k150_fd = -1;
-        printf("DEBUG: K150 port closed\n");
+        //printf("DEBUG: K150 port closed\n");
     }
 }
 

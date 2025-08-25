@@ -13,6 +13,8 @@ test_*.c
 backup_*.hex
 simple_*.hex
 valid_*.hex
+*.hex
+*.rom
 
 # Log files
 *.log
@@ -37,3 +39,6 @@ trace.log
 archive/
 fixchksum/
 picsnoop/
+hex_rom/
+sh/
+k150_test_results/
