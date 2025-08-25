@@ -49,22 +49,46 @@ int k150_read_config(unsigned char *config)
     extern char *port_name;
     if (k150_open_port(port_name ? port_name : "/dev/ttyUSB0") != SUCCESS) return ERROR;
     
-    // Step 1: Initialize K150 programmer (P018 protocol)
-    unsigned char init_cmd = 0x50;  // Enter programming mode
+    // Step 1: Detect K150 firmware and initialize properly
+    int firmware_version = k150_get_firmware_version();
+    printf("K150: Detected firmware version: 0x%04X\n", firmware_version);
+    
+    // Step 2: Use proper initialization sequence based on firmware
+    unsigned char init_cmd;
     unsigned char ack;
     
-    printf("K150: Entering programming mode\n");
+    if (firmware_version >= K150_FW_P016) {
+        // Modern P18A protocol initialization
+        init_cmd = 0x42;  // Detection command for P18A
+        printf("K150: Using P18A initialization (0x42)\n");
+    } else {
+        // Legacy P018 protocol initialization  
+        init_cmd = 0x50;  // 'P' command for P018
+        printf("K150: Using P018 initialization (0x50)\n");
+    }
+    
     if (k150_write_serial(&init_cmd, 1) != SUCCESS) {
-        printf("K150: Failed to send enter programming mode command\n");
+        printf("K150: Failed to send initialization command\n");
         k150_close_port();
         return ERROR;
     }
     
-    usleep(DELAY_US);
+    usleep(DELAY_US * 3);  // Longer delay for initialization
     
-    // Wait for acknowledgment
-    if (k150_read_serial(&ack, 1) != SUCCESS) {
-        printf("K150: No response to programming mode command, using fallback\n");
+    // Wait for acknowledgment with multiple retries
+    int retries = 0;
+    while (retries < 3) {
+        if (k150_read_serial(&ack, 1) == SUCCESS) {
+            printf("K150: Initialization response: 0x%02x\n", ack);
+            break;
+        }
+        retries++;
+        printf("K150: Initialization retry %d/3\n", retries);
+        usleep(DELAY_US);
+    }
+    
+    if (retries >= 3) {
+        printf("K150: No response to initialization, using fallback\n");
         // Fallback to last programmed value for verification
         config[0] = last_programmed_config & 0xFF;
         config[1] = (last_programmed_config >> 8) & 0xFF;
@@ -73,26 +97,57 @@ int k150_read_config(unsigned char *config)
         return SUCCESS;
     }
     
-    printf("K150: Programming mode response: 0x%02x\n", ack);
+    // Step 3: Initialize PIC device with proper device type
+    unsigned char pic_init_cmd[2];
+    if (firmware_version >= K150_FW_P016) {
+        pic_init_cmd[0] = 0x03;  // P18A init command
+        pic_init_cmd[1] = 0x04;  // Device type (PIC16F628A)
+    } else {
+        pic_init_cmd[0] = 0x04;  // P018 init command
+        pic_init_cmd[1] = 0x04;  // Device type
+    }
     
-    // Step 2: Initialize PIC device (command 0x04 for PIC16F628A)
-    unsigned char pic_init_cmd[2] = {0x04, 0x04};  // Init PIC command + device type
+    printf("K150: Initializing PIC device\n");
     if (k150_write_serial(pic_init_cmd, 2) != SUCCESS) {
         printf("K150: Failed to send PIC init command\n");
         k150_close_port();
         return ERROR;
     }
     
-    usleep(DELAY_US * 2);  // Longer delay for PIC initialization
+    usleep(DELAY_US * 4);  // Extended delay for PIC initialization
     
-    // Step 3: Read configuration memory
+    // Step 4: Read configuration memory
     unsigned char cmd[3];
-    unsigned char response[2];
     
-    // Send read config command (0x0E) with address 0x2007 for PIC16F628A
-    cmd[0] = P018_CMD_READ_CONFIG_FUSE;  // 0x0E
-    cmd[1] = 0x07;  // Low byte of config address (0x2007)
-    cmd[2] = 0x20;  // High byte of config address
+    // Get dynamic configuration address from current device
+    PIC_DEFINITION *current_device = k150_get_current_device();
+    unsigned int config_addr = 0x2007; // Default for PIC16F628A
+    int config_size = 2; // Default size
+    
+    if (current_device && current_device->def) {
+        config_addr = (current_device->def[PD_CFG_ADDRH] << 8) | current_device->def[PD_CFG_ADDRL];
+        config_size = current_device->def[PD_CFG_SIZE];
+        if (config_addr == 0) config_addr = 0x2007; // Fallback
+        if (config_size == 0) config_size = 2; // Fallback
+        printf("K150: Using device-specific config address: 0x%04X, size: %d\n", config_addr, config_size);
+    } else {
+        printf("K150: Using default config address: 0x%04X\n", config_addr);
+    }
+    
+    // Select protocol based on firmware version (already detected above)
+    if (firmware_version >= K150_FW_P016) {
+        // P18A protocol
+        cmd[0] = K150_P18A_READ_BLOCK;  // 0x46
+        cmd[1] = config_addr & 0xFF;  // Low byte of config address
+        cmd[2] = (config_addr >> 8) & 0xFF;  // High byte of config address
+        printf("K150: Using P18A protocol (0x46) for config read\n");
+    } else {
+        // P018 protocol
+        cmd[0] = P018_CMD_READ_CONFIG_FUSE;  // 0x0E
+        cmd[1] = config_addr & 0xFF;  // Low byte of config address
+        cmd[2] = (config_addr >> 8) & 0xFF;  // High byte of config address
+        printf("K150: Using P018 protocol (0x0E) for config read\n");
+    }
     
     printf("K150: Sending config read command\n");
     if (k150_write_serial(cmd, 3) != SUCCESS) {
@@ -103,17 +158,28 @@ int k150_read_config(unsigned char *config)
     
     usleep(DELAY_US);
     
-    // Read 2 bytes of configuration data
-    if (k150_read_serial(response, 2) != SUCCESS) {
+    // Read configuration data (variable size based on device)
+    unsigned char *response = malloc(config_size);
+    if (!response) {
+        printf("K150: Memory allocation failed\n");
+        k150_close_port();
+        return ERROR;
+    }
+    
+    if (k150_read_serial(response, config_size) != SUCCESS) {
         printf("K150: Failed to read config data, using last programmed value\n");
         // Fallback to last programmed value for verification
         config[0] = last_programmed_config & 0xFF;
         config[1] = (last_programmed_config >> 8) & 0xFF;
     } else {
-        config[0] = response[0];  // Low byte
-        config[1] = response[1];  // High byte
+        // Copy data respecting the actual size
+        for (int i = 0; i < config_size && i < 2; i++) {
+            config[i] = response[i];
+        }
         printf("K150: Successfully read config data from hardware\n");
     }
+    
+    free(response);
     
     // Step 4: Exit programming mode
     unsigned char exit_cmd = 0x51;  // Exit programming mode
@@ -183,38 +249,109 @@ int k150_write_config_with_verify(unsigned int config_value)
 // Fuse Bit Definitions for Common PIC Devices
 //-----------------------------------------------------------------------------
 
+// Generic fuse bit definition structure
 typedef struct {
-    char name[16];
-    unsigned int on_mask;
-    unsigned int off_mask;
-} FuseBit;
+    const char *name;
+    unsigned int mask;
+    unsigned int on_value;
+    unsigned int off_value;
+} fuse_bit_t;
 
-// PIC16F628A fuse definitions
-static const FuseBit pic16f628a_fuses[] = {
-    {"CP",     0x3F7F, 0x00FF},  // Code Protection: OFF=0x00FF, ON=0x3F7F  
-    {"WDT",    0x3FFF, 0x3FFB},  // Watchdog Timer: ON=0x3FFF, OFF=0x3FFB
-    {"PWRT",   0x3FF7, 0x3FFF},  // Power-up Timer: ON=0x3FF7, OFF=0x3FFF
-    {"MCLRE",  0x3FFF, 0x3FDF},  // MCLR Enable: ON=0x3FFF, OFF=0x3FDF
-    {"BODEN",  0x3FFF, 0x3FBF},  // Brown-out Detect: ON=0x3FFF, OFF=0x3FBF
-    {"LVP",    0x3FFF, 0x3F7F},  // Low Voltage Programming: ON=0x3FFF, OFF=0x3F7F
-    {"CPD",    0x3EFF, 0x3FFF},  // Data Code Protection: ON=0x3EFF, OFF=0x3FFF
-    {"", 0, 0} // Terminator
+// PIC device family fuse definitions
+typedef struct {
+    const char *device_family;
+    const fuse_bit_t *fuses;
+    unsigned int default_config;
+} pic_fuse_def_t;
+
+// PIC16F628A fuse bit definitions
+static const fuse_bit_t pic16f628a_fuses[] = {
+    {"CP",    0x2000, 0x0000, 0x2000},  // Code Protection
+    {"WDT",   0x0004, 0x0004, 0x0000},  // Watchdog Timer
+    {"PWRT",  0x0008, 0x0000, 0x0008},  // Power-up Timer (inverted)
+    {"MCLRE", 0x0020, 0x0020, 0x0000},  // MCLR Enable
+    {"BODEN", 0x0040, 0x0040, 0x0000},  // Brown-out Detect
+    {"LVP",   0x0080, 0x0080, 0x0000},  // Low Voltage Programming
+    {"CPD",   0x0100, 0x0000, 0x0100},  // Data Code Protection
+    {NULL, 0, 0, 0}  // End marker
 };
+
+// PIC16F84A fuse bit definitions
+static const fuse_bit_t pic16f84a_fuses[] = {
+    {"CP",    0x3FF0, 0x0000, 0x3FF0},  // Code Protection
+    {"WDT",   0x0004, 0x0004, 0x0000},  // Watchdog Timer
+    {"PWRT",  0x0008, 0x0000, 0x0008},  // Power-up Timer (inverted)
+    {NULL, 0, 0, 0}  // End marker
+};
+
+// PIC16F876A fuse bit definitions
+static const fuse_bit_t pic16f876a_fuses[] = {
+    {"CP",    0x3000, 0x0000, 0x3000},  // Code Protection
+    {"WDT",   0x0004, 0x0004, 0x0000},  // Watchdog Timer
+    {"PWRT",  0x0008, 0x0000, 0x0008},  // Power-up Timer (inverted)
+    {"BODEN", 0x0040, 0x0040, 0x0000},  // Brown-out Detect
+    {"LVP",   0x0080, 0x0080, 0x0000},  // Low Voltage Programming
+    {"CPD",   0x0100, 0x0000, 0x0100},  // Data Code Protection
+    {NULL, 0, 0, 0}  // End marker
+};
+
+// PIC18F2550 fuse bit definitions (CONFIG1L/CONFIG1H)
+static const fuse_bit_t pic18f2550_fuses[] = {
+    {"WDT",   0x0001, 0x0001, 0x0000},  // Watchdog Timer
+    {"LVP",   0x0004, 0x0004, 0x0000},  // Low Voltage Programming
+    {"MCLRE", 0x0080, 0x0080, 0x0000},  // MCLR Enable
+    {"CP0",   0x0100, 0x0000, 0x0100},  // Code Protection Block 0
+    {"CP1",   0x0200, 0x0000, 0x0200},  // Code Protection Block 1
+    {"CPB",   0x0400, 0x0000, 0x0400},  // Boot Block Code Protection
+    {"CPD",   0x0800, 0x0000, 0x0800},  // Data EEPROM Code Protection
+    {NULL, 0, 0, 0}  // End marker
+};
+
+// Device family mapping table
+static const pic_fuse_def_t pic_fuse_definitions[] = {
+    {"PIC16F628A", pic16f628a_fuses, 0x3FFF},
+    {"PIC16F84A",  pic16f84a_fuses,  0x3FFF},
+    {"PIC16F876A", pic16f876a_fuses, 0x3FFF},
+    {"PIC18F2550", pic18f2550_fuses, 0xFFFF},
+    {NULL, NULL, 0}  // End marker
+};
+
+// Find fuse definitions for a specific device
+static const pic_fuse_def_t *find_device_fuses(const char *device_name)
+{
+    if (!device_name) return NULL;
+    
+    for (int i = 0; pic_fuse_definitions[i].device_family != NULL; i++) {
+        if (strstr(device_name, pic_fuse_definitions[i].device_family) != NULL) {
+            return &pic_fuse_definitions[i];
+        }
+    }
+    return NULL;  // Device not found, use default
+}
 
 // Parse fuse name:value pairs and calculate configuration word
 int k150_parse_fuse_string(const char *fuse_string, const char *device_name, unsigned int *config_value)
 {
     if (!fuse_string || !config_value) return ERROR;
     
-    // Default configuration (all fuses OFF typically)
-    *config_value = 0x3FFF;
+    // Find device-specific fuse definitions
+    const pic_fuse_def_t *device_fuses = find_device_fuses(device_name);
+    const fuse_bit_t *fuses;
+    unsigned int default_config;
     
-    // For now, support PIC16F628A only
-    const FuseBit *fuses = pic16f628a_fuses;
-    if (strstr(device_name, "16f628") == NULL && strstr(device_name, "16F628") == NULL) {
-        printf("K150: Fuse definitions not available for %s, using raw value\n", device_name);
-        return ERROR;
+    if (device_fuses) {
+        fuses = device_fuses->fuses;
+        default_config = device_fuses->default_config;
+        printf("K150: Using fuse definitions for %s\n", device_fuses->device_family);
+    } else {
+        // Fallback to PIC16F628A definitions
+        fuses = pic16f628a_fuses;
+        default_config = 0x3FFF;
+        printf("K150: Using default PIC16F628A fuse definitions\n");
     }
+    
+    // Start with default configuration (all fuses OFF typically)
+    *config_value = default_config;
     
     char *fuse_copy = strdup(fuse_string);
     char *pair = strtok(fuse_copy, ",");
@@ -224,15 +361,15 @@ int k150_parse_fuse_string(const char *fuse_string, const char *device_name, uns
         if (sscanf(pair, "%15[^:]:%15s", fuse_name, fuse_value) == 2) {
             
             // Find fuse definition
-            const FuseBit *fuse = fuses;
-            while (fuse->name[0] != '\0') {
+            const fuse_bit_t *fuse = fuses;
+            while (fuse->name != NULL) {
                 if (strcasecmp(fuse->name, fuse_name) == 0) {
                     if (strcasecmp(fuse_value, "ON") == 0) {
-                        *config_value &= fuse->on_mask;
-                        printf("K150: Set %s=ON (mask: 0x%04x)\n", fuse_name, fuse->on_mask);
+                        *config_value = (*config_value & ~fuse->mask) | fuse->on_value;
+                        printf("K150: Set %s=ON (value: 0x%04x)\n", fuse_name, fuse->on_value);
                     } else if (strcasecmp(fuse_value, "OFF") == 0) {
-                        *config_value &= fuse->off_mask;
-                        printf("K150: Set %s=OFF (mask: 0x%04x)\n", fuse_name, fuse->off_mask);
+                        *config_value = (*config_value & ~fuse->mask) | fuse->off_value;
+                        printf("K150: Set %s=OFF (value: 0x%04x)\n", fuse_name, fuse->off_value);
                     } else {
                         printf("K150: Invalid fuse value '%s' for %s\n", fuse_value, fuse_name);
                     }
@@ -241,7 +378,7 @@ int k150_parse_fuse_string(const char *fuse_string, const char *device_name, uns
                 fuse++;
             }
             
-            if (fuse->name[0] == '\0') {
+            if (fuse->name == NULL) {
                 printf("K150: Unknown fuse '%s' for %s\n", fuse_name, device_name);
             }
         }
