@@ -86,6 +86,7 @@ int check_programmer(void);
 // Chip detection functions
 struct pic_device;
 int k150_detect_chip(struct pic_device **detected_device);
+int k150_detect_chip_with_type(const char *expected_chip);
 int k150_check_chip_in_socket(void);
 int k150_detect_chip_command_line(void);
 

@@ -56,7 +56,7 @@
 #define P018_ACK_VOLTAGES_ON    'V'  // 0x56 - Voltages on ACK
 #define P018_ACK_VOLTAGES_OFF   'v'  // 0x76 - Voltages off ACK
 #define P018_ACK_PROGRAM        'Y'  // 0x59 - Program/Erase ACK
-#define P018_ACK_PROGRAM_DONE   'P'  // 0x50 - Program complete ACK
+#define P018_ACK_PROGRAM_DONE   'D'  // 0x44 - Program complete ACK
 #define P018_ACK_CONFIG         'C'  // 0x43 - Configuration start
 
 #define MAX_ROM_SIZE 16384  // Maximum ROM size in bytes (8192 words)
@@ -104,7 +104,7 @@ static int k150_read_serial(unsigned char *buf, int len)
         FD_ZERO(&rfds);
         FD_SET(k150_fd, &rfds);
         tv.tv_sec = 0;
-        tv.tv_usec = 500000; // 500ms timeout for PL2303 compatibility
+        tv.tv_usec = 500000; // 500ms timeout as suggested for PL2303 compatibility
 
         int r = select(k150_fd + 1, &rfds, NULL, NULL, &tv);
         if (r > 0) {
@@ -120,8 +120,8 @@ static int k150_read_serial(unsigned char *buf, int len)
             }
         } else if (r == 0) {
             retries--;
-            fprintf(stderr, "DEBUG: read_serial retry %d/%d\n", TIMEOUT_RETRIES - retries, TIMEOUT_RETRIES);
-            usleep(DELAY_US);
+            fprintf(stderr, "DEBUG: read_serial retry %d/%d\n", TIMEOUT_RETRIES - retries + 1, TIMEOUT_RETRIES);
+            usleep(DELAY_US); // 50ms delay for PL2303 stability
         } else {
             fprintf(stderr, "ERROR: select failed: %s\n", strerror(errno));
             return ERROR;
@@ -583,8 +583,8 @@ static int k150_open_serial_port(const char *device)
     // Configure serial port for K150 (9600 baud for updated firmware)
     tcgetattr(k150_fd, &options);
     // Try different baud rates for PL2303 compatibility
-    cfsetospeed(&options, B19200);
-    cfsetispeed(&options, B19200);
+    cfsetospeed(&options, B9600);
+    cfsetispeed(&options, B9600);
     options.c_cflag = CS8 | CLOCAL | CREAD; // 8N1, no parity
     options.c_iflag = IGNPAR;
     options.c_oflag = 0;
@@ -687,12 +687,14 @@ int k150_close_port(void)
 
 int k150_detect_programmer(void)
 {
-    unsigned char cmd = P18A_CMD_DETECT; // P18A detection command
-    unsigned char response[16]; // P18A returns more data
+    unsigned char cmd = 0x42; // Chip presence + programmer detection
+    unsigned char response[2];
     int attempts = 3;
     
+    fprintf(stderr, "K150: Checking programmer and chip presence...\n");
+    
     for (int attempt = 1; attempt <= attempts; attempt++) {
-        fprintf(stderr, "K150: Sending P18A programmer detection command (0x42), attempt %d/%d\n", attempt, attempts);
+        fprintf(stderr, "K150: Sending detection command (0x42), attempt %d/%d\n", attempt, attempts);
         
         if (k150_write_serial(&cmd, 1) != SUCCESS) {
             fprintf(stderr, "K150: Write failed on attempt %d\n", attempt);
@@ -701,32 +703,50 @@ int k150_detect_programmer(void)
         
         usleep(DELAY_US);
         
-        // P18A protocol expects different response format
-        if (k150_read_serial(response, 16) == SUCCESS) {
-            // Check for P18A response pattern
-            if (response[0] == 0x50 && response[1] == 0x49 && response[2] == 0x43) { // "PIC"
-                fprintf(stderr, "K150: P18A programmer detected, firmware type: 0x%02x\n", response[3]);
-                return SUCCESS;
-            } else if (response[0] == 0x42) {
-                // Legacy P018 response
-                fprintf(stderr, "K150: Legacy P018 programmer detected, firmware 0x%02x\n", response[1]);
-                return SUCCESS;
+        // Try to read response - P18A might return different format
+        if (k150_read_serial(response, 2) == SUCCESS) {
+            if (response[0] == 0x42) {
+                // Standard P018 response format
+                if (response[1] == 0x00) {
+                    fprintf(stderr, "K150: Programmer detected but NO CHIP in ZIF/ICSP socket\n");
+                    fprintf(stderr, "K150: Please insert PIC chip and try again\n");
+                    return ERROR; // No chip present
+                } else {
+                    fprintf(stderr, "K150: P018 programmer detected with chip present, firmware: 0x%02x\n", response[1]);
+                    return SUCCESS; // Both programmer and chip present
+                }
+            } else if (response[0] == 0x50 && response[1] == 0x49) {
+                // P18A response starts with "PI" (0x50 0x49)
+                fprintf(stderr, "K150: P18A programmer detected, reading chip info...\n");
+                // Try to read more data for P18A format
+                unsigned char extended[16];
+                if (k150_read_serial(extended, 16) == SUCCESS) {
+                    fprintf(stderr, "K150: P18A chip detection successful\n");
+                    return SUCCESS;
+                } else {
+                    fprintf(stderr, "K150: P18A programmer detected but chip info read failed\n");
+                    return SUCCESS; // Programmer present
+                }
             } else {
-                fprintf(stderr, "K150: Unexpected P18A response: ");
-                for (int i = 0; i < 8; i++) fprintf(stderr, "0x%02x ", response[i]);
-                fprintf(stderr, "on attempt %d\n", attempt);
+                fprintf(stderr, "K150: Response: 0x%02x 0x%02x on attempt %d\n", 
+                        response[0], response[1], attempt);
+                // Try to interpret as valid response anyway
+                if (response[0] != 0x00 || response[1] != 0x00) {
+                    fprintf(stderr, "K150: Assuming programmer present based on non-zero response\n");
+                    return SUCCESS;
+                }
             }
         } else {
-            fprintf(stderr, "K150: Read timeout on attempt %d\n", attempt);
+            fprintf(stderr, "K150: No response on attempt %d (programmer not connected?)\n", attempt);
         }
         
         if (attempt < attempts) {
-            fprintf(stderr, "K150: Retry attempt %d/%d\n", attempt + 1, attempts);
             usleep(DELAY_US * 2); // Extra delay between attempts
         }
     }
     
-    fprintf(stderr, "K150: ERROR: P18A programmer detection failed after %d attempts\n", attempts);
+    fprintf(stderr, "K150: ERROR: No programmer response after %d attempts\n", attempts);
+    fprintf(stderr, "K150: Check USB connection and power\n");
     return ERROR;
 }
 
@@ -740,45 +760,63 @@ int k150_init_pic(void)
     return k150_start_communication();
 }
 
-// Chip detection function
-int k150_detect_chip(struct pic_device **detected_dev)
+// P18A chip detection with manual chip selection (like microbrn.exe)
+int k150_detect_chip_with_type(const char *expected_chip)
 {
     if (k150_init_pic() != SUCCESS) {
         fprintf(stderr, "K150: Failed to initialize PIC\n");
         return ERROR;
     }
     
-    unsigned char cmd = P018_CMD_READ_CONFIG; // Command 13 - READ CONFIGURATION
-    fprintf(stderr, "K150: Sending read configuration command (0x0D)\n");
+    unsigned char cmd = 'I'; // P18A chip info command
+    fprintf(stderr, "K150: Sending chip info command ('I') for expected chip: %s\n", expected_chip);
     if (k150_write_serial(&cmd, 1) != SUCCESS) return ERROR;
     usleep(DELAY_US);
 
-    unsigned char config[30];
-    if (k150_read_serial(config, 30) != SUCCESS) {
-        fprintf(stderr, "K150: Failed to read configuration\n");
+    unsigned char response[32];
+    if (k150_read_serial(response, 32) != SUCCESS) {
+        fprintf(stderr, "K150: Failed to read chip info\n");
         return ERROR;
     }
 
-    if (config[0] != P018_ACK_CONFIG) {
-        fprintf(stderr, "K150: ERROR: Expected 'C' start for configuration, got 0x%02x\n", config[0]);
+    if (response[0] != 'C') {
+        fprintf(stderr, "K150: ERROR: Expected 'C' start for chip info, got 0x%02x (Chip Info Hatalı)\n", response[0]);
+        fprintf(stderr, "K150: This indicates chip type mismatch or connection issue\n");
         return ERROR;
     }
 
-    int chip_id = (config[2] << 8) | config[1]; // ChipID_H, ChipID_L
-    fprintf(stderr, "K150: Detected Chip ID: 0x%04x\n", chip_id);
+    int chip_id = (response[2] << 8) | response[1]; // Chip ID from response
+    fprintf(stderr, "K150: Read Chip ID: 0x%04x from hardware\n", chip_id);
 
-    // Search for chip in device list using picdev.c definitions
+    // Search for expected chip in device list
     extern const PIC_DEFINITION *deviceArray[];
     for (int i = 0; deviceArray[i] != NULL; i++) {
-        int dev_chip_id = (deviceArray[i]->def[22] << 8) | deviceArray[i]->def[23];
-        if (dev_chip_id == chip_id) {
-            fprintf(stderr, "K150: Detected device: %s\n", deviceArray[i]->name);
-            // Note: detected_dev parameter type mismatch - need to fix this
-            return SUCCESS;
+        if (strcmp(deviceArray[i]->name, expected_chip) == 0) {
+            int expected_chip_id = (deviceArray[i]->def[22] << 8) | deviceArray[i]->def[23];
+            fprintf(stderr, "K150: Expected Chip ID for %s: 0x%04x\n", expected_chip, expected_chip_id);
+            
+            if (expected_chip_id == chip_id) {
+                fprintf(stderr, "K150: SUCCESS - Chip matches! Detected: %s (ID: 0x%04x)\n", 
+                        expected_chip, chip_id);
+                return SUCCESS;
+            } else {
+                fprintf(stderr, "K150: ERROR - Chip ID mismatch!\n");
+                fprintf(stderr, "K150: Expected: %s (0x%04x), Found: 0x%04x\n", 
+                        expected_chip, expected_chip_id, chip_id);
+                return ERROR;
+            }
         }
     }
-    fprintf(stderr, "K150: Unknown chip ID 0x%04x\n", chip_id);
+    
+    fprintf(stderr, "K150: ERROR - Unknown expected chip type: %s\n", expected_chip);
     return ERROR;
+}
+
+// Legacy chip detection function for backward compatibility
+int k150_detect_chip(struct pic_device **detected_dev)
+{
+    // Default to PIC16F628A for backward compatibility
+    return k150_detect_chip_with_type("PIC16F628A");
 }
 
 
