@@ -26,6 +26,16 @@
 #include <sys/ioctl.h>
 #include <sys/select.h>
 
+// P18A Protocol commands (for updated firmware)
+#define P18A_CMD_DETECT         0x42 // Detect programmer
+#define P18A_CMD_START          0x50 // Start communication
+#define P18A_CMD_EXIT           0x51 // Exit/quit
+#define P18A_CMD_READ_ROM       0x46 // Read ROM
+#define P18A_CMD_PROGRAM_ROM    0x47 // Program ROM
+#define P18A_CMD_ERASE_CHIP     0x45 // Erase chip
+#define P18A_CMD_READ_CONFIG    0x43 // Read configuration
+#define P18A_CMD_CHIPINFO       0x49 // Get chip info
+
 // P018 Protocol Commands (based on softprotocol5.txt)
 #define P018_CMD_START          'P'  // 0x50 - Start communication
 #define P018_CMD_INIT           3    // Initialize with device parameters
@@ -51,8 +61,8 @@
 
 #define MAX_ROM_SIZE 16384  // Maximum ROM size in bytes (8192 words)
 #define CHUNK_SIZE 64       // Read/write chunk size
-#define TIMEOUT_RETRIES 100  // Retry sayısını artırdık
-#define DELAY_US 20000       // 20ms gecikme
+#define TIMEOUT_RETRIES 150  // Increased retries for PL2303 stability
+#define DELAY_US 50000       // 50ms delay for better PL2303 timing
 
 // Constants for K150 functions
 #define SUCCESS 0
@@ -94,7 +104,7 @@ static int k150_read_serial(unsigned char *buf, int len)
         FD_ZERO(&rfds);
         FD_SET(k150_fd, &rfds);
         tv.tv_sec = 0;
-        tv.tv_usec = 200000; // 200ms timeout
+        tv.tv_usec = 500000; // 500ms timeout for PL2303 compatibility
 
         int r = select(k150_fd + 1, &rfds, NULL, NULL, &tv);
         if (r > 0) {
@@ -570,11 +580,11 @@ static int k150_open_serial_port(const char *device)
         return ERROR;
     }
     
-    // Configure serial port for K150 (19200 baud, 8N1)
+    // Configure serial port for K150 (9600 baud for updated firmware)
     tcgetattr(k150_fd, &options);
     // Try different baud rates for PL2303 compatibility
-    cfsetispeed(&options, B9600);
-    cfsetospeed(&options, B9600);
+    cfsetospeed(&options, B19200);
+    cfsetispeed(&options, B19200);
     options.c_cflag = CS8 | CLOCAL | CREAD; // 8N1, no parity
     options.c_iflag = IGNPAR;
     options.c_oflag = 0;
@@ -596,18 +606,36 @@ static int k150_open_serial_port(const char *device)
     usleep(200000); // 200ms
     tcflush(k150_fd, TCIOFLUSH);
     
-    // DTR reset cycle
-    ioctl(k150_fd, TIOCMBIS, &dtr_flag);  // DTR high
-    usleep(100000); // 100ms
-    ioctl(k150_fd, TIOCMBIC, &dtr_flag);  // DTR low
-    usleep(200000); // 200ms
+    // Enhanced DTR/RTS reset sequence for PL2303 compatibility
+    int status;
+    if (ioctl(k150_fd, TIOCMGET, &status) == 0) {
+        // Clear DTR and RTS
+        status &= ~(TIOCM_DTR | TIOCM_RTS);
+        ioctl(k150_fd, TIOCMSET, &status);
+        usleep(200000); // 200ms wait for PL2303 reset
+        
+        // Set DTR high for normal operation
+        status |= TIOCM_DTR;
+        ioctl(k150_fd, TIOCMSET, &status);
+        usleep(100000); // 100ms stabilization
+        
+        // Log modem status for debugging
+        ioctl(k150_fd, TIOCMGET, &status);
+        fprintf(stderr, "DEBUG: Modem status - DTR:%s RTS:%s CTS:%s DSR:%s DCD:%s\n",
+                (status & TIOCM_DTR) ? "ON" : "OFF",
+                (status & TIOCM_RTS) ? "ON" : "OFF", 
+                (status & TIOCM_CTS) ? "ON" : "OFF",
+                (status & TIOCM_DSR) ? "ON" : "OFF",
+                (status & TIOCM_CD) ? "ON" : "OFF");
+        fprintf(stderr, "DEBUG: Enhanced DTR reset sequence completed\n");
+    }
     
     tcflush(k150_fd, TCIOFLUSH);
     
     // Set RTS for LED control
     ioctl(k150_fd, TIOCMBIS, &rts_flag);
     
-    fprintf(stderr, "DEBUG: Serial port %s initialized at 19200,8,N,1 with DTR reset\n", device);
+    fprintf(stderr, "DEBUG: Serial port %s initialized at 9600,8,N,1 with DTR reset\n", device);
     return SUCCESS;
 }
 
@@ -659,30 +687,46 @@ int k150_close_port(void)
 
 int k150_detect_programmer(void)
 {
-    unsigned char cmd = 0x42; // K150 programmer detection command
-    unsigned char response[2];
+    unsigned char cmd = P18A_CMD_DETECT; // P18A detection command
+    unsigned char response[16]; // P18A returns more data
+    int attempts = 3;
     
-    fprintf(stderr, "K150: Sending programmer detection command (0x42)\n");
-    if (k150_write_serial(&cmd, 1) != SUCCESS) return ERROR;
-    usleep(DELAY_US);
-    
-    // Try multiple times with different delays for stubborn hardware
-    for (int attempt = 0; attempt < 3; attempt++) {
-        if (attempt > 0) {
-            fprintf(stderr, "K150: Retry attempt %d/3\n", attempt + 1);
-            usleep(DELAY_US * 2); // Longer delay for retries
+    for (int attempt = 1; attempt <= attempts; attempt++) {
+        fprintf(stderr, "K150: Sending P18A programmer detection command (0x42), attempt %d/%d\n", attempt, attempts);
+        
+        if (k150_write_serial(&cmd, 1) != SUCCESS) {
+            fprintf(stderr, "K150: Write failed on attempt %d\n", attempt);
+            continue;
         }
         
-        if (k150_read_serial(response, 2) == SUCCESS && response[0] == 0x42) {
-            fprintf(stderr, "K150: Programmer detected, firmware 0x%02x\n", response[1]);
-            return SUCCESS;
+        usleep(DELAY_US);
+        
+        // P18A protocol expects different response format
+        if (k150_read_serial(response, 16) == SUCCESS) {
+            // Check for P18A response pattern
+            if (response[0] == 0x50 && response[1] == 0x49 && response[2] == 0x43) { // "PIC"
+                fprintf(stderr, "K150: P18A programmer detected, firmware type: 0x%02x\n", response[3]);
+                return SUCCESS;
+            } else if (response[0] == 0x42) {
+                // Legacy P018 response
+                fprintf(stderr, "K150: Legacy P018 programmer detected, firmware 0x%02x\n", response[1]);
+                return SUCCESS;
+            } else {
+                fprintf(stderr, "K150: Unexpected P18A response: ");
+                for (int i = 0; i < 8; i++) fprintf(stderr, "0x%02x ", response[i]);
+                fprintf(stderr, "on attempt %d\n", attempt);
+            }
+        } else {
+            fprintf(stderr, "K150: Read timeout on attempt %d\n", attempt);
         }
         
-        // Flush and retry
-        tcflush(k150_fd, TCIOFLUSH);
+        if (attempt < attempts) {
+            fprintf(stderr, "K150: Retry attempt %d/%d\n", attempt + 1, attempts);
+            usleep(DELAY_US * 2); // Extra delay between attempts
+        }
     }
     
-    fprintf(stderr, "K150: ERROR: Programmer detection failed after 3 attempts, got 0x%02x 0x%02x\n", response[0], response[1]);
+    fprintf(stderr, "K150: ERROR: P18A programmer detection failed after %d attempts\n", attempts);
     return ERROR;
 }
 
