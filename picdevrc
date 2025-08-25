@@ -2544,7 +2544,7 @@
 	0	; config word: code protect bit mask
 	0	; config word: watchdog bit mask
 	0	; Word alignment for writing to this device
-	0	; Configuration memory start address
+	2007	; Configuration memory start address (0x2007)
 	0 0	; ID Locations addr and size
 	0	; Data eeprom address
 	0	; number of words in cfg bits with factory set bits
