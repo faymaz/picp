@@ -86,7 +86,7 @@ extern const PIC_DEFINITION *deviceArray[];
 //-----------------------------------------------------------------------------
 // Serial communication functions
 //-----------------------------------------------------------------------------
-static int k150_write_serial(const unsigned char *buf, int len)
+int k150_write_serial(const unsigned char *buf, int len)
 {
     int written = write(k150_fd, buf, len);
     if (written != len) {
@@ -99,7 +99,7 @@ static int k150_write_serial(const unsigned char *buf, int len)
     return SUCCESS;
 }
 
-static int k150_read_serial(unsigned char *buf, int len)
+int k150_read_serial(unsigned char *buf, int len)
 {
     int total_read = 0, retries = TIMEOUT_RETRIES;
     struct timeval tv;

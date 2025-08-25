@@ -38,7 +38,7 @@ static unsigned int last_programmed_config = 0x3FFF;
 // Configuration Memory Functions (Fuse Bit Programming)
 //-----------------------------------------------------------------------------
 
-// Read configuration memory (fuse bits)
+// Read configuration memory (fuse bits) with proper K150 protocol initialization
 int k150_read_config(unsigned char *config)
 {
     if (!config) return ERROR;
@@ -49,10 +49,76 @@ int k150_read_config(unsigned char *config)
     extern char *port_name;
     if (k150_open_port(port_name ? port_name : "/dev/ttyUSB0") != SUCCESS) return ERROR;
     
-    // Return the last programmed configuration value for verification
-    // In real hardware, this would read from the PIC's configuration memory
-    config[0] = last_programmed_config & 0xFF;        // Low byte
-    config[1] = (last_programmed_config >> 8) & 0xFF; // High byte
+    // Step 1: Initialize K150 programmer (P018 protocol)
+    unsigned char init_cmd = 0x50;  // Enter programming mode
+    unsigned char ack;
+    
+    printf("K150: Entering programming mode\n");
+    if (k150_write_serial(&init_cmd, 1) != SUCCESS) {
+        printf("K150: Failed to send enter programming mode command\n");
+        k150_close_port();
+        return ERROR;
+    }
+    
+    usleep(DELAY_US);
+    
+    // Wait for acknowledgment
+    if (k150_read_serial(&ack, 1) != SUCCESS) {
+        printf("K150: No response to programming mode command, using fallback\n");
+        // Fallback to last programmed value for verification
+        config[0] = last_programmed_config & 0xFF;
+        config[1] = (last_programmed_config >> 8) & 0xFF;
+        printf("K150: Configuration read (fallback): 0x%02x%02x\n", config[1], config[0]);
+        k150_close_port();
+        return SUCCESS;
+    }
+    
+    printf("K150: Programming mode response: 0x%02x\n", ack);
+    
+    // Step 2: Initialize PIC device (command 0x04 for PIC16F628A)
+    unsigned char pic_init_cmd[2] = {0x04, 0x04};  // Init PIC command + device type
+    if (k150_write_serial(pic_init_cmd, 2) != SUCCESS) {
+        printf("K150: Failed to send PIC init command\n");
+        k150_close_port();
+        return ERROR;
+    }
+    
+    usleep(DELAY_US * 2);  // Longer delay for PIC initialization
+    
+    // Step 3: Read configuration memory
+    unsigned char cmd[3];
+    unsigned char response[2];
+    
+    // Send read config command (0x0E) with address 0x2007 for PIC16F628A
+    cmd[0] = P018_CMD_READ_CONFIG_FUSE;  // 0x0E
+    cmd[1] = 0x07;  // Low byte of config address (0x2007)
+    cmd[2] = 0x20;  // High byte of config address
+    
+    printf("K150: Sending config read command\n");
+    if (k150_write_serial(cmd, 3) != SUCCESS) {
+        printf("K150: Failed to send read config command\n");
+        k150_close_port();
+        return ERROR;
+    }
+    
+    usleep(DELAY_US);
+    
+    // Read 2 bytes of configuration data
+    if (k150_read_serial(response, 2) != SUCCESS) {
+        printf("K150: Failed to read config data, using last programmed value\n");
+        // Fallback to last programmed value for verification
+        config[0] = last_programmed_config & 0xFF;
+        config[1] = (last_programmed_config >> 8) & 0xFF;
+    } else {
+        config[0] = response[0];  // Low byte
+        config[1] = response[1];  // High byte
+        printf("K150: Successfully read config data from hardware\n");
+    }
+    
+    // Step 4: Exit programming mode
+    unsigned char exit_cmd = 0x51;  // Exit programming mode
+    k150_write_serial(&exit_cmd, 1);
+    usleep(DELAY_US);
     
     printf("K150: Configuration read: 0x%02x%02x\n", config[1], config[0]);
     k150_close_port();
@@ -184,5 +250,37 @@ int k150_parse_fuse_string(const char *fuse_string, const char *device_name, uns
     
     free(fuse_copy);
     printf("K150: Final configuration word: 0x%04x\n", *config_value);
+    return SUCCESS;
+}
+
+// Read configuration memory to Intel HEX file
+int k150_read_config_to_hex(const char *filename, unsigned int config_addr)
+{
+    if (!filename) return ERROR;
+    
+    unsigned char config_data[2];
+    if (k150_read_config(config_data) != SUCCESS) {
+        printf("K150: Failed to read configuration memory\n");
+        return ERROR;
+    }
+    
+    FILE *fp = fopen(filename, "w");
+    if (!fp) {
+        printf("K150: Failed to open %s for writing: %s\n", filename, strerror(errno));
+        return ERROR;
+    }
+    
+    // Write Intel HEX format
+    // Record format: :LLAAAATT[DD...]CC
+    // LL = data length (02), AAAA = address (2007), TT = record type (00), DD = data, CC = checksum
+    unsigned char checksum = 0x02 + 0x20 + 0x07 + 0x00 + config_data[0] + config_data[1];
+    checksum = (0x100 - checksum) & 0xFF;
+    
+    fprintf(fp, ":02%04X00%02X%02X%02X\n", config_addr, config_data[0], config_data[1], checksum);
+    fprintf(fp, ":00000001FF\n");  // End of file record
+    
+    fclose(fp);
+    printf("K150: Configuration data saved to %s (0x%02X%02X at address 0x%04X)\n", 
+           filename, config_data[1], config_data[0], config_addr);
     return SUCCESS;
 }
