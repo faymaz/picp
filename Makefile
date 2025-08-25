@@ -8,8 +8,8 @@ APP=picp
 INCLUDES=-I.
 OPTIONS=-O2 -Wall
 CFLAGS=$(INCLUDES) $(OPTIONS)
-SRCS=main.c serial.c record.c parse.c atoi_base.c k150.c picpro_backend.c
-OBJS = main.o parse.o record.o atoi_base.o picdev.o serial.o k150.o picpro_backend.o
+SRCS=main.c serial.c record.c parse.c atoi_base.c k150.c picpro_backend.c k150_config.c
+OBJS = main.o parse.o record.o atoi_base.o picdev.o serial.o k150.o picpro_backend.o k150_config.o
 
 WINCC=/usr/local/cross-tools/bin/i386-mingw32msvc-gcc
 WINCFLAGS=-Wall -O2 -fomit-frame-pointer -s -I/usr/local/cross-tools/include -D_WIN32 -DWIN32

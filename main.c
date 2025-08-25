@@ -4292,6 +4292,9 @@ int main(int argc,char *argv[])
 	port_name = port; // Make port available globally for picpro backend
 	bool k150_detect_requested = false;
 	char *expected_chip_type = NULL;
+	char *fuse_string = NULL;
+	bool write_fuses = false;
+	unsigned int config_value = 0;
 	
 	for (int i = 0; i < argc; i++) {
 		if (argv[i][0] == '-') {
@@ -4299,6 +4302,24 @@ int main(int argc,char *argv[])
 				port = argv[++i]; // User-specified port
 				port_name = port; // Update global port_name
 				fprintf(stderr, "DEBUG: User-specified port: %s\n", port);
+			} else if (strcmp(argv[i], "-wf") == 0 && i + 1 < argc) {
+				// Write fuses: -wf CP:OFF,WDT:ON,MCLRE:ON
+				fuse_string = argv[++i];
+				write_fuses = true;
+				isK150 = true;
+				programmerSupport = P_K150;
+				fprintf(stderr, "DEBUG: Fuse write requested: %s\n", fuse_string);
+			} else if (strcmp(argv[i], "-wc") == 0 && i + 1 < argc) {
+				// Write config (raw hex): -wc 0x3FF4
+				if (sscanf(argv[++i], "0x%x", &config_value) == 1 || sscanf(argv[i], "%x", &config_value) == 1) {
+					write_fuses = true;
+					isK150 = true;
+					programmerSupport = P_K150;
+					fprintf(stderr, "DEBUG: Config write requested: 0x%04x\n", config_value);
+				} else {
+					fprintf(stderr, "ERROR: Invalid config value: %s\n", argv[i]);
+					return 1;
+				}
 			} else if (strcmp(argv[i], "-k150") == 0 && i + 1 < argc && strcmp(argv[i + 1], "detect") == 0) {
 				fprintf(stderr, "DEBUG: K150 chip detection command detected\n");
 				k150_detect_requested = true;
@@ -4348,6 +4369,50 @@ int main(int argc,char *argv[])
 			fprintf(stderr, "ERROR: K150 chip detection failed for %s\n", expected_chip_type);
 			fprintf(stderr, "K150: Try different chip type or check hardware connection\n");
 			fprintf(stderr, "DEBUG: K150 port closed\n");
+			k150_close_port();
+			return 1;
+		}
+	}
+	
+	// Handle K150 fuse programming
+	if (write_fuses) {
+		fprintf(stderr, "K150: Programming configuration memory (fuse bits)...\n");
+		
+		if (init_serial(port) != SUCCESS) {
+			fprintf(stderr, "ERROR: Failed to initialize serial port %s\n", port);
+			return 1;
+		}
+		
+		if (check_programmer() != SUCCESS) {
+			fprintf(stderr, "ERROR: K150 programmer detection failed\n");
+			k150_close_port();
+			return 1;
+		}
+		
+		// Parse fuse string if provided
+		if (fuse_string) {
+			// Need device name for fuse parsing
+			char *device_name = "PIC16F628A"; // Default
+			if (argc > 0 && argv[0][0] != '-') {
+				device_name = argv[0];
+			}
+			
+			extern int k150_parse_fuse_string(const char *fuse_string, const char *device_name, unsigned int *config_value);
+			if (k150_parse_fuse_string(fuse_string, device_name, &config_value) != SUCCESS) {
+				fprintf(stderr, "ERROR: Failed to parse fuse string: %s\n", fuse_string);
+				k150_close_port();
+				return 1;
+			}
+		}
+		
+		// Write configuration with verification
+		extern int k150_write_config_with_verify(unsigned int config_value);
+		if (k150_write_config_with_verify(config_value) == SUCCESS) {
+			fprintf(stderr, "K150: Configuration programming completed successfully\n");
+			k150_close_port();
+			return 0;
+		} else {
+			fprintf(stderr, "ERROR: Configuration programming failed\n");
 			k150_close_port();
 			return 1;
 		}
