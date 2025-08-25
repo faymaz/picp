@@ -4289,6 +4289,7 @@ int main(int argc,char *argv[])
 	// Parse command line arguments
 	char *port = "/dev/ttyUSB0"; // Default port
 	bool k150_detect_requested = false;
+	char *expected_chip_type = NULL;
 	
 	for (int i = 0; i < argc; i++) {
 		if (argv[i][0] == '-') {
@@ -4301,6 +4302,15 @@ int main(int argc,char *argv[])
 				isK150 = true;
 				programmerSupport = P_K150;
 				i++; // Skip "detect" argument
+				
+				// Check if chip type is specified (like microbrn.exe manual selection)
+				if (i + 1 < argc && argv[i + 1][0] != '-') {
+					expected_chip_type = argv[++i];
+					fprintf(stderr, "DEBUG: Expected chip type: %s\n", expected_chip_type);
+				} else {
+					expected_chip_type = "PIC16F628A"; // Default chip type
+					fprintf(stderr, "DEBUG: Using default chip type: %s\n", expected_chip_type);
+				}
 				break; // Exit parsing loop for detection
 			}
 		}
@@ -4324,11 +4334,16 @@ int main(int argc,char *argv[])
 			return 1;
 		}
 		
-		if (k150_detect_chip_command_line() == SUCCESS) {
+		// Use manual chip selection like microbrn.exe
+		fprintf(stderr, "K150: Testing chip type: %s\n", expected_chip_type);
+		if (k150_detect_chip_with_type(expected_chip_type) == SUCCESS) {
+			fprintf(stderr, "K150: Chip detection successful!\n");
 			fprintf(stderr, "DEBUG: K150 port closed\n");
 			k150_close_port();
 			return 0;
 		} else {
+			fprintf(stderr, "ERROR: K150 chip detection failed for %s\n", expected_chip_type);
+			fprintf(stderr, "K150: Try different chip type or check hardware connection\n");
 			fprintf(stderr, "DEBUG: K150 port closed\n");
 			k150_close_port();
 			return 1;
