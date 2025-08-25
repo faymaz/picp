@@ -3288,7 +3288,24 @@ static bool DoTasks(int *argc, char **argv[], const PIC_DEFINITION *picDevice, c
 							break;
 
 						case 'c':
-							fail = !DoReadCfg(picDevice, true);	// read configuration bits, display them
+							// Check if this is 'rc' for config to hex file
+							if (flags[1] == 'h' || (flags[1] == '\0' && *argc > 0 && strstr(**argv, ".hex"))) {
+								// Read config to hex file for K150
+								if (picDevice->pgm_support & P_K150) {
+									char *hex_file = GetNextFlag(argc, argv);
+									if (hex_file) {
+										fail = (k150_read_config_to_hex(hex_file, 0x2007) != SUCCESS);
+									} else {
+										fprintf(stderr, "ERROR: No output file specified for config read\n");
+										fail = true;
+									}
+								} else {
+									fprintf(stderr, "ERROR: Config to hex file only supported for K150 programmer\n");
+									fail = true;
+								}
+							} else {
+								fail = !DoReadCfg(picDevice, true);	// read configuration bits, display them
+							}
 							break;
 
 						case 'i':
@@ -4328,7 +4345,6 @@ int main(int argc,char *argv[])
 				fprintf(stderr, "DEBUG: Config read requested to file: %s\n", output_file);
 				
 				// Read configuration memory and save to HEX file
-				extern int k150_read_config_to_hex(const char *filename, unsigned int config_addr);
 				if (k150_read_config_to_hex(output_file, 0x2007) == 0) {
 					fprintf(stderr, "K150: Configuration memory read completed successfully\n");
 					return 0;

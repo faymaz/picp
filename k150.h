@@ -100,6 +100,10 @@ int k150_receive_response(void);
 int k150_write_serial(const unsigned char *buf, int len);
 int k150_read_serial(unsigned char *buf, int len);
 
+// Firmware version detection
+int k150_get_firmware_version(void);
+PIC_DEFINITION *k150_get_current_device(void);
+
 // Configuration memory functions (fuse bit programming)
 int k150_read_config(unsigned char *config);
 int k150_program_config(unsigned char *config);

@@ -73,15 +73,41 @@
 static int k150_fd = -1;
 static PIC_DEFINITION *current_device = NULL;
 static int k150_firmware_version = 0;
+
+// Firmware version detection
+int k150_get_firmware_version(void)
+{
+    if (k150_firmware_version != 0) {
+        return k150_firmware_version;
+    }
+    
+    unsigned char cmd = K150_CMD_GET_VERSION;
+    unsigned char resp[2];
+    
+    if (k150_write_serial(&cmd, 1) == SUCCESS && 
+        k150_read_serial(resp, 2) == SUCCESS) {
+        k150_firmware_version = (resp[0] << 8) + resp[1];
+    } else {
+        k150_firmware_version = K150_FW_P014;  // Default to oldest firmware
+    }
+    
+    return k150_firmware_version;
+}
+
+PIC_DEFINITION *k150_get_current_device(void)
+{
+    return current_device;
+}
+
 int theDevice = -1; // Global device handle for compatibility
 
 // External device list from picdev.c
 extern const PIC_DEFINITION *deviceArray[];
 
-// Configuration memory commands (P018 protocol)
-#define P018_CMD_READ_CONFIG     0x0E
-#define P018_CMD_WRITE_CONFIG    0x09
-#define P018_ACK_CONFIG          0x43  // 'C'
+// Configuration memory commands (P018 protocol) - Legacy
+#define P018_CMD_READ_CONFIG_LEGACY     0x0E
+#define P018_CMD_WRITE_CONFIG_LEGACY    0x09
+#define P018_ACK_CONFIG                 0x43  // 'C'
 
 //-----------------------------------------------------------------------------
 // Serial communication functions
@@ -101,16 +127,17 @@ int k150_write_serial(const unsigned char *buf, int len)
 
 int k150_read_serial(unsigned char *buf, int len)
 {
-    int total_read = 0, retries = TIMEOUT_RETRIES;
+    int total_read = 0, retries = 0;
+    const int MAX_RETRIES = 50; // Reduced from 150 for better performance
     struct timeval tv;
     fd_set rfds;
 
     fprintf(stderr, "DEBUG: read_serial attempting to read %d bytes\n", len);
-    while (total_read < len && retries > 0) {
+    while (total_read < len && retries < MAX_RETRIES) {
         FD_ZERO(&rfds);
         FD_SET(k150_fd, &rfds);
         tv.tv_sec = 0;
-        tv.tv_usec = 500000; // 500ms timeout as suggested for PL2303 compatibility
+        tv.tv_usec = 100000; // 100ms timeout - better for PL2303
 
         int r = select(k150_fd + 1, &rfds, NULL, NULL, &tv);
         if (r > 0) {
@@ -120,13 +147,19 @@ int k150_read_serial(unsigned char *buf, int len)
                 fprintf(stderr, "DEBUG: read_serial got %d bytes: ", bytes_read);
                 for (int i = 0; i < bytes_read; i++) fprintf(stderr, "0x%02x ", buf[total_read - bytes_read + i]);
                 fprintf(stderr, "\n");
+                
+                // Reset retry counter on successful read
+                retries = 0;
             } else if (bytes_read < 0) {
                 fprintf(stderr, "ERROR: k150_read_serial failed: %s\n", strerror(errno));
                 return ERROR;
             }
         } else if (r == 0) {
-            retries--;
-            fprintf(stderr, "DEBUG: read_serial retry %d/%d\n", TIMEOUT_RETRIES - retries + 1, TIMEOUT_RETRIES);
+            retries++;
+            if (retries % 10 == 0) { // Log every 10th retry to reduce spam
+                fprintf(stderr, "DEBUG: read_serial retry %d/%d\n", retries, MAX_RETRIES);
+            }
+            usleep(1000); // 1ms delay between retries
             usleep(DELAY_US); // 50ms delay for PL2303 stability
         } else {
             fprintf(stderr, "ERROR: select failed: %s\n", strerror(errno));
