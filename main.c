@@ -217,6 +217,7 @@ static const BLANK_MSG blankList[] =
 };
 
 static char	*programName, *deviceName, *picName;
+char *port_name = "/dev/ttyUSB1"; // Global port name for picpro backend
 
 static VERSION		PICversion;
 unsigned int		picFWVersion = 0;
@@ -4287,7 +4288,8 @@ int main(int argc,char *argv[])
 	}
 
 	// Parse command line arguments
-	char *port = "/dev/ttyUSB0"; // Default port
+	char *port = "/dev/ttyUSB1"; // Default port (updated for current hardware)
+	port_name = port; // Make port available globally for picpro backend
 	bool k150_detect_requested = false;
 	char *expected_chip_type = NULL;
 	
@@ -4295,6 +4297,7 @@ int main(int argc,char *argv[])
 		if (argv[i][0] == '-') {
 			if (strcmp(argv[i], "-p") == 0 && i + 1 < argc) {
 				port = argv[++i]; // User-specified port
+				port_name = port; // Update global port_name
 				fprintf(stderr, "DEBUG: User-specified port: %s\n", port);
 			} else if (strcmp(argv[i], "-k150") == 0 && i + 1 < argc && strcmp(argv[i + 1], "detect") == 0) {
 				fprintf(stderr, "DEBUG: K150 chip detection command detected\n");
