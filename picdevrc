@@ -5924,6 +5924,53 @@
 	00 00 00 00
 	00 00 00 00
 
+[16F887]	; pic definition
+	0	; config word: code protect bit mask
+	0	; config word: watchdog bit mask
+	4	; Word alignment for writing to this device
+	0	; Configuration memory start address
+	0 0	; ID Locations addr and size
+	0	; Data eeprom address
+	0	; number of words in cfg bits with factory set bits
+	0 0 0 0 0 0 0 0	; fixed bits mask
+	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
+
+[16F887:def]
+	40 00	; size of program space (8K words)
+	3f ff	; width of address word
+	3f ff	; width of data word
+	00 7f	; width of ID
+	00 7f	; ID mask
+	2f cf	; width of configuration word
+	2f cf	; configuration word mask
+	00 ff	; EEPROM data width
+	00 ff	; EEPROM data mask
+	00 00	; Calibration width
+	00 00	; Calibration mask
+	00 00	; ??
+	20 00	; ??
+	20 00	; address of ID locations
+	04	; size of ID locations
+	20 07	; address of configuration bits
+	01	; size of configuration register
+	00 00	; address of data space
+	01 80	; size of data space (368 bytes)
+	00 00	; address of internal clock calibration value
+	00 00	; size of clock calibration space
+	00	; additional programming pulses for C devices
+	01	; main programming pulses for C devices
+	11 0f	; ?? ZIF configuration ??
+
+[16F887:defx]
+	2f cf 00 00
+	00 00 00 00
+	00 00 00 00
+	00 00 00 00
+	2f cf 00 00
+	00 00 00 00
+	00 00 00 00
+	00 00 00 00
+
 [16F877]	; pic definition
 	0	; config word: code protect bit mask
 	0	; config word: watchdog bit mask

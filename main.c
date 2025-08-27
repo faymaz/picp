@@ -217,7 +217,7 @@ static const BLANK_MSG blankList[] =
 };
 
 static char	*programName, *deviceName, *picName;
-char *port_name = "/dev/ttyUSB1"; // Global port name for picpro backend
+char *port_name = "/dev/ttyUSB0"; // Global port name for K150 programmer
 
 static VERSION		PICversion;
 unsigned int		picFWVersion = 0;
@@ -4305,7 +4305,7 @@ int main(int argc,char *argv[])
 	}
 
 	// Parse command line arguments
-	char *port = "/dev/ttyUSB1"; // Default port (updated for current hardware)
+	char *port = "/dev/ttyUSB0"; // Default port for K150 programmer
 	port_name = port; // Make port available globally for picpro backend
 	bool k150_detect_requested = false;
 	char *expected_chip_type = NULL;
@@ -4316,9 +4316,14 @@ int main(int argc,char *argv[])
 	for (int i = 0; i < argc; i++) {
 		if (argv[i][0] == '-') {
 			if (strcmp(argv[i], "-p") == 0 && i + 1 < argc) {
-				port = argv[++i]; // User-specified port
-				port_name = port; // Update global port_name
-				fprintf(stderr, "DEBUG: User-specified port: %s\n", port);
+				// Port specification (picpro style)
+				port = argv[++i];
+				port_name = port; // Update global port name
+				printf("DEBUG: Port set to: %s\n", port);
+			} else if (strcmp(argv[i], "-t") == 0 && i + 1 < argc) {
+				// Device type specification (picpro style)
+				expected_chip_type = argv[++i];
+				printf("DEBUG: Device type set to: %s\n", expected_chip_type);
 			} else if (strcmp(argv[i], "-wf") == 0 && i + 1 < argc) {
 				// Write fuses: -wf CP:OFF,WDT:ON,MCLRE:ON
 				fuse_string = argv[++i];
@@ -4423,11 +4428,9 @@ int main(int argc,char *argv[])
 		
 		// Parse fuse string if provided
 		if (fuse_string) {
-			// Need device name for fuse parsing
-			char *device_name = "PIC16F628A"; // Default
-			if (argc > 0 && argv[0][0] != '-') {
-				device_name = argv[0];
-			}
+			// Use device type from -t parameter or default
+			char *device_name = expected_chip_type ? expected_chip_type : "PIC16F628A";
+			printf("DEBUG: Using device type for fuse parsing: %s\n", device_name);
 			
 			extern int k150_parse_fuse_string(const char *fuse_string, const char *device_name, unsigned int *config_value);
 			if (k150_parse_fuse_string(fuse_string, device_name, &config_value) != SUCCESS) {
