@@ -17,6 +17,7 @@ valid_*.hex
 *.HEX
 *.ROM
 *.rom
+*.txt
 
 # Log files
 *.log
