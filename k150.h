@@ -4,8 +4,8 @@
 //
 //-----------------------------------------------------------------------------
 //
-//	Based on PICpro protocol implementation
 //	K150 programmer support for PICP
+//	Reverse-engineered protocol implementation
 //
 // Copyright (c) 2025 - K150 support addition
 //

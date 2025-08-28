@@ -18,9 +18,9 @@ A versatile command-line programmer for Microchip PIC microcontrollers supportin
 ## 🆕 What's New in 0.6.9
 
 ### Enhanced K150 Support
-- **Multiple Protocol Support**: P014, P016, P018, P18A protocols from picpro
+- **Multiple Protocol Support**: P014, P016, P018, P18A protocols
 - **Robust Serial Communication**: Enhanced timeout handling and error recovery
-- **Advanced Fuse Programming**: Both traditional (ON/OFF) and picpro-style (Enabled/Disabled) syntax
+- **Advanced Fuse Programming**: Both traditional (ON/OFF) and modern (Enabled/Disabled) syntax
 - **Automatic Verification**: Read-back confirmation with detailed mismatch reporting
 - **Debug Mode**: Verbose output with `-v/--verbose` flag for troubleshooting
 
@@ -107,7 +107,7 @@ picp /dev/ttyUSB0 -t PIC16F628A -wc 0x3FF4
 # Program with named fuse settings (traditional syntax)
 picp /dev/ttyUSB0 -t PIC16F628A -wf WDT:ON,CP:OFF,MCLRE:ON
 
-# Program PIC16F887 with picpro-style fuses
+# Program PIC16F887 with modern fuse syntax
 picp /dev/ttyUSB0 -t PIC16F887 -wf WDT:Enabled,MCLRE:Enabled,BOREN:Enabled
 
 # Read configuration to file

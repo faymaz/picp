@@ -4294,7 +4294,7 @@ int main(int argc,char *argv[])
 
 	// Parse command line arguments
 	char *port = "/dev/ttyUSB0"; // Default port for K150 programmer
-	port_name = port; // Make port available globally for picpro backend
+	port_name = port; // Make port available globally
 	bool k150_detect_requested = false;
 	char *expected_chip_type = NULL;
 	char *fuse_string = NULL;
@@ -4304,12 +4304,12 @@ int main(int argc,char *argv[])
 	for (int i = 0; i < argc; i++) {
 		if (argv[i][0] == '-') {
 			if (strcmp(argv[i], "-p") == 0 && i + 1 < argc) {
-				// Port specification (picpro style)
+				// Port specification
 				port = argv[++i];
 				port_name = port; // Update global port name
 				DEBUG_PRINT("Port set to: %s\n", port);
 			} else if (strcmp(argv[i], "-t") == 0 && i + 1 < argc) {
-				// Device type specification (picpro style)
+				// Device type specification
 				expected_chip_type = argv[++i];
 				DEBUG_PRINT("Device type set to: %s\n", expected_chip_type);
 			} else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--verbose") == 0) {

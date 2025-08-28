@@ -300,7 +300,7 @@ int k150_parse_fuse_string(const char *fuse_string, const char *device_name, uns
             const fuse_bit_t *fuse = fuses;
             while (fuse->name != NULL) {
                 if (strcasecmp(fuse->name, fuse_name) == 0) {
-                    // Support both picpro style (Enabled/Disabled) and picp style (ON/OFF)
+                    // Support both modern style (Enabled/Disabled) and traditional style (ON/OFF)
                     if (strcasecmp(fuse_value, "ON") == 0 || strcasecmp(fuse_value, "Enabled") == 0) {
                         *config_value = (*config_value & ~fuse->mask) | fuse->on_value;
                         printf("K150: Set %s=ON (value: 0x%04x)\n", fuse_name, fuse->on_value);

@@ -18,7 +18,7 @@
 #include "serial.h"
 #include "debug.h"
 #include "k150.h"
-#include "picpro_backend.h"
+// Native K150 protocol implementation
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
@@ -754,26 +754,12 @@ int k150_init_pic(void)
     return k150_start_communication();
 }
 
-// Hybrid chip detection - try picpro backend first, fallback to P018
+// Native chip detection using P018 protocol
 int k150_detect_chip_with_type(const char *expected_chip)
 {
     extern char *port_name; // From main.c
     
-    // Try picpro backend first (works with epk150.hex)
-    if (picpro_check_availability() == 0) {
-        fprintf(stderr, "K150: Using picpro backend for epk150.hex firmware\n");
-        
-        if (picpro_detect_chip(port_name, expected_chip) == 0) {
-            fprintf(stderr, "K150: SUCCESS - picpro detected chip: %s\n", expected_chip);
-            return SUCCESS;
-        } else {
-            fprintf(stderr, "K150: picpro detection failed, trying P018 protocol...\n");
-        }
-    } else {
-        fprintf(stderr, "K150: picpro not available, using P018 protocol\n");
-    }
-    
-    // Fallback to original P018 protocol
+    // Use native P018 protocol implementation
     fprintf(stderr, "K150: Starting P018 protocol chip detection for: %s\n", expected_chip);
     
     // P018 Start Command
