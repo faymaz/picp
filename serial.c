@@ -153,7 +153,7 @@ unsigned int ReadBytes(int theDevice, unsigned char *theBytes, unsigned int maxB
 // Enhanced serial read function for P018 protocol ACK handling
 int read_serial(int theDevice, unsigned char *buf, int len) {
     int total_read = 0;
-    int retries = 10;  // Reduced retries for faster ACK response
+    int retries = 3;  // Much faster timeout for immediate response
     fd_set readfds;
     struct timeval timeout;
 
@@ -161,7 +161,7 @@ int read_serial(int theDevice, unsigned char *buf, int len) {
         FD_ZERO(&readfds);
         FD_SET(theDevice, &readfds);
         timeout.tv_sec = 0;
-        timeout.tv_usec = 100000;  // 100ms timeout for P018 ACK timing
+        timeout.tv_usec = 50000;  // 50ms timeout for faster response
         
         int select_result = select(theDevice + 1, &readfds, NULL, NULL, &timeout);
         

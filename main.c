@@ -4646,6 +4646,12 @@ int main(int argc,char *argv[])
 											fail = true;
 										}
 									}
+									else
+									{
+										fprintf(stderr, "K150: ERROR - No output filename specified for -rp\n");
+										fprintf(stderr, "Usage: picp -k150 -rp output.hex PIC16F628A\n");
+										fail = true;
+									}
 								}
 								break;
 							case 'v':

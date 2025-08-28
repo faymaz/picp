@@ -64,7 +64,7 @@
 
 #define MAX_ROM_SIZE 16384  // Maximum ROM size in bytes (8192 words)
 #define CHUNK_SIZE 64       // Read/write chunk size
-#define TIMEOUT_RETRIES 150  // Increased retries for PL2303 stability
+#define MAX_RETRIES 5  // Increased retries for PL2303 stability
 #define DELAY_US 50000       // 50ms delay for better PL2303 timing
 
 // Constants for K150 functions
@@ -109,7 +109,6 @@ extern const PIC_DEFINITION *deviceArray[];
 // Configuration memory commands (P018 protocol) - Legacy
 #define P018_CMD_READ_CONFIG_LEGACY     0x0E
 #define P018_CMD_WRITE_CONFIG_LEGACY    0x09
-#define P018_ACK_CONFIG                 0x43  // 'C'
 
 //-----------------------------------------------------------------------------
 // Serial communication functions
@@ -132,16 +131,16 @@ int k150_write_serial(const unsigned char *buf, int len)
 int k150_read_serial(unsigned char *buf, int len)
 {
     int total_read = 0, retries = 0;
-    const int MAX_RETRIES = 50;
+    const int max_retries = 5;
     struct timeval tv;
     fd_set rfds;
 
     DEBUG_PRINT("read_serial attempting to read %d bytes\n", len);
-    while (total_read < len && retries < MAX_RETRIES) {
+    while (total_read < len && retries < max_retries) {
         FD_ZERO(&rfds);
         FD_SET(k150_fd, &rfds);
-        tv.tv_sec = 1;  // 1 second timeout
-        tv.tv_usec = 0;
+        tv.tv_sec = 0;  // Fast timeout
+        tv.tv_usec = 200000;  // 200ms timeout
 
         int r = select(k150_fd + 1, &rfds, NULL, NULL, &tv);
         if (r > 0 && FD_ISSET(k150_fd, &rfds)) {
@@ -174,7 +173,7 @@ int k150_read_serial(unsigned char *buf, int len)
             // Timeout
             retries++;
             if (retries % 10 == 0) {
-                DEBUG_PRINT("read_serial retry %d/%d\n", retries, MAX_RETRIES);
+                DEBUG_PRINT("read_serial retry %d/%d\n", retries, max_retries);
             }
             usleep(20000); // 20ms delay between retries
         } else if (r < 0) {
@@ -237,7 +236,7 @@ static int k150_start_communication(void)
 static int k150_send_device_params(const PIC_DEFINITION *device)
 {
     unsigned char init_cmd = 0x2E; // Single byte '.' command from log
-    unsigned char ack;
+    // unsigned char ack; // Unused variable
     
     printf("K150: Sending init command '.' (0x2E) for %s\n", device->name);
     
