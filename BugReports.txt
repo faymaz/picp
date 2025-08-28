@@ -1,0 +1,87 @@
+
+                  Sending Bug Reports to the Author
+---------------------------------------------------------------------------
+
+If you find a problem with either picp or gpicp, please email me a bug report
+at j_post <AT> pacbell <DOT> net. Your bug report should include a description of
+the problem, which particular PIC chip is involved, and which programmer you're
+using (Picstart Plus, Warp-13 or JuPic).
+
+Please generate a picpcomm.log file (use -c as the first command line argument
+to picp, or click the checkbox at the right end of the topmost menu in gpicp),
+then zip or gzip the log file and add it as an attachment to your email. Try to
+keep the log file size to the minimum that captures the problem.
+
+You should be aware that it is possible to put a PIC chip in a state in which
+it will not behave as you might expect. For example, if you set code protection
+in the configuration bits, then try to read the program, all you'll get back is
+zeros. If you have difficulties in programming a chip, try doing a flash erase
+(for flash devices), and then programming the chip.
+
+If you believe that it would be helpful to send me a hex file or source code
+files in order to duplicate the problem, please zip or gzip them and add as an
+email attachment. As with the log file, try to minimize file sizes as much as
+possible and still provide all relevant information.
+
+If for some reason you think it's necessary to send me a really large email
+(over 20KB), please first send me a short email describing what it is you want
+to send, and wait for my reply before sending the larger email.
+
+Many thanks to all those who've sent in bug reports.
+
+A Note on Email Difficulties:
+-----------------------------
+Because my email address is in documentation for a variety of projects I have
+all over the internet, spammers try to send me a *lot* of junk. I receive less
+than one percent of such garbage due to the nature of my anti-spam software.
+Emails that are rejected by the anti-spam software are removed from my ISP's
+server without being downloaded to my computer. The only information I ever see
+regarding rejected emails is some header information that is logged.
+
+Some of the things that will get emails tagged as spam are (in no particular
+order):
+  1) No reverse IP. Normally, only spammers and others with something to hide
+     will try to hide their return IP address.
+  2) No Subject. Make the Subject have *something* to do with picp or gpicp.
+  3) Certain key words in the Subject. Trust me, there is *no* variation of
+     the word "viagra" that won't be caught by my anti-spam software.
+  4) Do not use "iso-8859" or any such to create fancy font subject lines.
+     Such subject lines are automatically tagged as spam.
+  5) Do not put my user name (j_post) in the Subject. Spammers are fond of
+     doing this. OTOH, please do put 'picp' in the Subject.
+There are many other rules that could get your email tagged as spam, but I
+think you get the idea.
+
+Some ISPs are permanently banned from my inbox because they are, basically,
+spammer havens. If you use one of these "sevices" as an ISP, I strongly suggest
+you change to a different ISP. Some of the banned ISPs are:
+  1) cable.rogers.com (number one abusive spammer of all time)
+  2) comcast.net (rapidly gaining on cable.rogers.com)
+  3) hkcable.com
+  4) metrocast.net
+  5) blazemail.com
+  6) netvision.net
+The above are only a few of dozens of ISPs who have earned the dubious priviledge
+of being permanently banned.
+
+If your email gets falsely rejected as spam, but your Subject line makes it clear
+that you are a picp/gpicp user and not a spammer, I'll know that from the header
+logs. I'll then set up an explicit accept rule for your email address, and ask
+you to resend your email. (Any spammers who use this as a way to get around my
+anti-spam software will be visited by thousands of alien cockroaches who will
+paralyze them from the neck down and then proceed to eat them alive. It takes
+them several days to finish the job. :-)
+
+In addition to spammers, I have *no* tolerance for Windoze users who allow their
+broken OS to get infected and send out viral email to the rest of the world. My
+anti-spam software also detects viral emails and removes them from the server
+without downloading the email. If you fall into this group, you can do one of two
+things:
+  1) Clean your system regularly with anti-virus software (not recommended).
+  2) Dump the broken, toy operating system your're using and replace it with a
+     well-designed, robust OS such as Linux (highly recommended).
+
+
+Jeff Post
+April 2005
+

@@ -30,6 +30,9 @@
 #include <sys/select.h>
 #include <errno.h>
 #include <string.h>
+#include "serial.h"
+#include "record.h"
+#include "debug.h"
 
 // Constants for K150 functions
 #define SUCCESS 0
@@ -200,9 +203,11 @@ int write_serial(int theDevice, unsigned char *buf, int len) {
         printf("ERROR: write_serial failed, wrote %d/%d bytes\n", written, len);
         return ERROR;
     }
-    printf("DEBUG: write_serial sent %d bytes: ", len);
-    for (int i = 0; i < len; i++) printf("0x%02x ", buf[i]);
-    printf("\n");
+    DEBUG_PRINT("write_serial sent %d bytes: ", len);
+    if (debug_enabled) {
+        for (int i = 0; i < len; i++) printf("0x%02x ", buf[i]);
+        printf("\n");
+    }
     return written;
 }
 

@@ -84,6 +84,7 @@
 #include "picdev.h"
 #include "serial.h"
 #include "k150.h"
+#include "debug.h"
 
 // K150 constants
 #ifndef SUCCESS
@@ -3838,6 +3839,7 @@ static void Usage()
 	fprintf(stdout, "\n%s: version %s\n"
 			" (c) 2000-2004 Cosmodog, Ltd. (http://www.cosmodog.com)\n"
 			" (c) 2004-2006 Jeff Post (http://home.pacbell.net/theposts/picmicro)\n"
+			" (c) 2025-2026 Faymaz (https://github.com/faymaz/picp)\n"
 			" GNU General Public License\n", programName, versionString);
 	fprintf(stdout, "\nUsage: %s [-c] [-d] [-v] ttyname [-v] devtype [-i] [-h] [-q] [-v] [-s [size]] [-b|-r|-w|-e][pcidof]\n", programName);
 	fprintf(stdout, " where:\n");
@@ -4244,26 +4246,12 @@ int loadPicDefinitions(void)
 
 int main(int argc,char *argv[])
 {
+	// Initialize debug system first
+	debug_init();
+	
 	// Force unbuffered output for debugging
 	setbuf(stdout, NULL);
 	setbuf(stderr, NULL);
-	
-	FILE *debug_file = fopen("debug_picp.log", "w");
-	if (debug_file) {
-		fprintf(debug_file, "DEBUG: main() started with argc=%d\n", argc);
-		for (int i = 0; i < argc; i++) {
-			fprintf(debug_file, "DEBUG: argv[%d] = '%s'\n", i, argv[i]);
-		}
-		fflush(debug_file);
-		fclose(debug_file);
-	}
-	
-	printf("DEBUG: main() started with argc=%d\n", argc);
-	fflush(stdout);
-	for (int i = 0; i < argc; i++) {
-		printf("DEBUG: argv[%d] = '%s'\n", i, argv[i]);
-		fflush(stdout);
-	}
 
 	bool				fail;
 	unsigned int	baudRate;
@@ -4287,9 +4275,9 @@ int main(int argc,char *argv[])
 	programName = *argv++;							// name of the application
 	argc--;
 
-	fprintf(stderr, "DEBUG: argc=%d after program name removal\n", argc);
+	DEBUG_PRINT("argc=%d after program name removal\n", argc);
 	for (int i = 0; i < argc; i++) {
-		fprintf(stderr, "DEBUG: argv[%d]='%s'\n", i, argv[i]);
+		DEBUG_PRINT("argv[%d]='%s'\n", i, argv[i]);
 	}
 
 	fail = false;
@@ -4319,25 +4307,29 @@ int main(int argc,char *argv[])
 				// Port specification (picpro style)
 				port = argv[++i];
 				port_name = port; // Update global port name
-				printf("DEBUG: Port set to: %s\n", port);
+				DEBUG_PRINT("Port set to: %s\n", port);
 			} else if (strcmp(argv[i], "-t") == 0 && i + 1 < argc) {
 				// Device type specification (picpro style)
 				expected_chip_type = argv[++i];
-				printf("DEBUG: Device type set to: %s\n", expected_chip_type);
+				DEBUG_PRINT("Device type set to: %s\n", expected_chip_type);
+			} else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--verbose") == 0) {
+				// Enable verbose/debug output
+				debug_enabled = 1;
+				fprintf(stderr, "Verbose mode enabled\n");
 			} else if (strcmp(argv[i], "-wf") == 0 && i + 1 < argc) {
 				// Write fuses: -wf CP:OFF,WDT:ON,MCLRE:ON
 				fuse_string = argv[++i];
 				write_fuses = true;
 				isK150 = true;
 				programmerSupport = P_K150;
-				fprintf(stderr, "DEBUG: Fuse write requested: %s\n", fuse_string);
+				DEBUG_PRINT("Fuse write requested: %s\n", fuse_string);
 			} else if (strcmp(argv[i], "-wc") == 0 && i + 1 < argc) {
 				// Write config (raw hex): -wc 0x3FF4
 				if (sscanf(argv[++i], "0x%x", &config_value) == 1 || sscanf(argv[i], "%x", &config_value) == 1) {
 					write_fuses = true;
 					isK150 = true;
 					programmerSupport = P_K150;
-					fprintf(stderr, "DEBUG: Config write requested: 0x%04x\n", config_value);
+					DEBUG_PRINT("Config write requested: 0x%04x\n", config_value);
 				} else {
 					fprintf(stderr, "ERROR: Invalid config value: %s\n", argv[i]);
 					return 1;
@@ -4347,32 +4339,82 @@ int main(int argc,char *argv[])
 				char *output_file = argv[++i];
 				isK150 = true;
 				programmerSupport = P_K150;
-				fprintf(stderr, "DEBUG: Config read requested to file: %s\n", output_file);
+				DEBUG_PRINT("Config read requested to file: %s\n", output_file);
 				
-				// Read configuration memory and save to HEX file
-				if (k150_read_config_to_hex(output_file, 0x2007) == 0) {
-					fprintf(stderr, "K150: Configuration memory read completed successfully\n");
-					return 0;
+				if (init_serial(port) != SUCCESS) {
+					fprintf(stderr, "ERROR: Failed to initialize serial port %s\n", port);
+					return 1;
+				}
+				
+				// Use existing k150_read_config function
+				unsigned char config_buffer[2];
+				if (k150_read_config(config_buffer) == SUCCESS) {
+					unsigned int config_data = (config_buffer[1] << 8) | config_buffer[0];
+					FILE *fp = fopen(output_file, "w");
+					if (fp) {
+						fprintf(fp, ":020000040000FA\n");  // Extended address record
+						fprintf(fp, ":02400E00%04X%02X\n", config_data, (0x100 - (0x02 + 0x40 + 0x0E + (config_data >> 8) + (config_data & 0xFF))) & 0xFF);  // Config data at 0x400E with checksum
+						fprintf(fp, ":00000001FF\n");  // End of file record
+						fclose(fp);
+						fprintf(stderr, "Configuration read to %s: 0x%04X\n", output_file, config_data);
+					} else {
+						fprintf(stderr, "ERROR: Could not create output file %s\n", output_file);
+						return 1;
+					}
 				} else {
 					fprintf(stderr, "ERROR: Configuration memory read failed\n");
 					return 1;
 				}
-			} else if (strcmp(argv[i], "-k150") == 0 && i + 1 < argc && strcmp(argv[i + 1], "detect") == 0) {
-				fprintf(stderr, "DEBUG: K150 chip detection command detected\n");
-				k150_detect_requested = true;
+			} else if (strcmp(argv[i], "-i") == 0) {
+				// Check if next argument is a device name for device info
+				if (i + 1 < argc && argv[i + 1][0] != '-') {
+					// Show device info for specific device
+					char *device_name = argv[++i];
+					isK150 = true;
+					programmerSupport = P_K150;
+					
+					// Find and display device information
+					picName = device_name;
+					picDevice = GetPICDefinition(picName);
+					if (picDevice) {
+						printf("Device: %s\n", picDevice->name);
+						printf("Program Memory: %d words\n", GetPgmSize(picDevice));
+						printf("Data Memory: %d bytes\n", GetDataSize(picDevice));
+						printf("Configuration: %d words\n", GetConfigSize(picDevice));
+						printf("ID Locations: %d words\n", GetIDSize(picDevice));
+						return 0;
+					} else {
+						printf("unrecognized PIC device type: %s\n", device_name);
+						ShowDevices();
+						return 1;
+					}
+				} else {
+					// List all supported devices
+					ShowDevices();
+					return 0;
+				}
+			} else if (strcmp(argv[i], "-k150") == 0) {
+				DEBUG_PRINT("K150 mode enabled\n");
 				isK150 = true;
 				programmerSupport = P_K150;
-				i++; // Skip "detect" argument
 				
-				// Check if chip type is specified (like microbrn.exe manual selection)
-				if (i + 1 < argc && argv[i + 1][0] != '-') {
-					expected_chip_type = argv[++i];
-					fprintf(stderr, "DEBUG: Expected chip type: %s\n", expected_chip_type);
-				} else {
-					expected_chip_type = "PIC16F628A"; // Default chip type
-					fprintf(stderr, "DEBUG: Using default chip type: %s\n", expected_chip_type);
+				// Check if next argument is "detect" for chip detection
+				if (i + 1 < argc && strcmp(argv[i + 1], "detect") == 0) {
+					DEBUG_PRINT("K150 chip detection command detected\n");
+					k150_detect_requested = true;
+					i++; // Skip "detect" argument
+					
+					// Check if chip type is specified (like microbrn.exe manual selection)
+					if (i + 1 < argc && argv[i + 1][0] != '-') {
+						expected_chip_type = argv[++i];
+						DEBUG_PRINT("Expected chip type: %s\n", expected_chip_type);
+					} else {
+						expected_chip_type = "PIC16F628A"; // Default chip type
+						DEBUG_PRINT("Using default chip type: %s\n", expected_chip_type);
+					}
+					break; // Exit parsing loop for detection
 				}
-				break; // Exit parsing loop for detection
+				// Continue parsing other flags after -k150
 			}
 		}
 	}
@@ -4380,13 +4422,13 @@ int main(int argc,char *argv[])
 	// Handle K150 chip detection
 	if (k150_detect_requested) {
 		fprintf(stderr, "K150: Detecting connected PIC device...\n");
-		fprintf(stderr, "DEBUG: Opening K150 port %s\n", port);
+		DEBUG_PRINT("Opening K150 port %s\n", port);
 		
 		if (init_serial(port) != SUCCESS) {
 			fprintf(stderr, "ERROR: Failed to initialize serial port %s\n", port);
 			return 1;
 		}
-		fprintf(stderr, "DEBUG: K150 port opened successfully\n");
+		DEBUG_PRINT("K150 port opened successfully\n");
 		
 		fprintf(stderr, "K150: Detecting programmer...\n");
 		if (check_programmer() != SUCCESS) {
@@ -4399,13 +4441,13 @@ int main(int argc,char *argv[])
 		fprintf(stderr, "K150: Testing chip type: %s\n", expected_chip_type);
 		if (k150_detect_chip_with_type(expected_chip_type) == SUCCESS) {
 			fprintf(stderr, "K150: Chip detection successful!\n");
-			fprintf(stderr, "DEBUG: K150 port closed\n");
+			DEBUG_PRINT("K150 port closed\n");
 			k150_close_port();
 			return 0;
 		} else {
 			fprintf(stderr, "ERROR: K150 chip detection failed for %s\n", expected_chip_type);
 			fprintf(stderr, "K150: Try different chip type or check hardware connection\n");
-			fprintf(stderr, "DEBUG: K150 port closed\n");
+			DEBUG_PRINT("K150 port closed\n");
 			k150_close_port();
 			return 1;
 		}
@@ -4430,7 +4472,7 @@ int main(int argc,char *argv[])
 		if (fuse_string) {
 			// Use device type from -t parameter or default
 			char *device_name = expected_chip_type ? expected_chip_type : "PIC16F628A";
-			printf("DEBUG: Using device type for fuse parsing: %s\n", device_name);
+			DEBUG_PRINT("Using device type for configuration: %s\n", device_name);
 			
 			extern int k150_parse_fuse_string(const char *fuse_string, const char *device_name, unsigned int *config_value);
 			if (k150_parse_fuse_string(fuse_string, device_name, &config_value) != SUCCESS) {
@@ -4451,6 +4493,12 @@ int main(int argc,char *argv[])
 			k150_close_port();
 			return 1;
 		}
+	}
+	
+	// Skip K150 argument parsing section - already handled above
+	if (isK150) {
+		DEBUG_PRINT("K150 mode detected, skipping legacy argument parsing\n");
+		return 0;
 	}
 	
 	if (argc >= 2)										// need at least three arguments to do anything
@@ -4484,18 +4532,18 @@ int main(int argc,char *argv[])
 			argv++;
 		}
 
-		printf("DEBUG: Before device parsing - argc=%d\n", argc);
+		DEBUG_PRINT("Before device parsing - argc=%d\n", argc);
 		for (int j = 0; j < argc; j++) {
-			printf("DEBUG: remaining argv[%d] = '%s'\n", j, argv[j]);
+			DEBUG_PRINT("remaining argv[%d] = '%s'\n", j, argv[j]);
 		}
 		
 		deviceName = *argv++;								// name of the device (probably)
 		argc--;
-		printf("DEBUG: deviceName = '%s', argc after device = %d\n", deviceName, argc);
+		DEBUG_PRINT("deviceName = '%s', argc after device = %d\n", deviceName, argc);
 		
 		picName = *argv++;									// name of the PIC type (probably)
 		argc--;
-		printf("DEBUG: picName = '%s', argc after pic = %d\n", picName, argc);
+		DEBUG_PRINT("picName = '%s', argc after pic = %d\n", picName, argc);
 
 		if ((picDevice = GetPICDefinition(picName)))			// locate the PIC type (0 = none found)
 		{
@@ -4805,7 +4853,7 @@ int main(int argc,char *argv[])
 		}
 		else {
 			printf("unrecognized PIC device type: %s\n", picName);
-			printf("DEBUG: Available PIC types include: PIC16F628A, 16F628A\n");
+			DEBUG_PRINT("Available PIC types include: PIC16F628A, 16F628A\n");
 			ShowDevices();														// give a helpful list of supported devices
 		}
 	}
@@ -4826,6 +4874,7 @@ int main(int argc,char *argv[])
 			fprintf(stdout, "\n%s: version %s\n"
 				" (c) 2000-2004 Cosmodog, Ltd. (http://www.cosmodog.com)\n"
 				" (c) 2004-2006 Jeff Post (http://home.pacbell.net/theposts/picmicro)\n"
+				" (c) 2025-2026 Faymaz (https://github.com/faymaz/picp)\n"
 				" GNU General Public License\n\n", programName, versionString);
 		}
 		else if (flags && flags[0] == '-' && (flags[1] == 'd' || flags[1] == 'D'))

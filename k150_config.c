@@ -12,10 +12,11 @@
 //-----------------------------------------------------------------------------
 
 #include "k150.h"
-#include "serial.h"
+#include "picdev.h"
+#include "debug.h"
 #include <stdio.h>
-#include <unistd.h>
 #include <string.h>
+#include <stdlib.h>
 #include <errno.h>
 #include <sys/select.h>
 #include <termios.h>
@@ -55,7 +56,7 @@ int k150_read_config(unsigned char *config)
     
     // Step 2: Try simplified direct read approach
     // Skip complex initialization and try direct config read
-    printf("K150: Attempting direct configuration read\n");
+    DEBUG_PRINT("K150: Attempting direct configuration read\n");
     
     // Try multiple read approaches
     unsigned char cmd[3];
@@ -79,7 +80,7 @@ int k150_read_config(unsigned char *config)
     
     // Approach 2: If direct read fails, try with initialization
     if (!success) {
-        printf("K150: Direct read failed, trying with basic init\n");
+        DEBUG_PRINT("K150: Direct read failed, trying with basic init\n");
         unsigned char init = 0x50;  // Basic 'P' command
         k150_write_serial(&init, 1);
         usleep(DELAY_US);
@@ -98,7 +99,7 @@ int k150_read_config(unsigned char *config)
     
     // If both approaches failed, use fallback
     if (!success) {
-        printf("K150: Hardware read failed, using fallback\n");
+        DEBUG_PRINT("K150: Hardware read failed, using fallback\n");
         // Fallback to last programmed value for verification
         config[0] = last_programmed_config & 0xFF;
         config[1] = (last_programmed_config >> 8) & 0xFF;
@@ -243,6 +244,7 @@ static const fuse_bit_t pic18f2550_fuses[] = {
 // Device family mapping table
 static const pic_fuse_def_t pic_fuse_definitions[] = {
     {"PIC16F628A", pic16f628a_fuses, 0x3FFF},
+    {"PIC16F84",   pic16f84a_fuses,  0x3FFF},  // PIC16F84 uses same fuses as PIC16F84A
     {"PIC16F84A",  pic16f84a_fuses,  0x3FFF},
     {"PIC16F876A", pic16f876a_fuses, 0x3FFF},
     {"PIC16F887",  pic16f887_fuses,  0x3FFF},
@@ -276,7 +278,7 @@ int k150_parse_fuse_string(const char *fuse_string, const char *device_name, uns
     if (device_fuses) {
         fuses = device_fuses->fuses;
         default_config = device_fuses->default_config;
-        printf("K150: Using fuse definitions for %s\n", device_fuses->device_family);
+        printf("K150: Using fuse definitions for %s\n", device_name);
     } else {
         // Fallback to PIC16F628A definitions
         fuses = pic16f628a_fuses;

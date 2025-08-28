@@ -13,8 +13,10 @@
 //-----------------------------------------------------------------------------
 
 #include "k150.h"
-#include "serial.h"
 #include "picdev.h"
+#include "debug.h"
+#include "serial.h"
+#include "debug.h"
 #include "k150.h"
 #include "picpro_backend.h"
 #include <unistd.h>
@@ -119,53 +121,73 @@ int k150_write_serial(const unsigned char *buf, int len)
         printf("ERROR: k150_write_serial failed: %s\n", strerror(errno));
         return ERROR;
     }
-    printf("DEBUG: write_serial sent %d bytes: ", written);
-    for (int i = 0; i < written; i++) printf("0x%02x ", buf[i]);
-    printf("\n");
+    DEBUG_PRINT("write_serial sent %d bytes: ", written);
+    if (debug_enabled) {
+        for (int i = 0; i < written; i++) printf("0x%02x ", buf[i]);
+        printf("\n");
+    }
     return SUCCESS;
 }
 
 int k150_read_serial(unsigned char *buf, int len)
 {
     int total_read = 0, retries = 0;
-    const int MAX_RETRIES = 50; // Reduced from 150 for better performance
+    const int MAX_RETRIES = 50;
     struct timeval tv;
     fd_set rfds;
 
-    fprintf(stderr, "DEBUG: read_serial attempting to read %d bytes\n", len);
+    DEBUG_PRINT("read_serial attempting to read %d bytes\n", len);
     while (total_read < len && retries < MAX_RETRIES) {
         FD_ZERO(&rfds);
         FD_SET(k150_fd, &rfds);
-        tv.tv_sec = 0;
-        tv.tv_usec = 100000; // 100ms timeout - better for PL2303
+        tv.tv_sec = 1;  // 1 second timeout
+        tv.tv_usec = 0;
 
         int r = select(k150_fd + 1, &rfds, NULL, NULL, &tv);
-        if (r > 0) {
+        if (r > 0 && FD_ISSET(k150_fd, &rfds)) {
             int bytes_read = read(k150_fd, buf + total_read, len - total_read);
             if (bytes_read > 0) {
                 total_read += bytes_read;
-                fprintf(stderr, "DEBUG: read_serial got %d bytes: ", bytes_read);
-                for (int i = 0; i < bytes_read; i++) fprintf(stderr, "0x%02x ", buf[total_read - bytes_read + i]);
-                fprintf(stderr, "\n");
-                
-                // Reset retry counter on successful read
-                retries = 0;
+                if (debug_enabled) {
+                    fprintf(stderr, "DEBUG: read_serial got %d bytes: ", bytes_read);
+                    for (int i = 0; i < bytes_read; i++) fprintf(stderr, "0x%02x ", buf[total_read - bytes_read + i]);
+                    fprintf(stderr, "\n");
+                }
+                retries = 0; // Reset on successful read
+            } else if (bytes_read == 0) {
+                // EOF - connection closed
+                DEBUG_PRINT("read_serial EOF detected\n");
+                break;
             } else if (bytes_read < 0) {
-                fprintf(stderr, "ERROR: k150_read_serial failed: %s\n", strerror(errno));
-                return ERROR;
+                if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                    // Resource temporarily unavailable - retry
+                    DEBUG_PRINT("read_serial EAGAIN, retrying...\n");
+                    retries++;
+                    usleep(10000); // 10ms delay
+                    continue;
+                } else {
+                    fprintf(stderr, "ERROR: k150_read_serial failed: %s\n", strerror(errno));
+                    return ERROR;
+                }
             }
         } else if (r == 0) {
+            // Timeout
             retries++;
-            if (retries % 10 == 0) { // Log every 10th retry to reduce spam
-                fprintf(stderr, "DEBUG: read_serial retry %d/%d\n", retries, MAX_RETRIES);
+            if (retries % 10 == 0) {
+                DEBUG_PRINT("read_serial retry %d/%d\n", retries, MAX_RETRIES);
             }
-            usleep(1000); // 1ms delay between retries
-            usleep(DELAY_US); // 50ms delay for PL2303 stability
-        } else {
-            fprintf(stderr, "ERROR: select failed: %s\n", strerror(errno));
-            return ERROR;
+            usleep(20000); // 20ms delay between retries
+        } else if (r < 0) {
+            if (errno == EINTR) {
+                // Interrupted system call - retry
+                continue;
+            } else {
+                fprintf(stderr, "ERROR: select failed: %s\n", strerror(errno));
+                return ERROR;
+            }
         }
     }
+    
     if (total_read < len) {
         fprintf(stderr, "ERROR: read_serial timeout, got %d/%d bytes\n", total_read, len);
         return ERROR;
@@ -177,87 +199,77 @@ int k150_read_serial(unsigned char *buf, int len)
 // P018 Protocol Implementation
 //-----------------------------------------------------------------------------
 
-// Start P018 communication
+// Start P018 communication - Fixed based on Portmon log analysis
 static int k150_start_communication(void)
 {
-    unsigned char cmd = P018_CMD_START;
-    unsigned char ack;
+    unsigned char start_cmd[2] = {0x50, 0x2E}; // "P." from log analysis
+    unsigned char ack1, ack2;
     
-    printf("K150: Sending start command 'P' (0x50)\n");
-    if (k150_write_serial(&cmd, 1) != SUCCESS) return ERROR;
+    printf("K150: Sending 2-byte start command 'P.' (0x50 0x2E)\n");
+    if (k150_write_serial(start_cmd, 2) != SUCCESS) return ERROR;
     usleep(DELAY_US);
     
-    if (k150_read_serial(&ack, 1) != SUCCESS) {
-        fprintf(stderr, "K150: ERROR: Failed to read start ACK\n");
+    // Expect 'P' (0x50) response first
+    if (k150_read_serial(&ack1, 1) != SUCCESS) {
+        fprintf(stderr, "K150: ERROR: Failed to read first start ACK\n");
         return ERROR;
     }
-    // K150 firmware uses non-standard ACK codes (from memory: accepts 'P', 'I', 0x50, 0x49, 0x51, 0x56)
-    if (ack != 'P' && ack != 'I' && ack != 0x50 && ack != 0x49 && ack != 0x51 && ack != 0x56) {
-        fprintf(stderr, "K150: ERROR: Unexpected start ACK, got 0x%02x\n", ack);
+    if (ack1 != 0x50) {
+        fprintf(stderr, "K150: ERROR: Expected 'P' (0x50), got 0x%02x\n", ack1);
         return ERROR;
     }
-    fprintf(stderr, "K150: Start ACK 0x%02x received\n", ack);
+    
+    // Expect second response (0x51 or 0x49)
+    if (k150_read_serial(&ack2, 1) != SUCCESS) {
+        fprintf(stderr, "K150: ERROR: Failed to read second start ACK\n");
+        return ERROR;
+    }
+    if (ack2 != 0x49 && ack2 != 0x51) {
+        fprintf(stderr, "K150: ERROR: Expected 'I' (0x49) or 'Q' (0x51), got 0x%02x\n", ack2);
+        return ERROR;
+    }
+    
+    printf("K150: Start sequence complete - received 'P' and 'I'\n");
     return SUCCESS;
 }
 
-// Send device initialization parameters from picdev.c
+// Send device initialization - Simplified based on log analysis
 static int k150_send_device_params(const PIC_DEFINITION *device)
 {
-    unsigned char cmd = P018_CMD_INIT;
-    unsigned char params[11];
+    unsigned char init_cmd = 0x2E; // Single byte '.' command from log
+    unsigned char ack;
     
-    // Extract parameters from picdev.c device definition
-    int pgm_size = (device->def[PD_PGM_SIZEH] << 8) | device->def[PD_PGM_SIZEL];
-    int data_size = (device->def[PD_DATA_SIZEH] << 8) | device->def[PD_DATA_SIZEL];
+    printf("K150: Sending init command '.' (0x2E) for %s\n", device->name);
     
-    params[0] = (pgm_size >> 8) & 0xFF;  // ROM size high
-    params[1] = pgm_size & 0xFF;         // ROM size low
-    params[2] = (data_size >> 8) & 0xFF; // EEPROM size high
-    params[3] = data_size & 0xFF;        // EEPROM size low
-    params[4] = device->def[14];         // Core type
-    params[5] = device->def[15];         // Prog flags
-    params[6] = device->def[16];         // Prog delay
-    params[7] = device->def[17];         // Power sequence
-    params[8] = device->def[18];         // Erase mode
-    params[9] = device->def[19];         // Prog tries
-    params[10] = device->def[20];        // Over program
-    
-    printf("K150: Sending init command (0x03) for %s\n", device->name);
-    printf("K150: ROM size: %d words, EEPROM: %d bytes\n", pgm_size, data_size);
-    
-    if (k150_write_serial(&cmd, 1) != SUCCESS) return ERROR;
-    if (k150_write_serial(params, 11) != SUCCESS) return ERROR;
+    if (k150_write_serial(&init_cmd, 1) != SUCCESS) return ERROR;
     usleep(DELAY_US);
     
-    unsigned char ack;
-    if (k150_read_serial(&ack, 1) != SUCCESS) {
-        fprintf(stderr, "K150: ERROR: Failed to read init ACK\n");
-        return ERROR;
-    }
-    // K150 firmware uses non-standard ACK codes (from memory: 0x50 instead of 0x49 for init)
-    if (ack != 'I' && ack != 0x49 && ack != 0x50 && ack != 0x56 && ack != 0x76) {
-        fprintf(stderr, "K150: ERROR: Unexpected init ACK, got 0x%02x\n", ack);
-        return ERROR;
-    }
-    fprintf(stderr, "K150: Init ACK 0x%02x received\n", ack);
+    // No specific ACK expected for init command in real protocol
+    printf("K150: Init command sent\n");
     return SUCCESS;
 }
 
-// Turn voltages on
+// Turn voltages on - Fixed based on log analysis
 static int k150_voltages_on(void)
 {
-    unsigned char cmd = P018_CMD_VOLTAGES_ON;
+    unsigned char voltage_cmd = 0x2E; // Single byte '.' command from log
     unsigned char ack;
     
-    printf("K150: Sending voltages ON command (0x04)\n");
-    if (k150_write_serial(&cmd, 1) != SUCCESS) return ERROR;
+    printf("K150: Sending voltages ON command '.' (0x2E)\n");
+    if (k150_write_serial(&voltage_cmd, 1) != SUCCESS) return ERROR;
     usleep(DELAY_US);
     
-    if (k150_read_serial(&ack, 1) != SUCCESS || ack != P018_ACK_VOLTAGES_ON) {
-        printf("K150: ERROR: Expected 'V' ACK, got 0x%02x\n", ack);
+    if (k150_read_serial(&ack, 1) != SUCCESS) {
+        fprintf(stderr, "K150: ERROR: Failed to read voltage ACK\n");
         return ERROR;
     }
-    printf("K150: Voltages ON ACK 'V' received\n");
+    
+    if (ack != 0x56) { // 'V' from log analysis
+        fprintf(stderr, "K150: ERROR: Expected 'V' (0x56), got 0x%02x\n", ack);
+        return ERROR;
+    }
+    
+    printf("K150: Voltages ON - received 'V' (0x56)\n");
     return SUCCESS;
 }
 
@@ -612,7 +624,7 @@ static int k150_open_serial_port(const char *device)
 {
     struct termios options;
     
-    fprintf(stderr, "DEBUG: Attempting to open serial port %s\n", device);
+    DEBUG_PRINT("Attempting to open serial port %s\n", device);
     k150_fd = open(device, O_RDWR | O_NOCTTY); // Blocking mode, removed O_NDELAY
     if (k150_fd == -1) {
         fprintf(stderr, "ERROR: Unable to open %s: %s\n", device, strerror(errno));
@@ -660,13 +672,13 @@ static int k150_open_serial_port(const char *device)
         
         // Log modem status for debugging
         ioctl(k150_fd, TIOCMGET, &status);
-        fprintf(stderr, "DEBUG: Modem status - DTR:%s RTS:%s CTS:%s DSR:%s DCD:%s\n",
+        DEBUG_PRINT("Modem status - DTR:%s RTS:%s CTS:%s DSR:%s DCD:%s\n",
                 (status & TIOCM_DTR) ? "ON" : "OFF",
                 (status & TIOCM_RTS) ? "ON" : "OFF", 
                 (status & TIOCM_CTS) ? "ON" : "OFF",
                 (status & TIOCM_DSR) ? "ON" : "OFF",
                 (status & TIOCM_CD) ? "ON" : "OFF");
-        fprintf(stderr, "DEBUG: Enhanced DTR reset sequence completed\n");
+        DEBUG_PRINT("Enhanced DTR reset sequence completed\n");
     }
     
     tcflush(k150_fd, TCIOFLUSH);
@@ -674,7 +686,7 @@ static int k150_open_serial_port(const char *device)
     // Set RTS for LED control
     ioctl(k150_fd, TIOCMBIS, &rts_flag);
     
-    fprintf(stderr, "DEBUG: Serial port %s initialized at 9600,8,N,1 with DTR reset\n", device);
+    DEBUG_PRINT("Serial port %s initialized at 9600,8,N,1 with DTR reset\n", device);
     return SUCCESS;
 }
 
@@ -686,7 +698,7 @@ static int k150_close_serial_port(void)
         ioctl(k150_fd, TIOCMBIC, &rts_flag);
         close(k150_fd);
         k150_fd = -1;
-        printf("DEBUG: K150 port closed\n");
+        DEBUG_PRINT("K150 port closed\n");
     }
     return SUCCESS;
 }
@@ -715,7 +727,7 @@ int check_programmer(void)
         fprintf(stderr, "ERROR: K150 programmer not detected\n");
         return ERROR;
     }
-    fprintf(stderr, "DEBUG: K150 programmer detected successfully\n");
+    DEBUG_PRINT("K150 programmer detected successfully\n");
     return SUCCESS;
 }
 

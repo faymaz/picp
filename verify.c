@@ -72,18 +72,51 @@ bool DoVerifyPgm(const PIC_DEFINITION *picDevice, FILE *theFile)
         return false;
     }
 
-    // Compare data
-    printf("K150: Comparing ROM data...\n");
+    // Enhanced verification with detailed dump
     int mismatches = 0;
+    printf("K150: Performing detailed verification...\n");
+    
     for (int i = 0; i < size; i++) {
         if (hex_buffer[i] != read_buffer[i]) {
-            if (mismatches < 10) {  // Show first 10 mismatches
-                printf("K150: Mismatch at address 0x%04X: expected 0x%02X, read 0x%02X\n", 
+            if (mismatches < 20) { // Show first 20 mismatches
+                printf("K150: Mismatch at 0x%04X: expected 0x%02X, read 0x%02X\n", 
                        i, hex_buffer[i], read_buffer[i]);
             }
             mismatches++;
             fail = true;
         }
+    }
+
+    // Generate verification dump file
+    FILE *dump_file = fopen("verification_dump.txt", "w");
+    if (dump_file) {
+        fprintf(dump_file, "K150 ROM Verification Report\n");
+        fprintf(dump_file, "============================\n");
+        fprintf(dump_file, "Device: %s\n", picDevice->name);
+        fprintf(dump_file, "ROM Size: %d bytes\n", size);
+        fprintf(dump_file, "Mismatches: %d\n\n", mismatches);
+        
+        if (mismatches > 0) {
+            fprintf(dump_file, "Detailed Mismatch Report:\n");
+            for (int i = 0; i < size; i++) {
+                if (hex_buffer[i] != read_buffer[i]) {
+                    fprintf(dump_file, "0x%04X: Expected 0x%02X, Read 0x%02X\n", 
+                           i, hex_buffer[i], read_buffer[i]);
+                }
+            }
+        }
+        
+        fprintf(dump_file, "\nHex Dump (First 256 bytes):\n");
+        for (int i = 0; i < 256 && i < size; i += 16) {
+            fprintf(dump_file, "%04X: ", i);
+            for (int j = 0; j < 16 && (i + j) < size; j++) {
+                fprintf(dump_file, "%02X ", read_buffer[i + j]);
+            }
+            fprintf(dump_file, "\n");
+        }
+        
+        fclose(dump_file);
+        printf("K150: Verification dump saved to verification_dump.txt\n");
     }
 
     if (fail) {

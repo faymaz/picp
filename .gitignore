@@ -5,24 +5,12 @@ convertshort
 
 # Object files
 *.o
-*.obj
-
-# Test files
-test_*.hex
-test_*.c
-backup_*.hex
-simple_*.hex
-valid_*.hex
-*.hex
-*.HEX
-*.ROM
-*.rom
-*.txt
-*.TXT
 
 # Log files
 *.log
-trace.log
+trace*
+output*
+typescript
 
 # Temporary files
 *~
@@ -31,16 +19,32 @@ trace.log
 
 # IDE files
 .vscode/
-.idea/
+*.swp
+*.swo
 
 # Build artifacts
-*.exe
-*.dll
+*.a
 *.so
 *.dylib
 
-# Archive directories (if recreated)
-archive/
+# Debug files
+*.dSYM/
+*.su
+
+# Test files
+test_*
+hex_rom/
+k150_test_results/
+sh/
+
+# Large log file - keep for reference but exclude from git
+log.LOG
+
+# Backup and development files
+k150_backup.c
+k150_enhanced*.c
+k150_chip_detection.c
+k150_protocols.*/
 fixchksum/
 picsnoop/
 hex_rom/

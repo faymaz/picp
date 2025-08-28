@@ -18,22 +18,23 @@ A versatile command-line programmer for Microchip PIC microcontrollers supportin
 ## 🆕 What's New in 0.6.9
 
 ### Enhanced K150 Support
-- **Automatic K150 Detection**: Plug-and-play USB support
-- **PL2303 Compatibility**: Works with standard K150 programmers
-- **P18A Protocol**: Reliable communication protocol implementation
-- **ICSP Mode**: Support for both ZIF socket and ICSP programming
+- **Multiple Protocol Support**: P014, P016, P018, P18A protocols from picpro
+- **Robust Serial Communication**: Enhanced timeout handling and error recovery
+- **Advanced Fuse Programming**: Both traditional (ON/OFF) and picpro-style (Enabled/Disabled) syntax
+- **Automatic Verification**: Read-back confirmation with detailed mismatch reporting
+- **Debug Mode**: Verbose output with `-v/--verbose` flag for troubleshooting
 
 ### New PIC Device Support
-- **PIC16F690**: 20-pin, 8K program memory, ICSP compatible
-- **PIC18F2550**: 28-pin, 32K program memory, USB-capable MCU
-- **Enhanced PIC16C54**: SMD support with ICSP programming
-- **PIC16F876/877**: Improved support and compatibility
+- **PIC16F887**: Full support with comprehensive fuse definitions
+- **Enhanced Configuration**: Improved parsing and validation for all device types
+- **Verification Dumps**: Detailed mismatch analysis with hex dumps
+- **Fallback Mechanisms**: Robust configuration read/write with multiple retry strategies
 
 ## 📋 Supported Programmers
 
 | Programmer | Interface | Status | Notes |
 |------------|-----------|--------|-------|
-| **K150** | USB (PL2303) | 🔄 Partial | Verification and dump improvements in progress |
+| **K150** | USB (PL2303) | ✅ Full Support | Enhanced protocols, verification, and debug support |
 | PICSTART Plus | Serial RS232 | ✅ Full Support | Requires firmware 3.00.40+ |
 | Warp-13 | Parallel Port | ✅ Supported | Legacy support |
 | JuPic | Serial | ✅ Supported | - |
@@ -52,6 +53,18 @@ git clone https://github.com/faymaz/picp.git
 cd picp
 make
 sudo make install
+```
+
+### Testing
+```bash
+# Run comprehensive test suite
+make test
+
+# Test specific fuse combinations
+make test-fuses
+
+# Test device support
+make test-devices
 ```
 
 ### System Setup
@@ -88,8 +101,20 @@ picp /dev/ttyUSB0 16c54 -i -wp program.hex
 # Complete programming sequence
 picp /dev/ttyUSB0 16f876 -ep -wp firmware.hex -rp verify.hex
 
-# Program with configuration bits
-picp /dev/ttyUSB0 16f84 -wp program.hex -wc 0x3FF4
+# Program with raw configuration bits
+picp /dev/ttyUSB0 -t PIC16F628A -wc 0x3FF4
+
+# Program with named fuse settings (traditional syntax)
+picp /dev/ttyUSB0 -t PIC16F628A -wf WDT:ON,CP:OFF,MCLRE:ON
+
+# Program PIC16F887 with picpro-style fuses
+picp /dev/ttyUSB0 -t PIC16F887 -wf WDT:Enabled,MCLRE:Enabled,BOREN:Enabled
+
+# Read configuration to file
+picp /dev/ttyUSB0 -t PIC16F628A -rc config_backup.hex
+
+# Enable verbose mode for debugging
+picp /dev/ttyUSB0 -v -t PIC16F628A -wf WDT:ON,CP:OFF
 ```
 
 ## 🔌 K150 Hardware Setup
@@ -124,7 +149,7 @@ Connect the following pins for ICSP:
 12F508, 12F509, 12F629, 12F675, 12F683
 
 ### PIC16F Series
-16F84, 16F84A, 16F87, 16F88, 16F627, 16F628, 16F648, 16F676, 16F684, 16F688, **16F690**, 16F72, 16F73, 16F74, 16F76, 16F77, 16F818, 16F819, 16F870, 16F871, 16F872, 16F873, 16F874, 16F876, 16F877, 16F877A
+16F84, 16F84A, 16F87, 16F88, 16F627, 16F628, 16F648, 16F676, 16F684, 16F688, **16F690**, 16F72, 16F73, 16F74, 16F76, 16F77, 16F818, 16F819, 16F870, 16F871, 16F872, 16F873, 16F874, 16F876, 16F877, 16F877A, **16F887**
 
 ### PIC16C Series
 16C54, 16C54A, 16C54B, 16C54C, 16C55, 16C56, 16C57, 16C58A, 16C61, 16C62, 16C63, 16C64, 16C65, 16C66, 16C67, 16C71, 16C72, 16C73, 16C74, 16C84
@@ -143,17 +168,23 @@ Connect the following pins for ICSP:
 - `-bp` - Blank check program memory
 
 ### Configuration & Data
-- `-wc <value>` - Write configuration bits
-- `-rc [file]` - Read configuration bits
+- `-wc <value>` - Write configuration bits (raw hex value)
+- `-wf <fuses>` - Write fuse configuration (name:value pairs)
+- `-rc [file]` - Read configuration bits to file
 - `-wd [file]` - Write data EEPROM
 - `-rd [file]` - Read data EEPROM
 
+### Device & Port Options
+- `-t <device>` - Specify target device type (e.g., PIC16F628A, PIC16F887)
+- `-p <port>` - Specify serial port (default: /dev/ttyUSB0)
+
 ### Special Modes
 - `-i` - Use ICSP protocol (In-Circuit Serial Programming)
-- `-v` - Show version information
+- `-v, --verbose` - Enable verbose/debug output for troubleshooting
 - `-d` - Show device list or device information
 - `-f` - Ignore verify errors
 - `-q` - Quiet mode
+- `--dry-run` - Test mode without hardware interaction
 
 ## 🔍 Troubleshooting
 
@@ -161,11 +192,22 @@ Connect the following pins for ICSP:
 - **Device not detected**: Check USB connection and PL2303 drivers
 - **Permission denied**: Add user to dialout group: `sudo usermod -a -G dialout $USER`
 - **Programming fails**: Verify power supply and connections
+- **Communication timeouts**: Use `-v` flag to see detailed debug information
+
+### Debug Mode
+```bash
+# Enable verbose output to see detailed communication
+picp /dev/ttyUSB0 -v -t PIC16F628A -wf WDT:ON
+
+# Check what's happening during programming
+picp /dev/ttyUSB0 --verbose -t PIC16F887 -wc 0x3FFF
+```
 
 ### General Issues
-- **Unknown device**: Check device name spelling and supported device list
+- **Unknown device**: Use `-t` parameter to specify device type explicitly
+- **Fuse parsing errors**: Check fuse name spelling and device compatibility
 - **Verify errors**: Use `-f` flag to ignore or check hardware connections
-- **Communication errors**: Try different baud rates or check cable
+- **Communication errors**: Enable verbose mode to diagnose serial issues
 
 ## 📄 File Formats
 
@@ -178,8 +220,9 @@ Standard Intel HEX format (.hex files) for program data:
 ```
 
 ### Configuration Files
-- `picdevrc` - Device configuration database
+- `picdevrc` - Device configuration database with 163+ PIC devices
 - Contains memory layouts, programming parameters, and device-specific settings
+- `verification_dump.txt` - Generated during verification failures with detailed mismatch analysis
 
 ## 🤝 Contributing
 
@@ -193,9 +236,18 @@ Contributions are welcome! Please:
 ### Adding New Devices
 To add support for new PIC devices:
 1. Update `picdevrc` with device specifications
-2. Add device detection in `main.c`
-3. Test with actual hardware
+2. Add fuse definitions in `k150_config.c` if needed
+3. Test with actual hardware using `make test`
 4. Update documentation
+
+### Development
+```bash
+# Build and test
+make clean && make && make test
+
+# Debug with verbose output
+./picp /dev/ttyUSB0 -v -t PIC16F628A -wf WDT:ON --dry-run
+```
 
 ## 📜 License
 
@@ -216,4 +268,4 @@ This project is licensed under the GNU General Public License v2.0 - see the [LI
 
 ---
 
-**PICP 0.6.9** - Making PIC programming accessible with modern USB programmers and enhanced device support.
+**PICP 0.6.9** - Professional PIC programming with enhanced K150 support, robust error handling, and comprehensive debugging capabilities.

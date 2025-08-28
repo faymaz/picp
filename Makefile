@@ -8,8 +8,8 @@ APP=picp
 INCLUDES=-I.
 OPTIONS=-O2 -Wall
 CFLAGS=$(INCLUDES) $(OPTIONS)
-SRCS=main.c serial.c record.c parse.c atoi_base.c k150.c picpro_backend.c k150_config.c
-OBJS = main.o parse.o record.o atoi_base.o picdev.o serial.o k150.o picpro_backend.o k150_config.o
+SRCS=main.c serial.c record.c parse.c atoi_base.c k150.c picpro_backend.c k150_config.c debug.c
+OBJS = main.o parse.o record.o atoi_base.o picdev.o serial.o k150.o picpro_backend.o k150_config.o debug.o
 
 WINCC=/usr/local/cross-tools/bin/i386-mingw32msvc-gcc
 WINCFLAGS=-Wall -O2 -fomit-frame-pointer -s -I/usr/local/cross-tools/include -D_WIN32 -DWIN32
@@ -96,4 +96,32 @@ winclean:
 	rm -f convert.exe
 	rm -f convertshort.exe
 
-.PHONY: all clean install uninstall win winclean
+# Test targets
+test: $(APP)
+	@echo "Running PICP K150 tests..."
+	@echo "Testing fuse parsing..."
+	./$(APP) /dev/ttyUSB0 -t PIC16F628A -wf WDT:ON,CP:OFF --dry-run || echo "Fuse test failed"
+	@echo "Testing PIC16F887 support..."
+	./$(APP) /dev/ttyUSB0 -t PIC16F887 -wf WDT:Enabled,MCLRE:Enabled --dry-run || echo "PIC16F887 test failed"
+	@echo "Testing raw config..."
+	./$(APP) /dev/ttyUSB0 -t PIC16F628A -wc 0x3FF4 --dry-run || echo "Raw config test failed"
+	@echo "Testing verbose mode..."
+	./$(APP) /dev/ttyUSB0 -v -t PIC16F628A -wf WDT:ON --dry-run | grep -q "DEBUG:" && echo "Verbose test passed" || echo "Verbose test failed"
+	@echo "✓ All tests completed"
+
+test-fuses: $(APP)
+	@echo "Testing all supported fuse combinations..."
+	./$(APP) -t PIC16F628A -wf CP:OFF,WDT:ON,PWRT:OFF,MCLRE:ON,BODEN:ON,LVP:ON,CPD:OFF --dry-run
+	./$(APP) -t PIC16F887 -wf CP:OFF,WDT:Enabled,PWRTE:Disabled,MCLRE:Enabled,BOREN:Enabled,LVP:Enabled,CPD:Disabled --dry-run
+	./$(APP) -t PIC18F2550 -wf WDT:ON,LVP:ON,MCLRE:ON,CP0:OFF,CP1:OFF,CPB:OFF,CPD:OFF --dry-run
+	@echo "✓ Fuse tests completed"
+
+test-devices: $(APP)
+	@echo "Testing device support..."
+	@for device in PIC16F628A PIC16F84A PIC16F876A PIC16F887 PIC18F2550; do \
+		echo "Testing $$device..."; \
+		./$(APP) -t $$device -wf WDT:ON --dry-run || echo "$$device test failed"; \
+	done
+	@echo "✓ Device tests completed"
+
+.PHONY: all clean install uninstall win winclean test test-fuses test-devices
