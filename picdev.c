@@ -9723,3 +9723,17 @@ const PIC_DEFINITION *deviceArray[] =
 	&PICrf509AG,
 	NULL			// end of list
 };
+
+#include <string.h>
+
+PIC_DEFINITION* find_device_by_name(const char* device_name)
+{
+    extern const PIC_DEFINITION* deviceArray[];
+    if (device_name == NULL) return NULL;
+    for (int i = 0; deviceArray[i] != NULL; i++) {
+        if (strcasecmp(device_name, deviceArray[i]->name) == 0) {
+            return (PIC_DEFINITION*)deviceArray[i];
+        }
+    }
+    return NULL; // Device not found
+}
