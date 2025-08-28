@@ -4415,6 +4415,44 @@ int main(int argc,char *argv[])
 					break; // Exit parsing loop for detection
 				}
 				// Continue parsing other flags after -k150
+			} else if (strcmp(argv[i], "-rp") == 0 && isK150) {
+				// Handle K150 read program memory
+				if (i + 1 < argc) {
+					char *output_file = argv[++i];
+					char *device_name = (i + 1 < argc) ? argv[++i] : "PIC16F628A";
+					
+					fprintf(stderr, "K150: Reading ROM from %s to %s\n", device_name, output_file);
+					
+					// Find device definition
+					const PIC_DEFINITION *picDevice = GetPICDefinition(device_name);
+					if (!picDevice) {
+						fprintf(stderr, "ERROR: Unknown device: %s\n", device_name);
+						return 1;
+					}
+					
+					// Open output file
+					FILE *hexFile = fopen(output_file, "w");
+					if (!hexFile) {
+						fprintf(stderr, "ERROR: Cannot create output file: %s\n", output_file);
+						return 1;
+					}
+					
+					// Perform read operation
+					bool success = DoReadPgm(picDevice, hexFile);
+					fclose(hexFile);
+					
+					if (success) {
+						fprintf(stderr, "K150: ROM read completed successfully\n");
+						return 0;
+					} else {
+						fprintf(stderr, "ERROR: ROM read failed\n");
+						return 1;
+					}
+				} else {
+					fprintf(stderr, "ERROR: -rp requires output filename\n");
+					fprintf(stderr, "Usage: picp -k150 -rp output.hex PIC16F628A\n");
+					return 1;
+				}
 			}
 		}
 	}
@@ -4495,10 +4533,10 @@ int main(int argc,char *argv[])
 		}
 	}
 	
-	// Skip K150 argument parsing section - already handled above
-	if (isK150) {
-		DEBUG_PRINT("K150 mode detected, skipping legacy argument parsing\n");
-		return 0;
+	// Continue to legacy argument parsing for K150 -rp/-wp commands
+	if (isK150 && !write_fuses && !k150_detect_requested) {
+		DEBUG_PRINT("K150 mode detected, continuing to legacy argument parsing for -rp/-wp\n");
+		// Don't return here - continue to legacy parsing for -rp/-wp commands
 	}
 	
 	if (argc >= 2)										// need at least three arguments to do anything
