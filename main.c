@@ -99,25 +99,6 @@ bool DoVerifyData(const PIC_DEFINITION *picDevice, FILE *theFile);
 // Forward declaration of isK150 variable
 extern bool isK150;
 
-// Stub implementations for missing verify functions
-bool DoVerifyPgm(const PIC_DEFINITION *picDevice, FILE *theFile)
-{
-    if (isK150) {
-        printf("K150: Program verification not yet implemented\n");
-        return true;  // Return success for now
-    }
-    return false;
-}
-
-bool DoVerifyData(const PIC_DEFINITION *picDevice, FILE *theFile)
-{
-    if (isK150) {
-        printf("K150: Data verification not yet implemented\n");
-        return true;  // Return success for now
-    }
-    return false;
-}
-
 // Function declarations for device info (used by verify.c)
 unsigned short int GetPgmSize(const PIC_DEFINITION *picDevice);
 unsigned short int GetDataSize(const PIC_DEFINITION *picDevice);
@@ -4591,6 +4572,22 @@ int main(int argc,char *argv[])
 		picName = *argv++;									// name of the PIC type (probably)
 		argc--;
 		DEBUG_PRINT("picName = '%s', argc after pic = %d\n", picName, argc);
+
+		// Handle -detect command before trying to parse as PIC device
+		if (strcmp(picName, "-detect") == 0) {
+			printf("K150: Auto-detecting connected PIC device...\n");
+			check_programmer();
+			if (isK150) {
+				if (k150_detect_chip_command_line() == SUCCESS) {
+					return 0; // Success, exit program
+				} else {
+					return 1; // Error, exit with error code
+				}
+			} else {
+				fprintf(stderr, "ERROR: -detect command requires K150 programmer\n");
+				return 1;
+			}
+		}
 
 		if ((picDevice = GetPICDefinition(picName)))			// locate the PIC type (0 = none found)
 		{
