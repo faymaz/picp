@@ -1,5 +1,7 @@
 # PICP - PIC Programmer for Linux
 
+![Visitor Count](https://visitor-badge.laobi.icu/badge?page_id=faymaz.picp)
+
 A command-line PIC microcontroller programmer with **K150 USB programmer support** for Linux.
 
 ## ✨ K150 Support 
