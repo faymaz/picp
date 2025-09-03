@@ -233,7 +233,7 @@ unsigned short	programmerSupport = P_PICSTART;	// supported programmer
 bool	isWarp13 = false;
 bool	isJupic = false;
 bool	isOlimex = false;			// non yet supported by picp - no way to test
-bool	isK150 = false;
+// isK150 tanımı k150.c'de yapılıyor
 
 bool	ISPflag = false;
 bool	suppressWrite = false;
@@ -3642,29 +3642,38 @@ static bool InitDevice(int serialDevice, unsigned int baudRate, unsigned char da
 	{
 		if (ConfigureFlowControl(serialDevice, false))	// no flow control at the moment (raise RTS)
 		{
-			ResetPICSTART();
-			ctsTimeOut = 100;							// allow about 100 ms (0.1 sec) for CTS to show up
+			// K150 kontrolü - external variable from k150.c
+			extern bool isK150;
+			if (isK150) {
+				// K150 için CTS kontrolü yapma, direkt geç
+				ConfigureFlowControl(serialDevice, false);  // K150 flow control kullanmaz
+				FlushBytes(serialDevice);
+				fprintf(stderr, "K150 detected - skipping CTS check\n");
+			} else {
+				ResetPICSTART();
+				ctsTimeOut = 100;							// allow about 100 ms (0.1 sec) for CTS to show up
 
-			do
-			{
-				GetDeviceStatus(serialDevice, &CTS, &DCD);	// see if CTS is true
+				do
+				{
+					GetDeviceStatus(serialDevice, &CTS, &DCD);	// see if CTS is true
 
-				if (CTS)
-					break;								// break out if it is
+					if (CTS)
+						break;								// break out if it is
 
-				usleep(1000);							// wait 1 ms (more or less), try again
+					usleep(1000);							// wait 1 ms (more or less), try again
+				}
+				while (ctsTimeOut--);
+
+				if (!CTS)
+				{
+					fprintf(stderr, "programmer not detected (CTS is false)\n");
+					fail = true;							// didn't see CTS, assume device is not present or not ready, fail
+				}
+				else
+					ConfigureFlowControl(serialDevice, true);	// looks ok to use flow control, so allow it
+
+				FlushBytes(serialDevice);						// get rid of any pending data
 			}
-			while (ctsTimeOut--);
-
-			if (!CTS)
-			{
-				fprintf(stderr, "programmer not detected (CTS is false)\n");
-				fail = true;							// didn't see CTS, assume device is not present or not ready, fail
-			}
-			else
-				ConfigureFlowControl(serialDevice, true);	// looks ok to use flow control, so allow it
-
-			FlushBytes(serialDevice);						// get rid of any pending data
 		}
 		else
 		{

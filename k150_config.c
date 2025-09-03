@@ -21,6 +21,7 @@
 #include <sys/select.h>
 #include <termios.h>
 #include <stdlib.h>
+#include <unistd.h>  // usleep için gerekli
 
 // Configuration memory commands (P018 protocol)
 #define P018_CMD_READ_CONFIG_FUSE     0x0E
@@ -112,26 +113,7 @@ int k150_read_config(unsigned char *config)
     return SUCCESS;
 }
 
-// Write configuration memory (fuse bits)
-int k150_program_config(unsigned char *config)
-{
-    if (!config) return ERROR;
-    
-    printf("K150: Programming configuration memory (fuse bits): 0x%02x%02x\n", config[1], config[0]);
-    
-    // Use the globally configured port from main.c
-    extern char *port_name;
-    if (k150_open_port(port_name ? port_name : "/dev/ttyUSB0") != SUCCESS) return ERROR;
-    
-    // Store the programmed configuration for verification
-    last_programmed_config = config[0] | (config[1] << 8);
-    
-    // For now, simulate successful config write
-    // This will be enhanced with actual protocol implementation
-    printf("K150: Configuration programming completed successfully\n");
-    k150_close_port();
-    return SUCCESS;
-}
+// Write configuration memory (fuse bits) - using k150.c implementation
 
 // Enhanced configuration write with verification
 int k150_write_config_with_verify(unsigned int config_value)

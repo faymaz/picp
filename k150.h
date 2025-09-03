@@ -14,6 +14,8 @@
 #ifndef __K150_H_
 #define __K150_H_
 
+#include <stdbool.h>  // for bool type
+
 // K150 Protocol Commands (P18A)
 #define K150_CMD_INIT_PIC        1
 #define K150_CMD_PROGRAM_ROM     2
@@ -35,6 +37,11 @@
 #define K150_RESP_ERROR          'N'
 #define K150_RESP_CONFIG         'C'
 #define K150_RESP_ACKNOWLEDGE    'A'
+
+// Microbrn.exe uyumlu komutlar
+#define K150_CMD_INIT            0x05  // Microbrn init komutu
+#define K150_CMD_EXIT            0x01  // Microbrn exit komutu
+#define K150_CMD_ACK             0x76  // Microbrn ACK yanıtı
 
 // P18A Protocol commands (modern K150 firmware)
 #define K150_P18A_DETECT         0x42
@@ -60,6 +67,7 @@ int k150_close_port(void);
 int k150_detect(void);
 int k150_init_pic(void);
 int k150_detect_programmer(void);
+int k150_read_serial_quick(unsigned char *buf, int len);  // for quick protocol testing
 int k150_is_port_open(void);
 int k150_erase_chip(void);
 int k150_read_rom(unsigned char *data, int size);
@@ -116,5 +124,6 @@ int k150_force_led_off(const char *device_path);
 
 // Global variables
 extern int theDevice;
+extern bool isK150;  // K150 programmer active flag
 
 #endif // __K150_H_

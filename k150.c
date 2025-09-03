@@ -28,6 +28,7 @@
 #include <sys/select.h>
 #include <sys/ioctl.h>
 #include <sys/select.h>
+#include <stdbool.h>  // bool tipi için
 
 // P18A Protocol commands (for updated firmware)
 #define P18A_CMD_DETECT         0x42 // Detect programmer
@@ -75,6 +76,7 @@
 static int k150_fd = -1;
 static PIC_DEFINITION *current_device = NULL;
 static int k150_firmware_version = 0;
+bool isK150 = false;  // K150 programmer active flag
 
 // Firmware version detection
 int k150_get_firmware_version(void)
@@ -113,123 +115,141 @@ extern const PIC_DEFINITION *deviceArray[];
 //-----------------------------------------------------------------------------
 // Serial communication functions
 //-----------------------------------------------------------------------------
+// Microbrn.exe compatible write function with buffer flush
 int k150_write_serial(const unsigned char *buf, int len)
 {
-    int written = write(k150_fd, buf, len);
-    if (written != len) {
-        printf("ERROR: k150_write_serial failed: %s\n", strerror(errno));
-        return ERROR;
+    if (write(k150_fd, buf, len) == len) {
+        tcflush(k150_fd, TCIOFLUSH);  // Buffer flush (PURGE equivalent)
+        DEBUG_PRINT("write_serial sent %d bytes: ", len);
+        if (debug_enabled) {
+            for (int i = 0; i < len; i++) printf("0x%02x ", buf[i]);
+            printf("\n");
+        }
+        return SUCCESS;
     }
-    DEBUG_PRINT("write_serial sent %d bytes: ", written);
-    if (debug_enabled) {
-        for (int i = 0; i < written; i++) printf("0x%02x ", buf[i]);
-        printf("\n");
-    }
-    return SUCCESS;
+    printf("ERROR: k150_write_serial failed: %s\n", strerror(errno));
+    return ERROR;
 }
 
+// Quick read function for protocol testing
+int k150_read_serial_quick(unsigned char *buf, int len)
+{
+    int retries = 0;
+    while (retries < 20) {  // Only 20 retries (1 second)
+        int r = read(k150_fd, buf, len);
+        if (r == len) {
+            DEBUG_PRINT("read_serial_quick got %d bytes: ", len);
+            if (debug_enabled) {
+                for (int i = 0; i < len; i++) printf("0x%02x ", buf[i]);
+                printf("\n");
+            }
+            return SUCCESS;
+        }
+        usleep(50000);  // 50ms delay
+        retries++;
+    }
+    DEBUG_PRINT("read_serial_quick failed after %d retries\n", retries);
+    return ERROR;
+}
+
+// Microbrn.exe compatible read function (WAIT_ON_MASK equivalent)
 int k150_read_serial(unsigned char *buf, int len)
 {
-    int total_read = 0, retries = 0;
-    const int max_retries = 5;
-    struct timeval tv;
-    fd_set rfds;
+    int retries = 0;
+    while (retries < 300) {  // Microbrn.exe uses 300 retries
+        int r = read(k150_fd, buf, len);
+        if (r == len) {
+            DEBUG_PRINT("read_serial got %d bytes: ", len);
+            if (debug_enabled) {
+                for (int i = 0; i < len; i++) printf("0x%02x ", buf[i]);
+                printf("\n");
+            }
+            return SUCCESS;
+        }
+        usleep(50000);  // 50ms delay (Microbrn.exe compatible)
+        retries++;
+    }
+    printf("DEBUG: k150_read_serial failed after %d retries\n", retries);
+    return ERROR;
+}
 
-    DEBUG_PRINT("read_serial attempting to read %d bytes\n", len);
-    while (total_read < len && retries < max_retries) {
-        FD_ZERO(&rfds);
-        FD_SET(k150_fd, &rfds);
-        tv.tv_sec = 0;  // Fast timeout
-        tv.tv_usec = 200000;  // 200ms timeout
+//-----------------------------------------------------------------------------
+// Microbrn.exe Compatible Command Functions
+//-----------------------------------------------------------------------------
 
-        int r = select(k150_fd + 1, &rfds, NULL, NULL, &tv);
-        if (r > 0 && FD_ISSET(k150_fd, &rfds)) {
-            int bytes_read = read(k150_fd, buf + total_read, len - total_read);
-            if (bytes_read > 0) {
-                total_read += bytes_read;
-                if (debug_enabled) {
-                    fprintf(stderr, "DEBUG: read_serial got %d bytes: ", bytes_read);
-                    for (int i = 0; i < bytes_read; i++) fprintf(stderr, "0x%02x ", buf[total_read - bytes_read + i]);
-                    fprintf(stderr, "\n");
-                }
-                retries = 0; // Reset on successful read
-            } else if (bytes_read == 0) {
-                // EOF - connection closed
-                DEBUG_PRINT("read_serial EOF detected\n");
-                break;
-            } else if (bytes_read < 0) {
-                if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                    // Resource temporarily unavailable - retry
-                    DEBUG_PRINT("read_serial EAGAIN, retrying...\n");
-                    retries++;
-                    usleep(10000); // 10ms delay
-                    continue;
-                } else {
-                    fprintf(stderr, "ERROR: k150_read_serial failed: %s\n", strerror(errno));
-                    return ERROR;
-                }
-            }
-        } else if (r == 0) {
-            // Timeout
-            retries++;
-            if (retries % 10 == 0) {
-                DEBUG_PRINT("read_serial retry %d/%d\n", retries, max_retries);
-            }
-            usleep(20000); // 20ms delay between retries
-        } else if (r < 0) {
-            if (errno == EINTR) {
-                // Interrupted system call - retry
-                continue;
-            } else {
-                fprintf(stderr, "ERROR: select failed: %s\n", strerror(errno));
-                return ERROR;
-            }
+// Microbrn.exe command sending function
+int k150_send_command(unsigned char cmd) {
+    unsigned char buf[1] = {cmd};
+    if (k150_write_serial(buf, 1) == SUCCESS) {
+        unsigned char resp[1];
+        if (k150_read_serial(resp, 1) == SUCCESS && resp[0] == K150_CMD_ACK) {
+            return SUCCESS;
         }
     }
-    
-    if (total_read < len) {
-        fprintf(stderr, "ERROR: read_serial timeout, got %d/%d bytes\n", total_read, len);
-        return ERROR;
+    return ERROR;
+}
+
+// Microbrn.exe cyclic fuse programming
+int k150_program_config(unsigned char *config_data) {
+    if (k150_send_command(K150_CMD_INIT) != SUCCESS) return ERROR;
+    unsigned char buf[2] = {config_data[0], config_data[1]};
+    if (k150_write_serial(buf, 2) != SUCCESS) return ERROR;
+    unsigned char resp[2];
+    if (k150_read_serial(resp, 2) == SUCCESS) {
+        if (resp[0] == config_data[0] && resp[1] == config_data[1]) {
+            k150_send_command(K150_CMD_EXIT);
+            return SUCCESS;
+        }
     }
-    return SUCCESS;
+    k150_send_command(K150_CMD_EXIT);
+    return ERROR;
 }
 
 //-----------------------------------------------------------------------------
 // P018 Protocol Implementation
 //-----------------------------------------------------------------------------
 
-// Start P018 communication - Fixed based on Portmon log analysis
+// Microbrn.exe compatible start communication - localhost.LOG analysis
 static int k150_start_communication(void)
 {
-    unsigned char start_cmd[2] = {0x50, 0x2E}; // "P." from log analysis
-    unsigned char ack1, ack2;
+    unsigned char buffer[10];
+    DEBUG_PRINT("K150: Starting Microbrn.exe compatible communication sequence\n");
     
-    printf("K150: Sending 2-byte start command 'P.' (0x50 0x2E)\n");
-    if (k150_write_serial(start_cmd, 2) != SUCCESS) return ERROR;
-    usleep(DELAY_US);
-    
-    // Expect 'P' (0x50) response first
-    if (k150_read_serial(&ack1, 1) != SUCCESS) {
-        fprintf(stderr, "K150: ERROR: Failed to read first start ACK\n");
-        return ERROR;
-    }
-    if (ack1 != 0x50) {
-        fprintf(stderr, "K150: ERROR: Expected 'P' (0x50), got 0x%02x\n", ack1);
-        return ERROR;
-    }
-    
-    // Expect second response (0x51 or 0x49)
-    if (k150_read_serial(&ack2, 1) != SUCCESS) {
-        fprintf(stderr, "K150: ERROR: Failed to read second start ACK\n");
-        return ERROR;
-    }
-    if (ack2 != 0x49 && ack2 != 0x51) {
-        fprintf(stderr, "K150: ERROR: Expected 'I' (0x49) or 'Q' (0x51), got 0x%02x\n", ack2);
-        return ERROR;
+    // Step 1: DTR/RTS control sequence (from localhost.LOG)
+    int status;
+    if (ioctl(k150_fd, TIOCMGET, &status) == 0) {
+        // CLR_DTR, CLR_RTS first (localhost.LOG line 8-9)
+        status &= ~TIOCM_DTR;
+        status &= ~TIOCM_RTS;
+        ioctl(k150_fd, TIOCMSET, &status);
+        usleep(50000);
+        
+        // SET_DTR, SET_RTS (localhost.LOG line 14-15)
+        status |= TIOCM_DTR;
+        status |= TIOCM_RTS;
+        ioctl(k150_fd, TIOCMSET, &status);
+        usleep(50000);
+        
+        // CLR_DTR (localhost.LOG line 20)
+        status &= ~TIOCM_DTR;
+        ioctl(k150_fd, TIOCMSET, &status);
     }
     
-    printf("K150: Start sequence complete - received 'P' and 'I'\n");
-    return SUCCESS;
+    // Step 2: Read K150 auto-response (42 03 42)
+    usleep(100000);  // 100ms wait
+    if (k150_read_serial_quick(buffer, 3) == SUCCESS) {
+        if (buffer[0] == 0x42 && buffer[1] == 0x03 && buffer[2] == 0x42) {
+            DEBUG_PRINT("K150: Expected auto-response received\n");
+        }
+    }
+    
+    // Step 3: P018 protocol init (50 03) - localhost.LOG line 32
+    unsigned char p018_cmd[2] = {0x50, 0x03};
+    if (k150_write_serial(p018_cmd, 2) == SUCCESS) {
+        return SUCCESS;
+    }
+    
+    return ERROR;
 }
 
 // Send device initialization - Simplified based on log analysis
@@ -618,10 +638,11 @@ static int save_hex_file(const char* filename, const unsigned char* buffer, int 
 // Public interface functions
 //-----------------------------------------------------------------------------
 
-// Open K150 serial port with flexible port selection
+// Open K150 serial port with flexible port selection - Microbrn.exe compatible
 static int k150_open_serial_port(const char *device)
 {
     struct termios options;
+    int status;
     
     DEBUG_PRINT("Attempting to open serial port %s\n", device);
     k150_fd = open(device, O_RDWR | O_NOCTTY); // Blocking mode, removed O_NDELAY
@@ -630,44 +651,43 @@ static int k150_open_serial_port(const char *device)
         return ERROR;
     }
     
-    // Configure serial port for K150 (9600 baud for updated firmware)
+    // Configure serial port for K150 Microbrn.exe compatible (19200 baud, 8N1)
     tcgetattr(k150_fd, &options);
-    // Try different baud rates for PL2303 compatibility
-    cfsetospeed(&options, B9600);
-    cfsetispeed(&options, B9600);
-    options.c_cflag = CS8 | CLOCAL | CREAD; // 8N1, no parity
-    options.c_iflag = IGNPAR;
+    // Microbrn.exe uses 19200 baud rate
+    cfsetospeed(&options, B19200);
+    cfsetispeed(&options, B19200);
+    options.c_cflag &= ~PARENB;     // No parity
+    options.c_cflag &= ~CSTOPB;     // 1 stop bit
+    options.c_cflag &= ~CSIZE;      // Clear size
+    options.c_cflag |= CS8;         // 8 bits
+    options.c_cflag |= (CLOCAL | CREAD);  // Local, read enabled
+    options.c_iflag &= ~(IXON | IXOFF | IXANY);  // No software flow control
+    options.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL);
     options.c_oflag = 0;
     options.c_lflag = 0;
-    options.c_cc[VTIME] = 10; // 1 saniye timeout
-    options.c_cc[VMIN] = 0; // Minimum 0 bytes, timeout-based
+    options.c_cc[VTIME] = 0; // Sonsuz bekleme (Microbrn.exe uyumlu)
+    options.c_cc[VMIN] = 1; // En az 1 byte bekle
     
     tcsetattr(k150_fd, TCSANOW, &options);
     tcflush(k150_fd, TCIOFLUSH);
     fcntl(k150_fd, F_SETFL, 0); // Clear non-blocking flags
     
-    // Enhanced DTR/RTS reset for PL2303 compatibility
-    int dtr_flag = TIOCM_DTR;
-    int rts_flag = TIOCM_RTS;
-    
-    // Clear all signals first
-    ioctl(k150_fd, TIOCMBIC, &dtr_flag);
-    ioctl(k150_fd, TIOCMBIC, &rts_flag);
-    usleep(200000); // 200ms
-    tcflush(k150_fd, TCIOFLUSH);
-    
-    // Enhanced DTR/RTS reset sequence for PL2303 compatibility
-    int status;
+    // DTR/RTS kontrolü - Microbrn.exe uyumlu
     if (ioctl(k150_fd, TIOCMGET, &status) == 0) {
-        // Clear DTR and RTS
-        status &= ~(TIOCM_DTR | TIOCM_RTS);
+        // DTR/RTS sıfırlama (Microbrn.exe açılış sırası)
+        status &= ~TIOCM_RTS;  // RTS sıfırla
+        status &= ~TIOCM_DTR;  // DTR sıfırla
         ioctl(k150_fd, TIOCMSET, &status);
-        usleep(200000); // 200ms wait for PL2303 reset
+        usleep(100000); // 100ms bekleme
         
-        // Set DTR high for normal operation
-        status |= TIOCM_DTR;
+        // SET_DTR/SET_RTS ile cihaz uyandırma (Microbrn.exe sırası)
+        status |= TIOCM_DTR;   // DTR set
         ioctl(k150_fd, TIOCMSET, &status);
-        usleep(100000); // 100ms stabilization
+        usleep(50000); // 50ms
+        
+        status |= TIOCM_RTS;   // RTS set
+        ioctl(k150_fd, TIOCMSET, &status);
+        usleep(50000); // 50ms stabilization
         
         // Log modem status for debugging
         ioctl(k150_fd, TIOCMGET, &status);
@@ -682,23 +702,29 @@ static int k150_open_serial_port(const char *device)
     
     tcflush(k150_fd, TCIOFLUSH);
     
-    // Set RTS for LED control
-    ioctl(k150_fd, TIOCMBIS, &rts_flag);
-    
-    DEBUG_PRINT("Serial port %s initialized at 9600,8,N,1 with DTR reset\n", device);
+            DEBUG_PRINT("Serial port %s initialized at 19200,8,N,1 with DTR/RTS reset (Microbrn.exe compatible)\n", device);
     return SUCCESS;
+}
+
+// Microbrn.exe uyumlu cleanup fonksiyonu
+void cleanup_serial() {
+    if (k150_fd >= 0) {
+        tcflush(k150_fd, TCIOFLUSH);  // Tamponu temizle
+        int status;
+        if (ioctl(k150_fd, TIOCMGET, &status) == 0) {
+            status &= ~TIOCM_RTS;  // RTS temizle
+            status &= ~TIOCM_DTR;  // DTR temizle
+            ioctl(k150_fd, TIOCMSET, &status);
+        }
+        close(k150_fd);
+        k150_fd = -1;
+        DEBUG_PRINT("K150 port cleaned and closed (Microbrn.exe compatible)\n");
+    }
 }
 
 static int k150_close_serial_port(void)
 {
-    if (k150_fd >= 0) {
-        // Turn off RTS to disable yellow LED
-        int rts_flag = TIOCM_RTS;
-        ioctl(k150_fd, TIOCMBIC, &rts_flag);
-        close(k150_fd);
-        k150_fd = -1;
-        DEBUG_PRINT("K150 port closed\n");
-    }
+    cleanup_serial();  // Microbrn.exe uyumlu temizleme
     return SUCCESS;
 }
 
@@ -706,6 +732,7 @@ static int k150_close_serial_port(void)
 
 int k150_open_port(const char *device)
 {
+    isK150 = true;  // K150 kullanıldığını işaretle
     return k150_open_serial_port(device ? device : "/dev/ttyUSB0");
 }
 
@@ -727,6 +754,7 @@ int check_programmer(void)
         return ERROR;
     }
     DEBUG_PRINT("K150 programmer detected successfully\n");
+    isK150 = true;  // K150 tespit edildi, bayrağı ayarla
     return SUCCESS;
 }
 
@@ -846,11 +874,43 @@ int k150_erase_chip(void)
 
 int k150_read_rom(unsigned char *buffer, int size)
 {
-    if (!current_device) {
-        printf("K150: ERROR: No device detected for read operation\n");
+    // Microbrn.exe ROM read sequence based on localhost.LOG
+    unsigned char device_params[] = {
+        0x04, 0x00,  // line 34
+        0x00, 0x40,  // line 36
+        0x06,        // line 38
+        0x00,        // line 40
+        0xC8,        // line 42
+        0x02,        // line 44
+        0x00,        // line 46
+        0x01,        // line 48
+        0x00         // line 50
+    };
+    
+    for (int i = 0; i < sizeof(device_params); i++) {
+        if (k150_write_serial(&device_params[i], 1) != SUCCESS) {
+            return ERROR;
+        }
+        usleep(10000);  // 10ms delay between parameters
+    }
+    
+    // Read P018 responses (localhost.LOG line 52, 55)
+    unsigned char response;
+    if (k150_read_serial_quick(&response, 1) == SUCCESS) {
+        DEBUG_PRINT("K150: P018 response 1: 0x%02x\n", response);
+        if (response == 0x50) {
+            if (k150_read_serial_quick(&response, 1) == SUCCESS) {
+                DEBUG_PRINT("K150: P018 response 2: 0x%02x\n", response);
+            }
+        }
+    }
+    
+    // ROM read command (localhost.LOG line 58)
+    unsigned char read_cmd = 0x14;
+    if (k150_write_serial(&read_cmd, 1) != SUCCESS) {
         return ERROR;
     }
-    return k150_read_rom_enhanced(current_device, buffer, size);
+    return SUCCESS;
 }
 
 int k150_read_eeprom(unsigned char *buffer, int size)
