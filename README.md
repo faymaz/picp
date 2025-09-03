@@ -8,7 +8,7 @@ A command-line PIC microcontroller programmer with **K150 USB programmer support
 
 - **✅ PIC16F628A** - Full read/write/erase support
 - **✅ PIC16F876** - Complete backup/restore workflow tested
-- **✅ PIC16F887** - Read operations confirmed  
+- **✅ PIC16F887** - **FULL 32KB programming support** - All operations tested ✅
 - **✅ PIC16F84** - Basic functionality verified
 - **✅ Data Integrity** - 100% verified with diff comparison
 
@@ -97,12 +97,22 @@ diff backup.hex verify.hex  # Should show no differences
 ./picp /dev/ttyUSB0 16f628a -wp firmware.hex
 ```
 
+### PIC16F887 Large Memory Programming (PASSED ✅)
+```bash
+# 32KB memory programming test
+./picp /dev/ttyUSB0 16f887 -rp backup.hex      # 32768 bytes backup
+./picp /dev/ttyUSB0 16f887 -e                  # Erase
+./picp /dev/ttyUSB0 16f887 -wp backup.hex      # Restore 32KB
+./picp /dev/ttyUSB0 16f887 -rp verify.hex      # Verify
+diff backup.hex verify.hex                     # Perfect match!
+```
+
 ## Supported PIC Devices
 
 **Tested & Confirmed:**
 - ✅ PIC16F628A (full read/write/erase)
-- ✅ PIC16F876 (full backup/restore workflow)
-- ✅ PIC16F887 (read operations)
+- ✅ PIC16F876 (full backup/restore workflow) 
+- ✅ PIC16F887 (32KB programming - complete workflow tested)
 - ✅ PIC16F84 (basic functionality)
 
 **Additional Support:**
