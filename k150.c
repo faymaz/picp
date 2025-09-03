@@ -28,6 +28,8 @@
 #include <sys/select.h>
 #include <sys/ioctl.h>
 #include <sys/select.h>
+#include <stdlib.h>
+#include <string.h>
 #include <stdbool.h>  // bool tipi için
 
 // P18A Protocol commands (for updated firmware)
@@ -65,6 +67,9 @@
 
 #define MAX_ROM_SIZE 16384  // Maximum ROM size in bytes (8192 words)
 #define CHUNK_SIZE 64       // Read/write chunk size
+
+// Forward declarations for helper functions
+static int hex_to_byte(char c);
 #define MAX_RETRIES 5  // Increased retries for PL2303 stability
 #define DELAY_US 50000       // 50ms delay for better PL2303 timing
 
@@ -1149,4 +1154,151 @@ int DoProgramPgm_Enhanced(const char* device_name, const char* hex_filename)
     
     k150_close_port();
     return result;
+}
+
+//--------------------------------------------------------------------
+// K150 specific write program memory function
+// Based on localhost.LOG analysis: 0x32 command + 2-byte data chunks
+//--------------------------------------------------------------------
+int k150_write_pgm(const PIC_DEFINITION *picDevice, FILE *hexFile)
+{
+    if (!picDevice || !hexFile) {
+        fprintf(stderr, "K150: Invalid parameters for write operation\n");
+        return 0;
+    }
+    
+    printf("K150: Programming %s with hex file\n", picDevice->name);
+    
+    // Ensure K150 port is open
+    printf("K150: Opening port and starting communication...\n");
+    extern char *port_name; // From main.c
+    if (k150_open_port(port_name) != 0) {
+        fprintf(stderr, "K150: Failed to open port %s\n", port_name);
+        return 0;
+    }
+    if (k150_start_communication() != 0) {
+        fprintf(stderr, "K150: Failed to start communication\n");
+        k150_close_port();
+        return 0;
+    }
+    
+    // Read hex file into buffer
+    fseek(hexFile, 0, SEEK_END);
+    long file_size = ftell(hexFile);
+    fseek(hexFile, 0, SEEK_SET);
+    
+    unsigned char *hex_buffer = malloc(file_size + 1);
+    if (!hex_buffer) {
+        fprintf(stderr, "K150: Memory allocation failed\n");
+        return 0;
+    }
+    
+    size_t read_size = fread(hex_buffer, 1, file_size, hexFile);
+    hex_buffer[read_size] = '\0';
+    
+    // Get program memory size from device definition
+    int pgm_size = (picDevice->def[PD_PGM_SIZEH] << 8) | picDevice->def[PD_PGM_SIZEL];
+    printf("K150: Device capacity: %d words, Hex file size: %ld bytes, Using: %ld bytes\n", 
+           pgm_size, file_size, read_size);
+    
+    // Parse hex file with relaxed validation
+    printf("K150: Parsing hex file with relaxed validation\n");
+    unsigned char *rom_data = malloc(pgm_size * 2); // Words to bytes
+    if (!rom_data) {
+        fprintf(stderr, "K150: ROM buffer allocation failed\n");
+        free(hex_buffer);
+        return 0;
+    }
+    
+    // Initialize ROM data to 0xFF (erased state)
+    memset(rom_data, 0xFF, pgm_size * 2);
+    
+    // Simple hex parsing (Intel HEX format)
+    char *line = strtok((char*)hex_buffer, "\n\r");
+    int total_bytes = 0;
+    
+    while (line) {
+        if (line[0] == ':' && strlen(line) >= 11) {
+            int byte_count = (hex_to_byte(line[1]) << 4) | hex_to_byte(line[2]);
+            int address = ((hex_to_byte(line[3]) << 4) | hex_to_byte(line[4])) << 8;
+            address |= (hex_to_byte(line[5]) << 4) | hex_to_byte(line[6]);
+            int record_type = (hex_to_byte(line[7]) << 4) | hex_to_byte(line[8]);
+            
+            if (record_type == 0 && address < (pgm_size * 2)) {
+                for (int i = 0; i < byte_count && (address + i) < (pgm_size * 2); i++) {
+                    int data_pos = 9 + (i * 2);
+                    if (data_pos + 1 < strlen(line)) {
+                        rom_data[address + i] = (hex_to_byte(line[data_pos]) << 4) | hex_to_byte(line[data_pos + 1]);
+                        total_bytes++;
+                    }
+                }
+            }
+        }
+        line = strtok(NULL, "\n\r");
+    }
+    
+    printf("K150: Programming %s (%d bytes)...\n", picDevice->name, total_bytes);
+    
+    // Now implement the K150 programming protocol
+    // Based on localhost.LOG: 0x32 command + 2-byte data pattern
+    
+    // Send programming command (0x32)
+            if (k150_send_byte(0x32) != 0) {
+        fprintf(stderr, "K150: Failed to send programming command\n");
+        k150_close_port();
+        free(hex_buffer);
+        free(rom_data);
+        return 0;
+    }
+    
+    // Program data in 2-byte chunks (as seen in localhost.LOG)
+    for (int addr = 0; addr < total_bytes; addr += 2) {
+        // Send address
+        if (k150_send_byte(0x06) != 0 || k150_send_byte(addr & 0xFF) != 0) {
+            fprintf(stderr, "K150: Failed to send address\n");
+            k150_close_port();
+            free(hex_buffer);
+            free(rom_data);
+            return 0;
+        }
+        
+        // Send 2-byte data
+        unsigned char data_low = (addr < (pgm_size * 2)) ? rom_data[addr] : 0xFF;
+        unsigned char data_high = (addr + 1 < (pgm_size * 2)) ? rom_data[addr + 1] : 0xFF;
+        
+        if (k150_send_byte(data_low) != 0 || k150_send_byte(data_high) != 0) {
+            fprintf(stderr, "K150: Failed to send data at address 0x%04X\n", addr);
+            k150_close_port();
+            free(hex_buffer);
+            free(rom_data);
+            return 0;
+        }
+        
+        // Wait for programming completion
+        usleep(10000); // 10ms delay as seen in localhost.LOG
+    }
+    
+    printf("K150: Programming completed successfully\n");
+    
+    // Close K150 port
+    k150_close_port();
+    
+    free(hex_buffer);
+    free(rom_data);
+    return 1; // Success
+}
+
+// Helper function to convert hex character to byte
+static int hex_to_byte(char c)
+{
+    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+    return 0;
+}
+
+// Helper function to send single byte to K150
+int k150_send_byte(unsigned char byte)
+{
+    return k150_write_serial(&byte, 1);
 }

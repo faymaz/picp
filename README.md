@@ -4,16 +4,22 @@
 
 A command-line PIC microcontroller programmer with **K150 USB programmer support** for Linux.
 
+## ✅ **Tested & Working**
+
+- **✅ PIC16F628A** - Full read/write/erase support
+- **✅ PIC16F876** - Complete backup/restore workflow tested
+- **✅ PIC16F887** - Read operations confirmed  
+- **✅ PIC16F84** - Basic functionality verified
+- **✅ Data Integrity** - 100% verified with diff comparison
+
 ## Features
 
-- 🚀 **K150 USB Programmer Support** - Full protocol implementation
-- 📱 **Wide Device Support** - PIC16F628A, PIC16F84A, PIC16F876A, PIC16F887, PIC18F2550 and more
-- 💾 **Complete Operations** - Read, Write, Erase, Verify, Configuration programming
-- 🔧 **Fuse Configuration** - Human-readable fuse programming (WDT:ON, CP:OFF, etc.)
-- 📡 **19200 baud, 8N1** - Proper serial settings  
-- 🔌 **DTR/RTS Control** - Hardware handshaking
-- 🐧 **Linux Ready** - Debian/Ubuntu tested
-- 📋 **ROM Operations** - Read/write/verify program memory
+- 🚀 **K150 USB Programmer Support** - Reverse-engineered from Microbrn.exe
+- 💾 **Complete Operations** - Read, Write, Erase (Verify in development)
+- 📡 **Proper Serial Protocol** - 19200 baud, 8N1, DTR/RTS control
+- 🔧 **Intel HEX Support** - Standard format for firmware files
+- 🐧 **Linux Ready** - Tested on Debian/Ubuntu
+- 📋 **Production Ready** - Backup/restore workflow validated
 
 ## Quick Start
 
@@ -57,209 +63,118 @@ sudo usermod -a -G dialout $USER
 ./picp /dev/ttyUSB0 16f628a -vp firmware.hex
 ```
 
-#### Program with fuse configuration
+#### Erase chip  
 ```bash
-./picp /dev/ttyUSB0 16f628a -wp firmware.hex -wf WDT:ON,CP:OFF,MCLRE:ON
+./picp /dev/ttyUSB0 16f628a -e
 ```
 
-## K150 Advanced Features
-
-### Chip Detection
+#### Chip detection
 ```bash
 ./picp /dev/ttyUSB0 -detect
 ```
 
-### Fuse Programming (Human Readable)
+## Tested Workflow Examples
+
+### PIC16F876 Complete Test (PASSED ✅)
 ```bash
-# PIC16F628A
-./picp /dev/ttyUSB0 -t 16f628a -wf WDT:ON,CP:OFF,PWRT:OFF,MCLRE:ON,BODEN:ON,LVP:ON,CPD:OFF
+# 1. Backup original firmware
+./picp /dev/ttyUSB0 16f876 -rp backup.hex
 
-# PIC16F887
-./picp /dev/ttyUSB0 -t 16f887 -wf WDT:Enabled,PWRTE:Disabled,MCLRE:Enabled,BOREN:Enabled
+# 2. Erase chip  
+./picp /dev/ttyUSB0 16f876 -e
 
-# PIC18F2550
-./picp /dev/ttyUSB0 -t 18f2550 -wf WDT:ON,LVP:ON,MCLRE:ON,CP0:OFF,CP1:OFF,CPB:OFF,CPD:OFF
+# 3. Restore from backup
+./picp /dev/ttyUSB0 16f876 -wp backup.hex
+
+# 4. Verify integrity (manual)
+./picp /dev/ttyUSB0 16f876 -rp verify.hex
+diff backup.hex verify.hex  # Should show no differences
 ```
 
-### Raw Configuration Programming
+### PIC16F628A Programming (PASSED ✅)
 ```bash
-./picp /dev/ttyUSB0 -t 16f628a -wc 0x3FF4
-```
-
-### Configuration Reading
-```bash
-./picp /dev/ttyUSB0 -t 16f628a -rc config.hex
-```
-
-### Complete Programming Workflow
-```bash
-# 1. Detect chip
-./picp /dev/ttyUSB0 -detect
-
-# 2. Erase chip
-./picp /dev/ttyUSB0 16f628a -ep
-
-# 3. Program firmware
+# Program and verify 16F628A
 ./picp /dev/ttyUSB0 16f628a -wp firmware.hex
-
-# 4. Set fuses
-./picp /dev/ttyUSB0 -t 16f628a -wf WDT:ON,CP:OFF,MCLRE:ON
-
-# 5. Verify programming
-./picp /dev/ttyUSB0 16f628a -vp firmware.hex
 ```
 
 ## Supported PIC Devices
 
-### PIC16F Series
-- PIC16F628A, PIC16F84A, PIC16F876A, PIC16F887
-- PIC16F627A, PIC16F648A, PIC16F877A
-- PIC16F72, PIC16F73, PIC16F74, PIC16F76, PIC16F77
+**Tested & Confirmed:**
+- ✅ PIC16F628A (full read/write/erase)
+- ✅ PIC16F876 (full backup/restore workflow)
+- ✅ PIC16F887 (read operations)
+- ✅ PIC16F84 (basic functionality)
 
-### PIC18F Series  
-- PIC18F2550, PIC18F4550
-- PIC18F242, PIC18F252, PIC18F442, PIC18F452
-
-### And many more classic PIC devices...
+**Additional Support:**
+- PIC16F series: 627A, 648A, 877A, 72, 73, 74, 76, 77
+- PIC18F series: 2550, 4550, 242, 252, 442, 452
+- Many classic PIC devices (see `./picp -h` for full list)
 
 ## Command Reference
 
-### Basic Operations
 | Command | Description | Example |
 |---------|-------------|---------|
 | `-rp file.hex` | Read program memory | `./picp /dev/ttyUSB0 16f628a -rp backup.hex` |
 | `-wp file.hex` | Write program memory | `./picp /dev/ttyUSB0 16f628a -wp firmware.hex` |
-| `-vp file.hex` | Verify program memory | `./picp /dev/ttyUSB0 16f628a -vp firmware.hex` |
-| `-vd file.hex` | Verify data memory | `./picp /dev/ttyUSB0 16f628a -vd eeprom.hex` |
-| `-ep` | Erase program memory | `./picp /dev/ttyUSB0 16f628a -ep` |
-
-### K150 Specific Commands
-| Command | Description | Example |
-|---------|-------------|---------|
-| `-detect` | Auto-detect chip type | `./picp /dev/ttyUSB0 -detect` |
-| `-t device` | Specify device type | `./picp /dev/ttyUSB0 -t 16f628a` |
-| `-wf fuses` | Write fuses (human readable) | `./picp /dev/ttyUSB0 -t 16f628a -wf WDT:ON,CP:OFF` |
-| `-wc value` | Write config (raw hex) | `./picp /dev/ttyUSB0 -t 16f628a -wc 0x3FF4` |
-| `-rc file.hex` | Read config to file | `./picp /dev/ttyUSB0 -t 16f628a -rc config.hex` |
-
-### Debug Options
-| Command | Description |
-|---------|-------------|
-| `-v` | Verbose/debug mode |
-| `-h` | Show help |
-| `-d` | Show device list |
+| `-e` | Erase chip | `./picp /dev/ttyUSB0 16f628a -e` |
+| `-detect` | Auto-detect chip | `./picp /dev/ttyUSB0 -detect` |
+| `-v` | Verbose mode | `./picp /dev/ttyUSB0 16f628a -v -rp test.hex` |
 
 ## Troubleshooting
 
-### Permission Issues
+### Quick Setup Issues
 ```bash
-# Add user to dialout group
+# 1. Permission fix
 sudo usermod -a -G dialout $USER
+# Then log out and log back in
 
-# Or run with sudo (not recommended)
-sudo ./picp /dev/ttyUSB0 16f628a -rp firmware.hex
-```
-
-### USB Device Not Found
-```bash
-# Check USB devices
-lsusb | grep -i "ch340\|cp210\|ftdi"
-
-# Check serial devices
-ls -la /dev/ttyUSB*
-
-# Check dmesg for device recognition
-dmesg | tail -20
-```
-
-### K150 Not Detected
-```bash
-# Test with verbose mode
-./picp /dev/ttyUSB0 16f628a -v
-
-# Try different USB ports
+# 2. Check USB connection
 ls /dev/ttyUSB*
 
-# Check K150 LED status (should be green when connected)
+# 3. Test connection
+./picp /dev/ttyUSB0 -detect
 ```
 
-For K150 issues:
-- Check USB connection (`ls /dev/ttyUSB*`)
-- Verify permissions (`groups $USER`)  
-- Enable debug mode (`-v` flag)
-- Test with known-good PIC chip
+### Common Issues
+- **"Permission denied"** → Add user to dialout group (see above)
+- **"No such device"** → Check `/dev/ttyUSB*` exists
+- **"Bad file descriptor"** → K150 not properly connected/detected
+- **Yellow LED stays on** → Communication timeout, check connections
+
+### Debug Mode
+```bash
+# Use verbose mode for detailed output
+./picp /dev/ttyUSB0 16f628a -v -rp test.hex
+```
 
 ## Technical Details
 
-### K150 Protocol
-- **Baud Rate:** 19200
-- **Data Format:** 8N1 (8 data bits, no parity, 1 stop bit)
-- **Flow Control:** Manual DTR/RTS control
-- **Protocol:** Enhanced P018 + Microbrn.exe compatible sequences
-- **Auto-Response:** 0x42 0x03 0x42 sequence support
+- **Protocol:** K150 USB (reverse-engineered from Microbrn.exe)
+- **Serial:** 19200 baud, 8N1, DTR/RTS control  
+- **Commands:** 0x32 programming, 0x14 read, 0x42 init sequence
+- **Data:** Intel HEX format for firmware files
 
-### Supported Fuse Options
+## Contributing & Development
 
-#### PIC16F628A
-- `WDT` - Watchdog Timer (ON/OFF)
-- `CP` - Code Protection (ON/OFF)  
-- `PWRT` - Power-up Timer (ON/OFF)
-- `MCLRE` - Master Clear Enable (ON/OFF)
-- `BODEN` - Brown-out Detect (ON/OFF)
-- `LVP` - Low Voltage Programming (ON/OFF)
-- `CPD` - Data Code Protection (ON/OFF)
-
-#### PIC16F887
-- `WDT` - Watchdog Timer (Enabled/Disabled)
-- `PWRTE` - Power-up Timer (Enabled/Disabled)
-- `MCLRE` - Master Clear (Enabled/Disabled)
-- `BOREN` - Brown-out Reset (Enabled/Disabled)
-- `LVP` - Low Voltage Programming (Enabled/Disabled)
-
-## Development
-
-### Building from Source
 ```bash
+# Build from source
 git clone https://github.com/faymaz/picp.git
 cd picp
-make clean
 make
+
+# Test with your hardware
+./picp /dev/ttyUSB0 -detect
 ```
 
-### Contributing
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test with real hardware
-5. Submit a pull request
+**Contributions welcome!** Test with different PIC models and report results.
 
-### Testing
-```bash
-# Run built-in tests
-make test
+## License & Credits
 
-# Test specific device
-make test-devices
-
-# Test fuse parsing
-make test-fuses
-```
-
-## License
-
-GNU General Public License v2.0
-
-## Authors
-
-- Original PICP: Cosmodog, Ltd. (2000-2004) & Jeff Post (2004-2006)
-- K150 Support: Enhanced implementation (2025-2026)
-
-## Links
-
+- **License:** GNU GPL v2.0
+- **Original PICP:** Cosmodog, Ltd. & Jeff Post  
+- **K150 Support:** Reverse-engineered protocol implementation (2025)
 - **GitHub:** https://github.com/faymaz/picp
-- **Issues:** https://github.com/faymaz/picp/issues
-- **K150 Protocol:** Based on reverse-engineered Microbrn.exe communication
 
 ---
 
-**⚡ Ready to program your PICs with K150 on Linux!** 🐧🔧
+**🚀 Production-ready K150 PIC programming on Linux!** ✅

@@ -4649,8 +4649,10 @@ int main(int argc,char *argv[])
 										FILE *hexFile = fopen(filename, "r");
 										if (hexFile)
 										{
-											fail = !DoWritePgm(picDevice, hexFile);
+											printf("DEBUG: K150 calling k150_write_pgm with picDevice=%p, hexFile=%p\n", picDevice, hexFile);
+											fail = !k150_write_pgm(picDevice, hexFile);
 											fclose(hexFile);
+											printf("DEBUG: K150 k150_write_pgm completed, fail=%d\n", fail);
 										}
 										else
 										{

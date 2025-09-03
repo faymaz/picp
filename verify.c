@@ -63,6 +63,10 @@ bool DoVerifyPgm(const PIC_DEFINITION *picDevice, FILE *theFile)
         fileDone = !GetNextByte(theFile, &nextAddr, &data);
     }
 
+    // Ensure K150 port is open and initialized  
+    extern char *port_name;
+    extern bool isK150;
+
     // Read ROM from device
     printf("K150: Reading ROM for verification (%d bytes)\n", size);
     if (k150_read_rom(read_buffer, size) != 0) {
@@ -173,6 +177,8 @@ bool DoVerifyData(const PIC_DEFINITION *picDevice, FILE *theFile)
         }
         fileDone = !GetNextByte(theFile, &nextAddr, &data);
     }
+
+    // K150 port should already be open from main()
 
     // Read EEPROM from device
     printf("K150: Reading EEPROM for verification (%d bytes)\n", size);

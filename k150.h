@@ -80,6 +80,7 @@ int k150_read_config(unsigned char *config);
 int k150_program_config(unsigned char *config);
 
 // Enhanced functions using picdev.c integration
+#include <stdio.h>
 #include "picdev.h"
 int k150_read_rom_with_device(const PIC_DEFINITION *picDevice, unsigned char *data, int size);
 int k150_erase_chip_enhanced(const PIC_DEFINITION *picDevice);
@@ -121,6 +122,13 @@ int k150_read_config_to_hex(const char *filename, unsigned int config_addr);
 
 // Utility functions
 int k150_force_led_off(const char *device_path);
+
+// Verification functions
+int k150_read_rom(unsigned char *buffer, int size);
+int k150_read_eeprom(unsigned char *buffer, int size);
+
+// K150 specific write function
+int k150_write_pgm(const PIC_DEFINITION *picDevice, FILE *hexFile);
 
 // Global variables
 extern int theDevice;
