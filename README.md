@@ -1,76 +1,163 @@
-picp README -- version 0.6.8 (19 December 2005)
+# PICP - PIC Programmer for Linux
 
-![Visitor Count](https://visitor-badge.laobi.icu/badge?page_id=faymaz.picp)
+A command-line PIC microcontroller programmer with **K150 USB programmer support** for Linux.
 
-Includes utilities (convert and convertshort) that convert picdev.c to a
-resource configuration file (picdevrc).
+## ✨ K150 Support 
 
-For installation instructions, please read INSTALL.
+**Full K150 USB programmer support** - Compatible with Microbrn.exe protocol and works on Linux without additional drivers.
 
-for help and a list of supported devices type "picp" without any other
-arguments. More complete documentation may be found in PICPmanual.html.
+### Tested Devices
+- ✅ **PIC16F628A** - Fully working (ROM read/write)  
+- ✅ **PIC16F84A** - Compatible
+- ✅ **K150 USB Programmer** - Protocol reverse-engineered
 
-The current version of picp may be downloaded from
-http://home.pacbell.net/theposts/picmicro
+### K150 Features
+- 🔧 **Microbrn.exe Compatible** - Uses same communication protocol
+- 📡 **19200 baud, 8N1** - Proper serial settings  
+- 🔌 **DTR/RTS Control** - Hardware handshaking
+- 🐧 **Linux Ready** - Debian/Ubuntu tested
+- 📋 **ROM Operations** - Read/write/verify program memory
 
-Your PICSTART Plus programmer must have version 3.00.40 firmware or
-later; go to http://www.microchip.com to download the latest. You can
-check the version number of your firmware by typing
-	picp /dev/ttyS0 12c508 -v
-where /dev/ttyS0 is the serial device the PICSTART is attached to and
-12c508 is any supported PIC device.
+## Quick Start
 
-picp is free software; please read the included file LICENSE.TXT.
-Comments, suggestions, installation problems, successes, etc. should
-be directed to j_post <AT> pacbell <DOT> net.
+### K150 Usage
+```bash
+# Read ROM from PIC16F628A
+./picp /dev/ttyUSB0 16f628a -rp output.hex
 
-The PICSTART Plus was reverse engineered without the benefit of any
-documentation or help from Microchip. If you have any insights or
-useful information into the meaning of the remaining processor
-definition codes please pass them along (see picdev.h for the current
-state of knowledge). At some point MPLAB was modified to send yet
-more part-specific data at start up using a previously unused command
-(0x82).  picp 0.4c supports this new data but I have no idea what it
-does or why it wasn't needed before. Anyone with a better understanding
-of the PICSTART Plus protocol is encouraged to come forward.
+# Write ROM to PIC16F628A  
+./picp /dev/ttyUSB0 16f628a -wp input.hex
 
-There is a report that USB serial ports don't work in RedHat9. Using the
-2.4.26 kernel solves the problem.
+# Read configuration bits
+./picp /dev/ttyUSB0 16f628a -rc
 
------------------------------------------------------------------------------
-REMAINING DEFICIENCIES:
+# Erase chip
+./picp /dev/ttyUSB0 16f628a -ef
+```
 
-picp cannot write to the oscillator calibration space of devices with
-more than one calibration word (specifically the PIC14000) via the
-command line flag '-wo'.  Since the calibration space is actually in
-program space you should be able to write to this region with '-wp',
-but it is untested.  '-ro' should work but is untested on the PIC14000.
+### Device Detection
+```bash
+# Check if K150 is connected
+./picp /dev/ttyUSB0 16f628a -v
 
-The code protect masks in the part definitions are incomplete for most
-devices. This will not affect the ability to program parts but it does
-prevent picp from detecting if a device is code protected and
-generating the appropriate warning.
+# List supported devices
+./picp -d
+```
 
-Erase program and erase ID locations (-ep and -ei) don't work for some parts,
-at least with the Warp-13 programmer. At this time the reason is unknown.
-If this problem occurs with a particular chip, try erasing the flash device
-(-ef).
+## Installation
 
-Although picp supports multiple commands (eg: picp /dev/ttyS1 16F84 -ef -wp file.hex),
-I only test using one command at a time (testing time would grow beyond reason
-otherwise). If a particular combination of commands doesn't seem to work, try
-invoking picp separately for each command.
+### Build from Source
+```bash
+git clone https://github.com/faymaz/picp.git
+cd picp
+make
+```
 
------------------------------------------------------------------------------
-IN CASE OF DIFFICULTY:
+### Dependencies
+- GCC compiler
+- Linux kernel (for USB serial support)
+- Permission to access `/dev/ttyUSB*` devices
 
-Every effort was taken to define all devices correctly, but the possibility
-of errors still exists. If you have difficulty with a particular device,
-type "picp <device>" to dump what picp believes are the characteristics of
-the device. Please forward any errors or bugs to j_post <AT> pacbell <DOT> net.
+### USB Permissions
+```bash
+# Add user to dialout group for USB access
+sudo usermod -a -G dialout $USER
+# or set temporary permissions  
+sudo chmod 666 /dev/ttyUSB0
+```
 
------------------------------------------------------------------------------
+## Supported Programmers
 
- See HISTORY for a revision history
+### K150 USB Programmer ⭐ 
+- **Status**: Fully supported
+- **Protocol**: P018/Microbrn.exe compatible  
+- **Connection**: USB to serial (PL2303 chipset)
+- **Tested**: PIC16F628A, PIC16F84A
 
------------------------------------------------------------------------------
+### Other Programmers
+- PICStart Plus  
+- Warp-13
+- JuPic
+- Tait classic
+- AN589 (experimental)
+
+## Supported PIC Devices
+
+### PIC16F Series
+- PIC16F84A, PIC16F628A, PIC16F648A
+- PIC16F72, PIC16F73, PIC16F74, PIC16F76, PIC16F77
+- PIC16F870, PIC16F871, PIC16F872, PIC16F873, PIC16F874
+- PIC16F876, PIC16F877, PIC16F876A, PIC16F877A
+- And many more...
+
+### PIC18F Series  
+- PIC18F242, PIC18F252, PIC18F442, PIC18F452
+- PIC18F248, PIC18F258, PIC18F448, PIC18F458
+- And others...
+
+## Command Line Options
+
+```
+Usage: picp [device] [PIC] [options]
+
+Device: 
+  /dev/ttyUSB0    K150 USB programmer
+  /dev/ttyS0      Serial port programmer
+  
+PIC:
+  16f628a         PIC16F628A
+  16f84a          PIC16F84A  
+  (see -d for full list)
+
+Options:
+  -rp file.hex    Read program memory to Intel HEX file
+  -wp file.hex    Write program memory from Intel HEX file  
+  -rc             Read configuration bits
+  -wc value       Write configuration bits
+  -ef             Erase flash memory
+  -v              Verbose output
+  -d              List supported devices
+```
+
+## Development
+
+### K150 Protocol Implementation
+The K150 support was reverse-engineered from Microbrn.exe using serial port monitoring:
+
+1. **DTR/RTS Handshake** - Wake up sequence
+2. **Auto-response Detection** - `42 03 42` signature  
+3. **P018 Protocol Init** - `50 03` command
+4. **Device Parameters** - Configuration sequence
+5. **ROM Commands** - `14` for read operations
+
+See `k150.c` for full implementation details.
+
+### Contributing
+- Fork the repository
+- Create feature branch
+- Test with real hardware
+- Submit pull request
+
+## License
+
+GNU General Public License v2.0
+
+## Credits
+
+- **Original Author**: Jeff Post (2004-2006)  
+- **Linux Port**: Cosmodog, Ltd. (2000-2004)
+- **K150 Support**: Faymaz (2025)
+- **Protocol Analysis**: Based on Microbrn.exe behavior
+
+## Support
+
+For K150 issues:
+- Check USB connection (`ls /dev/ttyUSB*`)
+- Verify permissions (`groups $USER`)  
+- Enable debug mode (`-v` flag)
+- Test with known-good PIC chip
+
+Hardware tested:
+- K150 USB Programmer (PL2303 chipset)
+- PIC16F628A in ZIF socket
+- Debian 12, Ubuntu 22.04

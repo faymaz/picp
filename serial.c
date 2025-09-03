@@ -27,6 +27,16 @@
 #include	<stdio.h>
 #include <sys/time.h>
 #include <sys/types.h>
+#include <sys/select.h>
+#include <errno.h>
+#include <string.h>
+#include "serial.h"
+#include "record.h"
+#include "debug.h"
+
+// Constants for K150 functions
+#define SUCCESS 0
+#define ERROR -1
 
 #ifdef WIN32
 #include	<windows.h>
@@ -138,6 +148,151 @@ unsigned int ReadBytes(int theDevice, unsigned char *theBytes, unsigned int maxB
 #endif
 
 	return((int) numRead);
+}
+
+// Enhanced serial read function for P018 protocol ACK handling
+int read_serial(int theDevice, unsigned char *buf, int len) {
+    int total_read = 0;
+    int retries = 3;  // Much faster timeout for immediate response
+    fd_set readfds;
+    struct timeval timeout;
+
+    while (total_read < len && retries > 0) {
+        FD_ZERO(&readfds);
+        FD_SET(theDevice, &readfds);
+        timeout.tv_sec = 0;
+        timeout.tv_usec = 50000;  // 50ms timeout for faster response
+        
+        int select_result = select(theDevice + 1, &readfds, NULL, NULL, &timeout);
+        
+        if (select_result > 0 && FD_ISSET(theDevice, &readfds)) {
+            int r = read(theDevice, buf + total_read, len - total_read);
+            if (r > 0) {
+                total_read += r;
+                printf("DEBUG: read_serial got %d bytes: ", r);
+                for (int i = 0; i < r; i++) printf("0x%02x ", buf[total_read - r + i]);
+                printf("\n");
+            } else if (r == 0) {
+                retries--;
+                usleep(10000);  // 10ms for P018 timing
+            } else {
+                printf("ERROR: read_serial failed: %s\n", strerror(errno));
+                return ERROR;
+            }
+        } else if (select_result == 0) {
+            // Timeout - no data available
+            retries--;
+            usleep(10000);  // 10ms for P018 timing
+        } else {
+            printf("ERROR: select failed: %s\n", strerror(errno));
+            return ERROR;
+        }
+    }
+    
+    if (total_read < len) {
+        printf("ERROR: read_serial timeout, got %d/%d bytes\n", total_read, len);
+        return ERROR;
+    }
+    return total_read;
+}
+
+// Enhanced write function for P018 protocol
+int write_serial(int theDevice, unsigned char *buf, int len) {
+    int written = write(theDevice, buf, len);
+    if (written != len) {
+        printf("ERROR: write_serial failed, wrote %d/%d bytes\n", written, len);
+        return ERROR;
+    }
+    DEBUG_PRINT("write_serial sent %d bytes: ", len);
+    if (debug_enabled) {
+        for (int i = 0; i < len; i++) printf("0x%02x ", buf[i]);
+        printf("\n");
+    }
+    return written;
+}
+
+// Enhanced ReadBytes with retry mechanism for K150 operations
+// Attempts multiple reads with delays to handle timing-sensitive hardware
+unsigned int ReadBytesWithRetry(int theDevice, unsigned char *theBytes, unsigned int maxBytes, unsigned int timeOut, int maxRetries)
+{
+#ifndef WIN32
+	unsigned int numRead = 0;
+	int retry_count = 0;
+	struct termios tio;
+	
+	// Full buffer flush before reading
+	tcgetattr(theDevice, &tio);
+	tcflush(theDevice, TCIOFLUSH);  // Input + output flush
+	tcsetattr(theDevice, TCSANOW, &tio);
+	
+	while (retry_count < maxRetries && numRead == 0) {
+		if (ByteWaiting(theDevice, timeOut)) {
+			numRead = read(theDevice, theBytes, maxBytes);
+			if (numRead > 0) {
+				// Enhanced debug output with detailed byte logging
+				printf("K150: Read %d bytes, total %d/%d: ", numRead, numRead, maxBytes);
+				for (unsigned int i = 0; i < numRead; i++) {
+					printf("0x%02X ", theBytes[i]);
+				}
+				printf("\n");
+				
+				if (comm_debug) {
+					for (unsigned int i = 0; i < numRead; i++) {
+						fprintf(comm_debug, " I-0x%02x", theBytes[i]);
+						if (sendCommand) {
+							fprintf(comm_debug, "\n");
+							sendCommand = false;
+							comm_debug_count = 0;
+						} else {
+							comm_debug_count++;
+						}
+						if (comm_debug_count >= 8) {
+							comm_debug_count = 0;
+							fprintf(comm_debug, "\n");
+						}
+					}
+				}
+				break;  // Success, exit retry loop
+			} else if (numRead < 0) {
+				fprintf(stderr, "K150: Serial read error: %s\n", strerror(errno));
+			}
+		}
+		
+		retry_count++;
+		if (retry_count < maxRetries) {
+			usleep(100000);  // 100ms delay between retries
+		}
+	}
+	
+	if (numRead == 0) {
+		fprintf(stderr, "K150: Read timeout after %d retries, wanted %d bytes, got %d\n", maxRetries, maxBytes, numRead);
+	}
+	
+	return numRead;
+#else
+	// Windows implementation with retry
+	HANDLE hCom = (HANDLE) theDevice;
+	DWORD numRead = 0;
+	COMMTIMEOUTS cto;
+	int retry_count = 0;
+	
+	GetCommTimeouts(hCom, &cto);
+	cto.ReadTotalTimeoutConstant = timeOut / 1000;
+	SetCommTimeouts(hCom, &cto);
+	
+	while (retry_count < maxRetries && numRead == 0) {
+		ReadFile(hCom, theBytes, maxBytes, &numRead, NULL);
+		if (numRead > 0) {
+			break;  // Success
+		}
+		retry_count++;
+		if (retry_count < maxRetries) {
+			Sleep(5);  // 5ms delay between retries
+		}
+	}
+	
+	return (unsigned int) numRead;
+#endif
 }
 
 // Write theBytes to theDevice.
@@ -643,18 +798,21 @@ static COMMTIMEOUTS	oldCto;
 bool OpenDevice(char *theName, int *theDevice)
 {
 #ifndef WIN32
-	// NOTE: the NOCTTY will prevent us from grabbing this terminal as our
-	// controlling terminal (when run from init, we have no controlling
-	// terminal, and we do not want this device to become one!)
-	if ((*theDevice = open(theName, O_NDELAY | O_RDWR | O_NOCTTY)) != -1)
-	{
-		// attempt to read configuration, to verify this is a serial device
-		// and to save settings
-		if (tcgetattr(*theDevice, &oldTerminalParams) != -1)
-			return(true);
+        *theDevice = open(theName, O_RDWR | O_NOCTTY | O_NONBLOCK);
+        if (*theDevice < 0) {
+                return *theDevice;
+        }
+        
+        // Fix K150 read issues: Make serial port blocking for reliable reads
+        int flags = fcntl(*theDevice, F_GETFL);
+        if (flags != -1) {
+            fcntl(*theDevice, F_SETFL, flags & ~O_NONBLOCK);
+        }
 
-		close(*theDevice);
-	}
+        // attempt to read configuration, to verify this is a serial device
+        // and to save settings
+        if (tcgetattr(*theDevice, &oldTerminalParams) != -1)
+            return(true);
 
 	return(false);
 #else

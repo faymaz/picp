@@ -1,0 +1,52 @@
+# Compiled binaries
+picp
+convert
+convertshort
+
+# Object files
+*.o
+
+# Log files
+*.log
+trace*
+output*
+typescript
+
+# Temporary files
+*~
+*.tmp
+*.bak
+
+# IDE files
+.vscode/
+*.swp
+*.swo
+
+# Build artifacts
+*.a
+*.so
+*.dylib
+
+# Debug files
+*.dSYM/
+*.su
+
+# Test files
+test_*
+hex_rom/
+k150_test_results/
+sh/
+
+# Large log file - keep for reference but exclude from git
+log.LOG
+
+# Backup and development files
+k150_backup.c
+k150_enhanced*.c
+k150_chip_detection.c
+k150_protocols.*/
+fixchksum/
+picsnoop/
+hex_rom/
+sh/
+k150_test_results/
