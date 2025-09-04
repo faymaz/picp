@@ -4302,10 +4302,9 @@ int main(int argc,char *argv[])
 				// Device type specification
 				expected_chip_type = argv[++i];
 				DEBUG_PRINT("Device type set to: %s\n", expected_chip_type);
-			} else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--verbose") == 0) {
-				// Enable verbose/debug output
-				debug_enabled = 1;
-				fprintf(stderr, "Verbose mode enabled\n");
+					} else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--verbose") == 0) {
+			// Enable verbose/debug output
+			debug_enabled = 1;
 			} else if (strcmp(argv[i], "-wf") == 0 && i + 1 < argc) {
 				// Write fuses: -wf CP:OFF,WDT:ON,MCLRE:ON
 				fuse_string = argv[++i];
@@ -4928,6 +4927,11 @@ int main(int argc,char *argv[])
 				" (c) 2004-2006 Jeff Post (http://home.pacbell.net/theposts/picmicro)\n"
 				" (c) 2025-2026 Faymaz (https://github.com/faymaz/picp)\n"
 				" GNU General Public License\n\n", programName, versionString);
+		}
+		else if (flags && flags[0] == '-' && (flags[1] == 'q' || flags[1] == 'Q'))
+		{
+			// Quiet mode - just show minimal version info
+			fprintf(stdout, "%s: version %s\n", programName, versionString);
 		}
 		else if (flags && flags[0] == '-' && (flags[1] == 'd' || flags[1] == 'D'))
 		{
