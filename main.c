@@ -3831,7 +3831,7 @@ static void Usage()
 			" (c) 2004-2006 Jeff Post (http://home.pacbell.net/theposts/picmicro)\n"
 			" (c) 2025-2026 Faymaz (https://github.com/faymaz/picp)\n"
 			" GNU General Public License\n", programName, versionString);
-	fprintf(stdout, "\nUsage: %s [-c] [-d] [-v] ttyname [-v] devtype [-i] [-h] [-q] [-v] [-s [size]] [-b|-r|-w|-e][pcidof]\n", programName);
+	fprintf(stdout, "\nUsage: %s [-c] [-d] [-v] ttyname [-v] devtype [-i] [-h] [-q] [-s [size]] [-b|-r|-w|-e][pcidof]\n", programName);
 	fprintf(stdout, " where:\n");
 	fprintf(stdout, "  ttyname is the serial (or USB) device the programmer is attached to\n");
 	fprintf(stdout, "     (e.g. /dev/ttyS0 or com1)\n");
@@ -3844,13 +3844,13 @@ static void Usage()
 	fprintf(stdout, "  -f ignores verify errors while writing\n");
 	fprintf(stdout, "  -h show this help\n");
 	fprintf(stdout, "  -i use ISP protocol (must be first option after devtype)\n");
-	fprintf(stdout, "  -q sets quiet mode (excess messages supressed)\n");
+	fprintf(stdout, "  -q sets quiet mode (suppress verbose output - default is verbose)\n");
 	fprintf(stdout, "  -r initiates a read (Intel Hex record format)\n");
 	fprintf(stdout, "  -s [size] shows a hash mark status bar of length [size] while erasing/writing\n");
 	fprintf(stdout, "  -w writes to the requested region\n");
 	fprintf(stdout, "     -wpx will suppress actual writing to program space (for debugging picp)\n");
-	fprintf(stdout, "  -v (if given after ttyname or after devtype) show programmer version number\n");
-	fprintf(stdout, "  -v (if only parameter) show picp version number\n");
+	fprintf(stdout, "  -v show picp version number (standalone) or programmer version (after ttyname)\n");
+	fprintf(stdout, "  -detect auto-detect connected PIC device (after ttyname)\n");
 	fprintf(stdout, "  Read/Write/Erase parameters:\n");
 	fprintf(stdout, "    p [filename] = program memory, optionally reading/writing filename\n");
 	fprintf(stdout, "    c [val] = configuration bits (val is a numeric word value when writing)\n");
