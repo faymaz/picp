@@ -130,6 +130,19 @@ int k150_read_eeprom(unsigned char *buffer, int size);
 // K150 specific write function
 int k150_write_pgm(const PIC_DEFINITION *picDevice, FILE *hexFile);
 
+// ZIF Socket Information Structure
+typedef struct {
+    const char* pic_name;
+    int zif_pin;           // ZIF socket pin number (1-40)
+    int package_pins;      // Total pins in package (8, 14, 18, 20, 28, 40)
+    const char* instructions; // Socket placement instructions
+    bool icsp_only;        // True if only ICSP programming supported
+} ZIF_INFO;
+
+// ZIF socket information functions
+void show_zif_instructions(const char* pic_name);
+const ZIF_INFO* get_zif_info(const char* pic_name);
+
 // Global variables
 extern int theDevice;
 extern bool isK150;  // K150 programmer active flag

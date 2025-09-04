@@ -3851,6 +3851,7 @@ static void Usage()
 	fprintf(stdout, "     -wpx will suppress actual writing to program space (for debugging picp)\n");
 	fprintf(stdout, "  -v show picp version number (standalone) or programmer version (after ttyname)\n");
 	fprintf(stdout, "  -detect auto-detect connected PIC device (after ttyname)\n");
+	fprintf(stdout, "  -zif show ZIF socket placement guide for K150 programmer (after ttyname)\n");
 	fprintf(stdout, "  Read/Write/Erase parameters:\n");
 	fprintf(stdout, "    p [filename] = program memory, optionally reading/writing filename\n");
 	fprintf(stdout, "    c [val] = configuration bits (val is a numeric word value when writing)\n");
@@ -4587,6 +4588,12 @@ int main(int argc,char *argv[])
 				return 1;
 			}
 		}
+		
+		// Handle -zif command to show ZIF socket information
+		if (strcmp(picName, "-zif") == 0) {
+			show_zif_instructions(NULL); // Show all ZIF info
+			return 0; // Success, exit program
+		}
 
 		if ((picDevice = GetPICDefinition(picName)))			// locate the PIC type (0 = none found)
 		{
@@ -4594,6 +4601,11 @@ int main(int argc,char *argv[])
 
 			// Check for K150 programmer first
 			check_programmer();
+			
+			// Show ZIF socket information for K150 programmer
+			if (isK150) {
+				show_zif_instructions(picDevice->name);
+			}
 			
 			if (isK150)
 			{

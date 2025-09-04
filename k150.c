@@ -30,6 +30,7 @@
 #include <sys/select.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>  // strcasecmp için
 #include <stdbool.h>  // bool tipi için
 
 // P18A Protocol commands (for updated firmware)
@@ -1295,6 +1296,130 @@ static int hex_to_byte(char c)
     if (c >= 'A' && c <= 'F') return c - 'A' + 10;
     if (c >= 'a' && c <= 'f') return c - 'a' + 10;
     return 0;
+}
+
+//-----------------------------------------------------------------------------
+// ZIF Socket Pin Mapping Table
+// Based on K150 ZIF socket configuration and picdevrc data
+//-----------------------------------------------------------------------------
+
+static const ZIF_INFO zif_mapping[] = {
+    // 18-pin PICs (ZIF pins 1-20)
+    {"16F84",    2, 18, "Insert PIC16F84 with pin 1 at ZIF pin 2 (18-pin DIP)", false},
+    {"16F84A",   2, 18, "Insert PIC16F84A with pin 1 at ZIF pin 2 (18-pin DIP)", false},
+    {"16F628",   1, 18, "Insert PIC16F628 with pin 1 at ZIF pin 1 (18-pin DIP)", false},
+    {"16F628A",  1, 18, "Insert PIC16F628A with pin 1 at ZIF pin 1 (18-pin DIP)", false},
+    
+    // 28-pin PICs (ZIF pins 1-28)
+    {"16F876",   1, 28, "Insert PIC16F876 with pin 1 at ZIF pin 1 (28-pin DIP)", false},
+    {"16F876A",  1, 28, "Insert PIC16F876A with pin 1 at ZIF pin 1 (28-pin DIP)", false},
+    {"16F877",   1, 28, "Insert PIC16F877 with pin 1 at ZIF pin 1 (28-pin DIP)", false},
+    {"16F877A",  1, 28, "Insert PIC16F877A with pin 1 at ZIF pin 1 (28-pin DIP)", false},
+    
+    // 20-pin PICs (ICSP recommended)
+    {"16F690",   0, 20, "PIC16F690: Use ICSP connector (20-pin package not suitable for ZIF)", true},
+    {"16F88",    0, 18, "PIC16F88: Use ICSP connector or insert with pin 1 at ZIF pin 1", false},
+    
+    // 8-pin PICs
+    {"12F675",   0, 8,  "PIC12F675: Use ICSP connector (8-pin package)", true},
+    {"12F683",   0, 8,  "PIC12F683: Use ICSP connector (8-pin package)", true},
+    
+    // 14-pin PICs
+    {"16F505",   0, 14, "PIC16F505: Insert with pin 1 at ZIF pin 14 (14-pin DIP)", false},
+    {"16F506",   0, 14, "PIC16F506: Insert with pin 1 at ZIF pin 14 (14-pin DIP)", false},
+    
+    // 40-pin PICs
+    {"16F887",   1, 40, "Insert PIC16F887 with pin 1 at ZIF pin 1 (40-pin DIP)", false},
+    {"18F4520",  1, 40, "Insert PIC18F4520 with pin 1 at ZIF pin 1 (40-pin DIP)", false},
+    
+    // End marker
+    {NULL, 0, 0, NULL, false}
+};
+
+//-----------------------------------------------------------------------------
+// Get ZIF socket information for a specific PIC
+//-----------------------------------------------------------------------------
+const ZIF_INFO* get_zif_info(const char* pic_name) {
+    if (!pic_name) return NULL;
+    
+    for (int i = 0; zif_mapping[i].pic_name != NULL; i++) {
+        if (strcasecmp(pic_name, zif_mapping[i].pic_name) == 0) {
+            return &zif_mapping[i];
+        }
+    }
+    
+    // Default for unknown PICs
+    return NULL;
+}
+
+//-----------------------------------------------------------------------------
+// Display ZIF socket placement instructions
+//-----------------------------------------------------------------------------
+void show_zif_instructions(const char* pic_name) {
+    if (!pic_name) {
+        printf("\nK150 ZIF Socket Information:\n");
+        printf("===========================\n");
+        printf("Supported PIC devices and their ZIF socket placement:\n\n");
+        
+        for (int i = 0; zif_mapping[i].pic_name != NULL; i++) {
+            const ZIF_INFO* info = &zif_mapping[i];
+            printf("%-10s: %s\n", info->pic_name, info->instructions);
+            if (info->icsp_only) {
+                printf("            ⚠️  ICSP-only device - use ICSP connector\n");
+            }
+        }
+        
+        printf("\nGeneral ZIF Socket Guidelines:\n");
+        printf("• Pin 1 indicator: Look for notch or dot on the PIC package\n");
+        printf("• ZIF lever: Open lever, insert PIC, close lever gently\n");
+        printf("• Power off: Always power off K150 before inserting/removing PICs\n");
+        printf("• ICSP: For unsupported packages, use ICSP connector\n\n");
+        return;
+    }
+    
+    const ZIF_INFO* info = get_zif_info(pic_name);
+    if (info) {
+        printf("\n📌 ZIF Socket Instructions for %s:\n", pic_name);
+        printf("════════════════════════════════════════\n");
+        printf("Package: %d-pin DIP\n", info->package_pins);
+        
+        if (info->icsp_only) {
+            printf("⚠️  ICSP ONLY: %s\n", info->instructions);
+            printf("\nICSP Connection:\n");
+            printf("• Use the 6-pin ICSP header on K150\n");
+            printf("• Connect: VPP, VDD, VSS, PGC, PGD, and optionally LVP\n");
+            printf("• Refer to %s datasheet for ICSP pin mapping\n", pic_name);
+        } else {
+            printf("✅ ZIF Socket: %s\n", info->instructions);
+            printf("\nDetailed Steps:\n");
+            printf("1. Power off the K150 programmer\n");
+            printf("2. Open the ZIF socket lever\n");
+            printf("3. Locate pin 1 on the PIC (notch or dot indicator)\n");
+            
+            if (info->zif_pin == 1) {
+                printf("4. Align PIC pin 1 with ZIF socket pin 1 (top-left)\n");
+            } else {
+                printf("4. Align PIC pin 1 with ZIF socket pin %d\n", info->zif_pin);
+            }
+            
+            printf("5. Insert PIC gently into the socket\n");
+            printf("6. Close the ZIF socket lever\n");
+            printf("7. Power on the K150 programmer\n");
+        }
+        
+        printf("\n💡 Alternative: ICSP programming is always available\n");
+    } else {
+        printf("\n❓ ZIF Socket Information for %s:\n", pic_name);
+        printf("═════════════════════════════════════\n");
+        printf("⚠️  No specific ZIF mapping found for this device.\n");
+        printf("\nGeneral Guidelines:\n");
+        printf("• For 18-pin DIPs: Usually pin 1 at ZIF pin 1 or 2\n");
+        printf("• For 28-pin DIPs: Usually pin 1 at ZIF pin 1\n");
+        printf("• For 40-pin DIPs: Usually pin 1 at ZIF pin 1\n");
+        printf("• For other packages: Use ICSP connector\n");
+        printf("\n💡 Recommendation: Use ICSP programming for unknown devices\n");
+    }
+    printf("\n");
 }
 
 // Helper function to send single byte to K150
