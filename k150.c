@@ -1308,7 +1308,7 @@ static const ZIF_INFO zif_mapping[] = {
     {"16F84",    2, 18, "Insert PIC16F84 with pin 1 at ZIF pin 2 (18-pin DIP)", false},
     {"16F84A",   2, 18, "Insert PIC16F84A with pin 1 at ZIF pin 2 (18-pin DIP)", false},
     {"16F628",   1, 18, "Insert PIC16F628 with pin 1 at ZIF pin 1 (18-pin DIP)", false},
-    {"16F628A",  1, 18, "Insert PIC16F628A with pin 1 at ZIF pin 1 (18-pin DIP)", false},
+    {"16F628A",  2, 18, "Insert PIC16F628A with pin 1 at ZIF pin 2 (18-pin DIP)", false},
     
     // 28-pin PICs (ZIF pins 1-28)
     {"16F876",   1, 28, "Insert PIC16F876 with pin 1 at ZIF pin 1 (28-pin DIP)", false},

@@ -128,7 +128,8 @@ diff backup.hex verify.hex                     # Perfect match
 
 **ZIF Socket Placement:**
 - PIC16F84/84A: Pin 1 at ZIF pin 2 (18-pin)
-- PIC16F628/628A: Pin 1 at ZIF pin 1 (18-pin) 
+- PIC16F628: Pin 1 at ZIF pin 1 (18-pin)
+- PIC16F628A: Pin 1 at ZIF pin 2 (18-pin) 
 - PIC16F876/877: Pin 1 at ZIF pin 1 (28-pin)
 - PIC16F887: Pin 1 at ZIF pin 1 (40-pin)
 - PIC12F675/683: ICSP only (8-pin)
