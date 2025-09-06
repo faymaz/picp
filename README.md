@@ -2,24 +2,25 @@
 
 ![Visitor Count](https://visitor-badge.laobi.icu/badge?page_id=faymaz.picp)
 
-A command-line PIC microcontroller programmer with **K150 USB programmer support** for Linux.
+A command-line PIC microcontroller programmer with K150 USB programmer support for Linux.
 
-## ✅ **Tested & Working**
+## Tested Hardware
 
-- **✅ PIC16F628A** - Full read/write/erase support
-- **✅ PIC16F876** - Complete backup/restore workflow tested
-- **✅ PIC16F887** - **FULL 32KB programming support** - All operations tested ✅
-- **✅ PIC16F84** - Basic functionality verified
-- **✅ Data Integrity** - 100% verified with diff comparison
+- **PIC16F628A** - Full read/write/erase support
+- **PIC16F876** - Complete backup/restore workflow tested
+- **PIC16F887** - 32KB programming support, all operations tested
+- **PIC16F84** - Basic functionality verified
+- **Data Integrity** - 100% verified with diff comparison
 
 ## Features
 
-- 🚀 **K150 USB Programmer Support** - Reverse-engineered from Microbrn.exe
-- 💾 **Complete Operations** - Read, Write, Erase (Verify in development)
-- 📡 **Proper Serial Protocol** - 19200 baud, 8N1, DTR/RTS control
-- 🔧 **Intel HEX Support** - Standard format for firmware files
-- 🐧 **Linux Ready** - Tested on Debian/Ubuntu
-- 📋 **Production Ready** - Backup/restore workflow validated
+- **K150 USB Programmer Support** - Reverse-engineered from Microbrn.exe
+- **Complete Operations** - Read, Write, Erase, Verify
+- **Proper Serial Protocol** - 19200 baud, 8N1, DTR/RTS control
+- **Intel HEX Support** - Standard format for firmware files
+- **Linux Ready** - Tested on Debian/Ubuntu
+- **Production Ready** - Backup/restore workflow validated
+- **ZIF Socket Guide** - Pin placement instructions for supported PICs
 
 ## Quick Start
 
@@ -73,9 +74,14 @@ sudo usermod -a -G dialout $USER
 ./picp /dev/ttyUSB0 -detect
 ```
 
+#### ZIF Socket Guide
+```bash
+./picp /dev/ttyUSB0 -zif
+```
+
 ## Tested Workflow Examples
 
-### PIC16F876 Complete Test (PASSED ✅)
+### PIC16F876 Complete Test
 ```bash
 # 1. Backup original firmware
 ./picp /dev/ttyUSB0 16f876 -rp backup.hex
@@ -91,34 +97,42 @@ sudo usermod -a -G dialout $USER
 diff backup.hex verify.hex  # Should show no differences
 ```
 
-### PIC16F628A Programming (PASSED ✅)
+### PIC16F628A Programming
 ```bash
 # Program and verify 16F628A
 ./picp /dev/ttyUSB0 16f628a -wp firmware.hex
 ```
 
-### PIC16F887 Large Memory Programming (PASSED ✅)
+### PIC16F887 Large Memory Programming
 ```bash
 # 32KB memory programming test
 ./picp /dev/ttyUSB0 16f887 -rp backup.hex      # 32768 bytes backup
 ./picp /dev/ttyUSB0 16f887 -e                  # Erase
 ./picp /dev/ttyUSB0 16f887 -wp backup.hex      # Restore 32KB
 ./picp /dev/ttyUSB0 16f887 -rp verify.hex      # Verify
-diff backup.hex verify.hex                     # Perfect match!
+diff backup.hex verify.hex                     # Perfect match
 ```
 
 ## Supported PIC Devices
 
-**Tested & Confirmed:**
-- ✅ PIC16F628A (full read/write/erase)
-- ✅ PIC16F876 (full backup/restore workflow) 
-- ✅ PIC16F887 (32KB programming - complete workflow tested)
-- ✅ PIC16F84 (basic functionality)
+**Tested and Confirmed:**
+- PIC16F628A (full read/write/erase)
+- PIC16F876 (full backup/restore workflow) 
+- PIC16F887 (32KB programming - complete workflow tested)
+- PIC16F84 (basic functionality)
 
 **Additional Support:**
 - PIC16F series: 627A, 648A, 877A, 72, 73, 74, 76, 77
 - PIC18F series: 2550, 4550, 242, 252, 442, 452
 - Many classic PIC devices (see `./picp -h` for full list)
+
+**ZIF Socket Placement:**
+- PIC16F84/84A: Pin 1 at ZIF pin 2 (18-pin)
+- PIC16F628/628A: Pin 1 at ZIF pin 1 (18-pin) 
+- PIC16F876/877: Pin 1 at ZIF pin 1 (28-pin)
+- PIC16F887: Pin 1 at ZIF pin 1 (40-pin)
+- PIC12F675/683: ICSP only (8-pin)
+- PIC16F690: ICSP only (20-pin)
 
 ## Command Reference
 
@@ -126,8 +140,10 @@ diff backup.hex verify.hex                     # Perfect match!
 |---------|-------------|---------|
 | `-rp file.hex` | Read program memory | `./picp /dev/ttyUSB0 16f628a -rp backup.hex` |
 | `-wp file.hex` | Write program memory | `./picp /dev/ttyUSB0 16f628a -wp firmware.hex` |
+| `-vp file.hex` | Verify program memory | `./picp /dev/ttyUSB0 16f628a -vp firmware.hex` |
 | `-e` | Erase chip | `./picp /dev/ttyUSB0 16f628a -e` |
 | `-detect` | Auto-detect chip | `./picp /dev/ttyUSB0 -detect` |
+| `-zif` | Show ZIF socket guide | `./picp /dev/ttyUSB0 -zif` |
 | `-v` | Verbose mode | `./picp /dev/ttyUSB0 16f628a -v -rp test.hex` |
 
 ## Troubleshooting
@@ -146,10 +162,10 @@ ls /dev/ttyUSB*
 ```
 
 ### Common Issues
-- **"Permission denied"** → Add user to dialout group (see above)
-- **"No such device"** → Check `/dev/ttyUSB*` exists
-- **"Bad file descriptor"** → K150 not properly connected/detected
-- **Yellow LED stays on** → Communication timeout, check connections
+- **"Permission denied"** - Add user to dialout group (see above)
+- **"No such device"** - Check `/dev/ttyUSB*` exists
+- **"Bad file descriptor"** - K150 not properly connected/detected
+- **Yellow LED stays on** - Communication timeout, check connections
 
 ### Debug Mode
 ```bash
@@ -164,7 +180,7 @@ ls /dev/ttyUSB*
 - **Commands:** 0x32 programming, 0x14 read, 0x42 init sequence
 - **Data:** Intel HEX format for firmware files
 
-## Contributing & Development
+## Contributing
 
 ```bash
 # Build from source
@@ -176,15 +192,11 @@ make
 ./picp /dev/ttyUSB0 -detect
 ```
 
-**Contributions welcome!** Test with different PIC models and report results.
+Contributions welcome! Test with different PIC models and report results.
 
-## License & Credits
+## License
 
 - **License:** GNU GPL v2.0
 - **Original PICP:** Cosmodog, Ltd. & Jeff Post  
 - **K150 Support:** Reverse-engineered protocol implementation (2025)
 - **GitHub:** https://github.com/faymaz/picp
-
----
-
-**🚀 Production-ready K150 PIC programming on Linux!** ✅
