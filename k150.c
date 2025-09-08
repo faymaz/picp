@@ -713,18 +713,42 @@ static int k150_read_rom_enhanced(const PIC_DEFINITION *device, unsigned char *b
         return ERROR;
     }
     
-    // CRITICAL: Read command does get a response (0x03 from log analysis)
-    // We need to consume this response first, then read ROM data
-    printf("K150: Reading command response first\n");
+    // CRITICAL: Exact Micropro.LOG sequence for read
+    printf("K150: Following exact Micropro.LOG read sequence\n");
     
+    // Step 1: Read command (0x14) response (expect 0x03)
     unsigned char cmd_response;
-    if (k150_read_serial(&cmd_response, 1) == SUCCESS) {
-        printf("K150: Read command response: 0x%02X (expected 0x03)\n", cmd_response);
+    if (k150_read_serial(&cmd_response, 1) == SUCCESS && cmd_response == 0x03) {
+        printf("K150: Read command response: 0x%02X (expected 0x03) ✓\n", cmd_response);
     } else {
-        printf("K150: No command response received\n");
+        printf("K150: Read command response FAILED: got 0x%02X, expected 0x03\n", cmd_response);
     }
     
-    printf("K150: Now reading actual ROM data\n");
+    // Step 2: Send 0x04 (voltages on), expect 'V' (0x56)
+    unsigned char voltages_cmd = 0x04;
+    if (k150_write_serial(&voltages_cmd, 1) == SUCCESS) {
+        printf("K150: Sent voltages ON (0x04)\n");
+        unsigned char voltages_ack;
+        if (k150_read_serial(&voltages_ack, 1) == SUCCESS && voltages_ack == 0x56) {
+            printf("K150: Voltages ON confirmed: 0x%02X ('V') ✓\n", voltages_ack);
+        } else {
+            printf("K150: Voltages ON ACK FAILED: got 0x%02X, expected 0x56\n", voltages_ack);
+        }
+    }
+    
+    // Step 3: Send 0x0D (pre-read command), expect 'C' (0x43) - MISSING FROM PREVIOUS CODE!
+    unsigned char pre_read_cmd = 0x0D;
+    if (k150_write_serial(&pre_read_cmd, 1) == SUCCESS) {
+        printf("K150: Sent pre-read command (0x0D)\n");
+        unsigned char pre_read_ack;
+        if (k150_read_serial(&pre_read_ack, 1) == SUCCESS && pre_read_ack == 0x43) {
+            printf("K150: Pre-read ACK: 0x%02X ('C') ✓ - NOW READY FOR DATA!\n", pre_read_ack);
+        } else {
+            printf("K150: Pre-read ACK FAILED: got 0x%02X, expected 0x43\n", pre_read_ack);
+        }
+    }
+    
+    printf("K150: Starting actual ROM data read after complete init sequence\n");
     
     // Read data using exact picpro polling method
     printf("K150: Reading %d bytes using picpro polling method\n", size);
@@ -732,10 +756,10 @@ static int k150_read_rom_enhanced(const PIC_DEFINITION *device, unsigned char *b
     // Give K150 time to prepare data
     usleep(DELAY_US * 3);
     
-    // Use picpro-style polling read (like their IConnection.read method)
+    // Use Micropro.LOG-style polling read (small chunks like log)
     int total_read = 0;
     time_t start_time = time(NULL);
-    time_t timeout_seconds = 30; // 30 second timeout (Log shows many waits)
+    time_t timeout_seconds = 60; // 60 second timeout for full ROM
     
     printf("K150: Starting polling read, timeout=%d seconds\n", (int)timeout_seconds);
     
@@ -754,9 +778,9 @@ static int k150_read_rom_enhanced(const PIC_DEFINITION *device, unsigned char *b
             total_read += bytes_read;
             printf("K150: Polling read: +%d bytes (total: %d/%d)\n", bytes_read, total_read, size);
             
-            // Debug: Show first few bytes
-            if (total_read <= 10) {
-                printf("K150: Data bytes: ");
+            // Verbose hex dump for debugging
+            if (total_read <= 32 || total_read % 64 == 0) {
+                printf("K150: Bytes %d-%d: ", total_read - bytes_read, total_read - 1);
                 for (int i = total_read - bytes_read; i < total_read; i++) {
                     printf("0x%02X ", buffer[i]);
                 }
@@ -766,8 +790,8 @@ static int k150_read_rom_enhanced(const PIC_DEFINITION *device, unsigned char *b
             // Reset timer on successful read
             start_time = time(NULL);
         } else {
-            // No data available, small delay before retry (like picpro polling)
-            usleep(50000); // 50ms delay for better data flow
+            // No data available, minimal delay for maximum speed
+            usleep(1000); // 1ms delay for fastest possible read
         }
     }
     
