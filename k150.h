@@ -130,6 +130,10 @@ int k150_read_eeprom(unsigned char *buffer, int size);
 // K150 specific write function
 int k150_write_pgm(const PIC_DEFINITION *picDevice, FILE *hexFile);
 
+// Enhanced K150 functions for improved compatibility
+int DoReadPgm_Enhanced(const char* device_name, const char* hex_filename);
+int DoProgramPgm_Enhanced(const char* device_name, const char* hex_filename);
+
 // ZIF Socket Information Structure
 typedef struct {
     const char* pic_name;

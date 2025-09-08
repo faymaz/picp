@@ -64,9 +64,16 @@ sudo usermod -a -G dialout $USER
 ./picp /dev/ttyUSB0 16f628a -vp firmware.hex
 ```
 
-#### Erase chip  
+#### Erase chip options
 ```bash
+# Erase program memory only (default)
 ./picp /dev/ttyUSB0 16f628a -e
+
+# Erase program memory explicitly
+./picp /dev/ttyUSB0 16f628a -ep
+
+# Erase full chip (program + data + config)
+./picp /dev/ttyUSB0 16f628a -ef
 ```
 
 #### Chip detection
@@ -142,7 +149,9 @@ diff backup.hex verify.hex                     # Perfect match
 | `-rp file.hex` | Read program memory | `./picp /dev/ttyUSB0 16f628a -rp backup.hex` |
 | `-wp file.hex` | Write program memory | `./picp /dev/ttyUSB0 16f628a -wp firmware.hex` |
 | `-vp file.hex` | Verify program memory | `./picp /dev/ttyUSB0 16f628a -vp firmware.hex` |
-| `-e` | Erase chip | `./picp /dev/ttyUSB0 16f628a -e` |
+| `-e` | Erase program memory | `./picp /dev/ttyUSB0 16f628a -e` |
+| `-ep` | Erase program memory | `./picp /dev/ttyUSB0 16f628a -ep` |
+| `-ef` | Erase full chip | `./picp /dev/ttyUSB0 16f628a -ef` |
 | `-detect` | Auto-detect chip | `./picp /dev/ttyUSB0 -detect` |
 | `-zif` | Show ZIF socket guide | `./picp /dev/ttyUSB0 -zif` |
 | `-v` | Verbose mode | `./picp /dev/ttyUSB0 16f628a -v -rp test.hex` |

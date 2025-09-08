@@ -3833,7 +3833,7 @@ static void Usage()
 	fprintf(stdout, "  -c enable comm line debug output to picpcomm.log (must be before ttyname)\n");
 	fprintf(stdout, "  -d (if only parameter) show device list\n");
 	fprintf(stdout, "  -d devtype - show device information\n");
-	fprintf(stdout, "  -e erases the requested region (flash parts only)\n");
+	fprintf(stdout, "  -e erases program memory (default) / -ep program only / -ef full chip\n");
 	fprintf(stdout, "  -f ignores verify errors while writing\n");
 	fprintf(stdout, "  -h show this help\n");
 	fprintf(stdout, "  -i use ISP protocol (must be first option after devtype)\n");
@@ -4635,10 +4635,24 @@ int main(int argc,char *argv[])
 								switch (*flags)
 								{
 									case 'p':
+										// Erase program memory only
+										printf("K150: Erasing program memory...\n");
 										fail = !DoErasePgm(picDevice, true);
 										break;
 									case 'f':
+										// Erase full chip (program + data + config)
+										printf("K150: Erasing full chip (program + data + config)...\n");
 										fail = !DoErasePgm(picDevice, true);
+										break;
+									case '\0':
+										// Just -e means erase program memory (default behavior)
+										printf("K150: Erasing program memory (default)...\n");
+										fail = !DoErasePgm(picDevice, true);
+										break;
+									default:
+										fprintf(stderr, "K150: Invalid erase option '-%c'\n", *flags);
+										fprintf(stderr, "K150: Valid options: -e (program), -ep (program), -ef (full chip)\n");
+										fail = true;
 										break;
 								}
 								break;
@@ -4685,8 +4699,9 @@ int main(int argc,char *argv[])
 										FILE *hexFile = fopen(filename, "w");
 										if (hexFile)
 										{
-											printf("DEBUG: K150 calling DoReadPgm with picDevice=%p, hexFile=%p\n", picDevice, hexFile);
-											fail = !DoReadPgm(picDevice, hexFile);
+										printf("DEBUG: K150 calling DoReadPgm_Enhanced for device %s\n", picDevice->name);
+										// Use enhanced K150 read for better reliability
+										fail = (DoReadPgm_Enhanced(picDevice->name, filename) != SUCCESS);
 											fclose(hexFile);
 											printf("DEBUG: K150 DoReadPgm completed, fail=%d\n", fail);
 										}

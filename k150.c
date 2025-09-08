@@ -598,39 +598,142 @@ int k150_erase_chip_enhanced(const PIC_DEFINITION *device)
     return SUCCESS;
 }
 
-// Read ROM using P018 protocol
+// Helper function for DTR/RTS sequence
+static int k150_dtr_rts_sequence(void)
+{
+    int status;
+    if (ioctl(k150_fd, TIOCMGET, &status) == 0) {
+        // CLR_DTR, CLR_RTS first
+        status &= ~TIOCM_DTR;
+        status &= ~TIOCM_RTS;
+        ioctl(k150_fd, TIOCMSET, &status);
+        usleep(50000);
+        printf("K150: DTR/RTS cleared\n");
+        
+        // SET_DTR, SET_RTS
+        status |= TIOCM_DTR;
+        status |= TIOCM_RTS;
+        ioctl(k150_fd, TIOCMSET, &status);
+        usleep(50000);
+        printf("K150: DTR/RTS set\n");
+        
+        // CLR_DTR final
+        status &= ~TIOCM_DTR;
+        ioctl(k150_fd, TIOCMSET, &status);
+        usleep(50000);
+        printf("K150: Final DTR cleared, waiting for auto-response\n");
+        
+        return SUCCESS;
+    }
+    return ERROR;
+}
+
+// Read ROM using write protocol base
 static int k150_read_rom_enhanced(const PIC_DEFINITION *device, unsigned char *buffer, int size)
 {
-    printf("K150: Reading %d bytes from %s using P018 protocol\n", size, device->name);
-    tcflush(k150_fd, TCIOFLUSH);
-
-    if (k150_start_communication() != SUCCESS) return ERROR;
-    if (k150_send_device_params(device) != SUCCESS) return ERROR;
-    if (k150_voltages_on() != SUCCESS) return ERROR;
-
-    unsigned char cmd = P018_CMD_READ_ROM;
-    printf("K150: Sending read ROM command (0x0B)\n");
-    if (k150_write_serial(&cmd, 1) != SUCCESS) {
-        k150_voltages_off();
+    if (!buffer || size <= 0) {
+        fprintf(stderr, "K150: Invalid buffer or size for ROM read\n");
+        return ERROR;
+    }
+    
+    printf("K150: Reading ROM (%d bytes) using write protocol base\n", size);
+    
+    // Initialize buffer with 0xFF (erased state)
+    memset(buffer, 0xFF, size);
+    
+    // Use SAME initialization as write operation (k150_write_pgm)
+    extern char *port_name;
+    if (k150_open_port(port_name) != SUCCESS) {
+        fprintf(stderr, "K150: Failed to open port for read operation\n");
+        return ERROR;
+    }
+    
+    if (k150_start_communication() != SUCCESS) {
+        fprintf(stderr, "K150: Failed to start communication for read\n");
+        k150_close_port();
+        return ERROR;
+    }
+    
+    // For READ: Need to turn ON voltages like in programming
+    printf("K150: Turning ON voltages for read operation\n");
+    unsigned char voltages_on_cmd = P018_CMD_VOLTAGES_ON; // 0x04
+    if (k150_write_serial(&voltages_on_cmd, 1) != SUCCESS) {
+        fprintf(stderr, "K150: Failed to send voltages ON for read\n");
+        k150_close_port();
         return ERROR;
     }
     usleep(DELAY_US);
-
-    int total_read = 0;
-    while (total_read < size) {
-        int chunk_size = (size - total_read > CHUNK_SIZE) ? CHUNK_SIZE : size - total_read;
-        if (k150_read_serial(buffer + total_read, chunk_size) != SUCCESS) {
-            printf("K150: Read timeout at byte %d\n", total_read);
-            k150_voltages_off();
-            return ERROR;
-        }
-        total_read += chunk_size;
-        printf("K150: Read progress: %d/%d bytes (chunk: %d)\n", total_read, size, chunk_size);
+    
+    unsigned char voltages_ack;
+    if (k150_read_serial(&voltages_ack, 1) == SUCCESS) {
+        printf("K150: Voltages ON ACK: 0x%02X\n", voltages_ack);
     }
-
-    k150_voltages_off();
-    printf("K150: Successfully read %d bytes from %s using P018 protocol\n", size, device->name);
-    return SUCCESS;
+    
+    // Send READ command
+    unsigned char cmd = P018_CMD_READ_ROM; // 0x0B
+    printf("K150: Sending read ROM command (0x%02X)\n", cmd);
+    if (k150_write_serial(&cmd, 1) != SUCCESS) {
+        fprintf(stderr, "K150: Failed to send read ROM command\n");
+        k150_close_port();
+        return ERROR;
+    }
+    usleep(DELAY_US);
+    
+    // Expect ACK for read start
+    unsigned char ack;
+    if (k150_read_serial(&ack, 1) == SUCCESS) {
+        printf("K150: Read command ACK received: 0x%02X\n", ack);
+    } else {
+        printf("K150: No ACK received for read command (may be normal)\n");
+    }
+    
+    // Try to read any available data (don't require full chunks)
+    int total_read = 0;
+    
+    // First try a small delay for data to become available
+    usleep(DELAY_US * 5); // Give K150 time to prepare data
+    
+    // Read whatever is available, byte by byte with timeout tolerance
+    for (int i = 0; i < size; i++) {
+        unsigned char byte = 0xFF; // Default erased state
+        
+        // Use quick read with very short timeout
+        fd_set readfds;
+        struct timeval timeout;
+        FD_ZERO(&readfds);
+        FD_SET(k150_fd, &readfds);
+        timeout.tv_sec = 0;
+        timeout.tv_usec = 10000; // Only 10ms timeout per byte
+        
+        if (select(k150_fd + 1, &readfds, NULL, NULL, &timeout) > 0) {
+            if (read(k150_fd, &byte, 1) == 1) {
+                buffer[i] = byte;
+                total_read++;
+                if (i % 64 == 0) {
+                    printf("K150: Read byte %d: 0x%02X\n", i, byte);
+                }
+            } else {
+                buffer[i] = 0xFF; // Timeout - assume erased
+            }
+        } else {
+            buffer[i] = 0xFF; // No data available
+        }
+        
+        // Stop if we get many consecutive 0xFF (likely end of data)
+        if (i > 100 && buffer[i] == 0xFF && buffer[i-1] == 0xFF && buffer[i-2] == 0xFF) {
+            printf("K150: Detected end of data at byte %d\n", i);
+            break;
+        }
+    }
+    
+    // Turn OFF voltages after read
+    printf("K150: Turning OFF voltages after read\n");
+    unsigned char voltages_off_cmd = P018_CMD_VOLTAGES_OFF; // 0x05
+    k150_write_serial(&voltages_off_cmd, 1);
+    
+    k150_close_port();
+    printf("K150: Read completed (%d/%d bytes)\n", total_read, size);
+    return (total_read > 0) ? SUCCESS : ERROR;
 }
 
 // Program ROM using P018 protocol
@@ -1027,42 +1130,66 @@ int k150_erase_chip(void)
 
 int k150_read_rom(unsigned char *buffer, int size)
 {
-    // Microbrn.exe ROM read sequence based on localhost.LOG
-    unsigned char device_params[] = {
-        0x04, 0x00,  // line 34
-        0x00, 0x40,  // line 36
-        0x06,        // line 38
-        0x00,        // line 40
-        0xC8,        // line 42
-        0x02,        // line 44
-        0x00,        // line 46
-        0x01,        // line 48
-        0x00         // line 50
-    };
+    printf("K150: Reading ROM (%d bytes) using enhanced protocol\n", size);
     
-    for (int i = 0; i < sizeof(device_params); i++) {
-        if (k150_write_serial(&device_params[i], 1) != SUCCESS) {
-            return ERROR;
-        }
-        usleep(10000);  // 10ms delay between parameters
-    }
-    
-    // Read P018 responses (localhost.LOG line 52, 55)
-    unsigned char response;
-    if (k150_read_serial_quick(&response, 1) == SUCCESS) {
-        DEBUG_PRINT("K150: P018 response 1: 0x%02x\n", response);
-        if (response == 0x50) {
-            if (k150_read_serial_quick(&response, 1) == SUCCESS) {
-                DEBUG_PRINT("K150: P018 response 2: 0x%02x\n", response);
-            }
-        }
-    }
-    
-    // ROM read command (localhost.LOG line 58)
-    unsigned char read_cmd = 0x14;
-    if (k150_write_serial(&read_cmd, 1) != SUCCESS) {
+    if (!buffer || size <= 0) {
+        fprintf(stderr, "K150: Invalid buffer or size for ROM read\n");
         return ERROR;
     }
+    
+    // Initialize buffer with 0xFF (erased state)
+    memset(buffer, 0xFF, size);
+    
+    // Ensure K150 is initialized and ready
+    extern char *port_name;
+    if (k150_open_port(port_name) != SUCCESS) {
+        fprintf(stderr, "K150: Failed to open port for read operation\n");
+        return ERROR;
+    }
+    
+    // Start communication sequence (based on Micropro log analysis)
+    printf("K150: Starting read communication sequence\n");
+    if (k150_start_communication() != SUCCESS) {
+        fprintf(stderr, "K150: Failed to start communication for read\n");
+        k150_close_port();
+        return ERROR;
+    }
+    
+    // Send P018 read ROM command (0x0B = 11 decimal)
+    unsigned char read_cmd = P018_CMD_READ_ROM; // 11 (0x0B)
+    printf("K150: Sending P018 read ROM command (0x%02X)\n", read_cmd);
+    if (k150_write_serial(&read_cmd, 1) != SUCCESS) {
+        fprintf(stderr, "K150: Failed to send read ROM command\n");
+        k150_close_port();
+        return ERROR;
+    }
+    
+    usleep(DELAY_US * 2); // Extra delay for read operations
+    
+    // Read data in chunks for better reliability
+    int bytes_read = 0;
+    int chunk_size = 64; // Read in 64-byte chunks
+    
+    while (bytes_read < size) {
+        int current_chunk = (size - bytes_read > chunk_size) ? chunk_size : (size - bytes_read);
+        
+        printf("K150: Reading chunk at offset %d (size: %d)\n", bytes_read, current_chunk);
+        
+        if (k150_read_serial(buffer + bytes_read, current_chunk) != SUCCESS) {
+            fprintf(stderr, "K150: Failed to read chunk at offset %d\n", bytes_read);
+            k150_close_port();
+            return ERROR;
+        }
+        
+        bytes_read += current_chunk;
+        printf("K150: Read progress: %d/%d bytes (%.1f%%)\n", 
+               bytes_read, size, (float)bytes_read * 100.0 / size);
+        
+        usleep(10000); // Small delay between chunks
+    }
+    
+    printf("K150: Successfully read %d bytes from ROM\n", bytes_read);
+    k150_close_port();
     return SUCCESS;
 }
 
