@@ -1,4 +1,4 @@
-# Compiled binaries
+# Compiled executables
 picp
 convert
 convertshort
@@ -6,47 +6,35 @@ convertshort
 # Object files
 *.o
 
-# Log files
+# Backup and test files
+*.hex
+*.rom
 *.log
-trace*
-output*
-typescript
+backup*
+test_*
+debug_*
+quick_*
+*_test*
+*_backup*
 
-# Temporary files
-*~
-*.tmp
-*.bak
-
-# IDE files
+# IDE and editor files
 .vscode/
+.idea/
 *.swp
 *.swo
+*~
 
-# Build artifacts
-*.a
-*.so
-*.dylib
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
-# Debug files
-*.dSYM/
-*.su
-
-# Test files
-test_*
-hex_rom/
-k150_test_results/
-sh/
-
-# Large log file - keep for reference but exclude from git
-log.LOG
-
-# Backup and development files
-k150_backup.c
-k150_enhanced*.c
-k150_chip_detection.c
-k150_protocols.*/
-fixchksum/
-picsnoop/
-hex_rom/
-sh/
-k150_test_results/
+# Development artifacts
+*.tmp
+*.bak
+core
+a.out

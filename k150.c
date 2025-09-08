@@ -33,6 +33,7 @@
 #include <string.h>
 #include <strings.h>  // strcasecmp için
 #include <stdbool.h>  // bool tipi için
+#include <errno.h>    // errno for read error handling
 
 // P18A Protocol commands (for updated firmware)
 #define P18A_CMD_DETECT         0x42 // Detect programmer
@@ -704,51 +705,17 @@ static int k150_read_rom_enhanced(const PIC_DEFINITION *device, unsigned char *b
         printf("K150: Voltages ON ACK: 0x%02X\n", voltages_ack);
     }
     
-    // Send READ command (Log analysis: Micropro.LOG uses 0x14 instead of 0x0B)
-    unsigned char cmd = 0x14; // Try Micropro.LOG command (20 decimal)
-    printf("K150: Sending read ROM command (0x%02X - Micropro.LOG style)\n", cmd);
+    // Send READ command (picpro uses 0x0B, let's try that instead)
+    unsigned char cmd = 0x0B; // Use picpro command (11 decimal = P018_CMD_READ_ROM)
+    printf("K150: Sending read ROM command (0x%02X - picpro style)\n", cmd);
     if (k150_write_serial(&cmd, 1) != SUCCESS) {
         fprintf(stderr, "K150: Failed to send read ROM command\n");
         k150_close_port();
         return ERROR;
     }
     
-    // CRITICAL: Exact Micropro.LOG sequence for read
-    printf("K150: Following exact Micropro.LOG read sequence\n");
-    
-    // Step 1: Read command (0x14) response (expect 0x03)
-    unsigned char cmd_response;
-    if (k150_read_serial(&cmd_response, 1) == SUCCESS && cmd_response == 0x03) {
-        printf("K150: Read command response: 0x%02X (expected 0x03) ✓\n", cmd_response);
-    } else {
-        printf("K150: Read command response FAILED: got 0x%02X, expected 0x03\n", cmd_response);
-    }
-    
-    // Step 2: Send 0x04 (voltages on), expect 'V' (0x56)
-    unsigned char voltages_cmd = 0x04;
-    if (k150_write_serial(&voltages_cmd, 1) == SUCCESS) {
-        printf("K150: Sent voltages ON (0x04)\n");
-        unsigned char voltages_ack;
-        if (k150_read_serial(&voltages_ack, 1) == SUCCESS && voltages_ack == 0x56) {
-            printf("K150: Voltages ON confirmed: 0x%02X ('V') ✓\n", voltages_ack);
-        } else {
-            printf("K150: Voltages ON ACK FAILED: got 0x%02X, expected 0x56\n", voltages_ack);
-        }
-    }
-    
-    // Step 3: Send 0x0D (pre-read command), expect 'C' (0x43) - MISSING FROM PREVIOUS CODE!
-    unsigned char pre_read_cmd = 0x0D;
-    if (k150_write_serial(&pre_read_cmd, 1) == SUCCESS) {
-        printf("K150: Sent pre-read command (0x0D)\n");
-        unsigned char pre_read_ack;
-        if (k150_read_serial(&pre_read_ack, 1) == SUCCESS && pre_read_ack == 0x43) {
-            printf("K150: Pre-read ACK: 0x%02X ('C') ✓ - NOW READY FOR DATA!\n", pre_read_ack);
-        } else {
-            printf("K150: Pre-read ACK FAILED: got 0x%02X, expected 0x43\n", pre_read_ack);
-        }
-    }
-    
-    printf("K150: Starting actual ROM data read after complete init sequence\n");
+    // CRITICAL: Follow picpro style - no ACKs, direct read after 0x0B command
+    printf("K150: Following picpro read sequence - no ACKs, direct data read\n");
     
     // Read data using exact picpro polling method
     printf("K150: Reading %d bytes using picpro polling method\n", size);
@@ -771,27 +738,39 @@ static int k150_read_rom_enhanced(const PIC_DEFINITION *device, unsigned char *b
             break;
         }
         
-        // Try to read one byte at a time (like Micropro.LOG)
-        int bytes_read = read(k150_fd, buffer + total_read, 1);
+        // Try to read chunk (optimize for speed like picpro)
+        int chunk_size = (size - total_read > 64) ? 64 : (size - total_read);
+        int bytes_read = read(k150_fd, buffer + total_read, chunk_size);
         
         if (bytes_read > 0) {
             total_read += bytes_read;
             printf("K150: Polling read: +%d bytes (total: %d/%d)\n", bytes_read, total_read, size);
             
-            // Verbose hex dump for debugging
-            if (total_read <= 32 || total_read % 64 == 0) {
+            // Verbose hex dump (reduced frequency)
+            if (total_read <= 32 || total_read % 256 == 0) {
                 printf("K150: Bytes %d-%d: ", total_read - bytes_read, total_read - 1);
                 for (int i = total_read - bytes_read; i < total_read; i++) {
                     printf("0x%02X ", buffer[i]);
+                    if ((i - (total_read - bytes_read)) % 16 == 15) printf("\n                      ");
                 }
                 printf("\n");
             }
             
             // Reset timer on successful read
             start_time = time(NULL);
+        } else if (bytes_read == 0) {
+            // No more data available - this might be normal end of data
+            printf("K150: No more data available (total: %d bytes)\n", total_read);
+            break; // Exit loop gracefully
         } else {
-            // No data available, minimal delay for maximum speed
-            usleep(1000); // 1ms delay for fastest possible read
+            // Error case
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                // Would block - no data yet, continue polling
+                usleep(5000); // 5ms delay for polling
+            } else {
+                printf("K150: Read error: %s\n", strerror(errno));
+                break;
+            }
         }
     }
     
