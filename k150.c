@@ -162,20 +162,39 @@ int k150_read_serial_quick(unsigned char *buf, int len)
 int k150_read_serial(unsigned char *buf, int len)
 {
     int retries = 0;
-    while (retries < 300) {  // Microbrn.exe uses 300 retries
-        int r = read(k150_fd, buf, len);
-        if (r == len) {
-            DEBUG_PRINT("read_serial got %d bytes: ", len);
-            if (debug_enabled) {
-                for (int i = 0; i < len; i++) printf("0x%02x ", buf[i]);
-                printf("\n");
+    int max_retries = 100; // Reduced timeout: 100 * 50ms = 5 seconds
+    
+    while (retries < max_retries) {
+        fd_set readfds;
+        struct timeval timeout;
+        
+        FD_ZERO(&readfds);
+        FD_SET(k150_fd, &readfds);
+        timeout.tv_sec = 0;
+        timeout.tv_usec = 50000; // 50ms timeout per attempt
+        
+        int select_result = select(k150_fd + 1, &readfds, NULL, NULL, &timeout);
+        
+        if (select_result > 0 && FD_ISSET(k150_fd, &readfds)) {
+            int r = read(k150_fd, buf, len);
+            if (r == len) {
+                DEBUG_PRINT("read_serial got %d bytes: ", len);
+                if (debug_enabled) {
+                    for (int i = 0; i < len; i++) printf("0x%02x ", buf[i]);
+                    printf("\n");
+                }
+                return SUCCESS;
+            } else if (r > 0) {
+                printf("K150: Partial read %d/%d bytes, retry %d\n", r, len, retries);
             }
-            return SUCCESS;
         }
-        usleep(50000);  // 50ms delay (Microbrn.exe compatible)
+        
         retries++;
+        if (retries % 20 == 0) { // Progress indicator every second
+            printf("K150: Read timeout, retry %d/%d (waiting for %d bytes)\n", retries, max_retries, len);
+        }
     }
-    printf("DEBUG: k150_read_serial failed after %d retries\n", retries);
+    printf("K150: Read failed after %d retries (5 seconds), wanted %d bytes\n", retries, len);
     return ERROR;
 }
 
@@ -421,33 +440,161 @@ int k150_detect_chip_command_line(void)
     }
 }
 
-// Erase chip
+// Erase chip - Fixed based on Micropro.LOG analysis
 int k150_erase_chip_enhanced(const PIC_DEFINITION *device)
 {
-    printf("K150: Erasing chip %s\n", device->name);
+    printf("=== K150_ERASE_CHIP_ENHANCED CALLED ===\n");
+    printf("K150: Erasing chip %s using Micropro.LOG sequence\n", device->name);
+    printf("K150: Serial port fd: %d\n", k150_fd);
     
-    if (k150_start_communication() != SUCCESS) return ERROR;
-    if (k150_send_device_params(device) != SUCCESS) return ERROR;
-    if (k150_voltages_on() != SUCCESS) return ERROR;
-
-    unsigned char cmd = P018_CMD_ERASE_CHIP;
-    printf("K150: Sending erase chip command (0x0F)\n");
-    if (k150_write_serial(&cmd, 1) != SUCCESS) {
-        k150_voltages_off();
-        return ERROR;
+    // Step 0: CRITICAL DTR/RTS control sequence (from Micropro.LOG)
+    printf("K150: Performing DTR/RTS control sequence\n");
+    int status;
+    if (ioctl(k150_fd, TIOCMGET, &status) == 0) {
+        // CLR_DTR, CLR_RTS first (line 8-9)
+        status &= ~TIOCM_DTR;
+        status &= ~TIOCM_RTS;
+        ioctl(k150_fd, TIOCMSET, &status);
+        usleep(50000);
+        printf("K150: DTR/RTS cleared\n");
+        
+        // SET_DTR, SET_RTS (line 14-15)
+        status |= TIOCM_DTR;
+        status |= TIOCM_RTS;
+        ioctl(k150_fd, TIOCMSET, &status);
+        usleep(50000);
+        printf("K150: DTR/RTS set\n");
+        
+        // CLR_DTR (line 20)
+        status &= ~TIOCM_DTR;
+        ioctl(k150_fd, TIOCMSET, &status);
+        usleep(100000); // 100ms wait for K150 response
+        printf("K150: Final DTR cleared, waiting for auto-response\n");
     }
-    usleep(DELAY_US * 2); // Erase takes longer
-
+    
+    // Read K150 auto-response (42 03 42) - critical!
+    unsigned char auto_resp[3];
+    printf("K150: Reading auto-response sequence\n");
+    if (k150_read_serial(auto_resp, 3) == SUCCESS) {
+        printf("K150: Auto-response: 0x%02x 0x%02x 0x%02x\n", auto_resp[0], auto_resp[1], auto_resp[2]);
+        if (auto_resp[0] == 0x42 && auto_resp[1] == 0x03 && auto_resp[2] == 0x42) {
+            printf("K150: Expected auto-response received!\n");
+        } else {
+            printf("K150: WARNING: Unexpected auto-response\n");
+        }
+    } else {
+        printf("K150: WARNING: No auto-response received\n");
+    }
+    
+    // Step 1: Start communication with device type
+    unsigned char start_cmd[2] = {0x50, 0x03}; // P018_CMD_START + device type
+    printf("K150: Sending start command: 50 03\n");
+    if (k150_write_serial(start_cmd, 2) != SUCCESS) return ERROR;
+    usleep(DELAY_US);
+    
     unsigned char ack;
-    if (k150_read_serial(&ack, 1) != SUCCESS || ack != P018_ACK_PROGRAM) {
-        printf("K150: ERROR: Expected 'Y' ACK for erase, got 0x%02x\n", ack);
-        k150_voltages_off();
+    if (k150_read_serial(&ack, 1) == SUCCESS && ack == 0x50) {
+        printf("K150: Start ACK received: 0x%02x\n", ack);
+    }
+    
+    // Step 2: Send device parameters (optimized based on test results)
+    printf("K150: Sending device parameters (optimized)\n");
+    
+    // First 4 parameters don't need ACK (send quickly)
+    unsigned char silent_params[][2] = {
+        {0x04, 0x00}, // Silent params - no ACK expected
+        {0x00, 0x40}, 
+        {0x06, 0x00}, 
+        {0xC8, 0x02}
+    };
+    
+    printf("K150: Sending silent parameters (no ACK expected)\n");
+    for (int i = 0; i < 4; i++) {
+        printf("K150: Silent param[%d]: 0x%02x 0x%02x\n", i, silent_params[i][0], silent_params[i][1]);
+        if (k150_write_serial(silent_params[i], 2) != SUCCESS) return ERROR;
+        usleep(DELAY_US / 4); // Faster timing for silent params
+    }
+    
+    // Last 2 parameters expect ACK
+    unsigned char ack_params[][2] = {
+        {0x00, 0x01}, // These expect ACK
+        {0x00, 0x14}
+    };
+    
+    printf("K150: Sending ACK-expected parameters\n");
+    for (int i = 0; i < 2; i++) {
+        printf("K150: ACK param[%d]: 0x%02x 0x%02x\n", i, ack_params[i][0], ack_params[i][1]);
+        if (k150_write_serial(ack_params[i], 2) != SUCCESS) return ERROR;
+        usleep(DELAY_US);
+        
+        // Only read ACK for these parameters with shorter timeout
+        unsigned char ack;
+        fd_set readfds;
+        struct timeval timeout;
+        FD_ZERO(&readfds);
+        FD_SET(k150_fd, &readfds);
+        timeout.tv_sec = 0;
+        timeout.tv_usec = 200000; // 200ms timeout instead of 5 seconds
+        
+        if (select(k150_fd + 1, &readfds, NULL, NULL, &timeout) > 0) {
+            if (read(k150_fd, &ack, 1) == 1) {
+                printf("K150: ACK param[%d]: 0x%02x ('%c')\n", i, ack, (ack >= 32 && ack <= 126) ? ack : '?');
+            }
+        } else {
+            printf("K150: No ACK for param[%d] (quick timeout)\n", i);
+        }
+    }
+    
+    // Step 3: Voltages OFF first (critical!)
+    printf("K150: Sending voltages OFF command (05)\n");
+    unsigned char voltages_off = 0x05;
+    if (k150_write_serial(&voltages_off, 1) != SUCCESS) return ERROR;
+    usleep(DELAY_US);
+    
+    if (k150_read_serial(&ack, 1) == SUCCESS && ack == 0x76) {
+        printf("K150: Voltages OFF ACK 'v' received: 0x%02x\n", ack);
+    }
+    
+    // Step 4: Voltages ON
+    printf("K150: Sending voltages ON command (04)\n"); 
+    unsigned char voltages_on = 0x04;
+    if (k150_write_serial(&voltages_on, 1) != SUCCESS) return ERROR;
+    usleep(DELAY_US);
+    
+    if (k150_read_serial(&ack, 1) == SUCCESS && ack == 0x56) {
+        printf("K150: Voltages ON ACK 'V' received: 0x%02x\n", ack);
+    }
+    
+    // Step 5: ERASE command with parameter (0F 3F)
+    printf("K150: Sending erase command: 0F 3F\n");
+    unsigned char erase_cmd[2] = {0x0F, 0x3F}; // Erase + parameter
+    if (k150_write_serial(erase_cmd, 2) != SUCCESS) return ERROR;
+    usleep(DELAY_US * 4); // Erase takes longer
+    
+    // Step 6: Read multiple status responses (42 42 42 59)
+    unsigned char status_responses[4];
+    printf("K150: Reading erase status responses...\n");
+    for (int i = 0; i < 4; i++) {
+        if (k150_read_serial(&status_responses[i], 1) == SUCCESS) {
+            printf("K150: Status[%d]: 0x%02x\n", i, status_responses[i]);
+        }
+        usleep(DELAY_US);
+    }
+    
+    // Check for final success ACK (0x59 = 'Y')
+    if (status_responses[3] == 0x59) {
+        printf("K150: Erase SUCCESS ACK 'Y' received!\n");
+    } else {
+        printf("K150: ERROR: Expected final 'Y' ACK, got 0x%02x\n", status_responses[3]);
         return ERROR;
     }
-    printf("K150: Erase ACK 'Y' received\n");
     
-    k150_voltages_off();
-    printf("K150: Chip erase completed\n");
+    // Step 7: Voltages OFF 
+    printf("K150: Final voltages OFF\n");
+    if (k150_write_serial(&voltages_off, 1) != SUCCESS) return ERROR;
+    usleep(DELAY_US);
+    
+    printf("K150: Chip erase completed successfully!\n");
     return SUCCESS;
 }
 

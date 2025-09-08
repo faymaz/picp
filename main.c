@@ -1516,22 +1516,15 @@ static bool DoErasePgm(const PIC_DEFINITION *picDevice, bool flag)
 				pic_type = 0x02; // PIC16C54 type code
 			}
 			
-			if (k150_init_pic() == 0)
+			// Use enhanced erase function with proper device parameter
+			if (k150_erase_chip_enhanced(picDevice) == 0)
 			{
-				if (k150_erase_chip() == 0)
-				{
-					printf("K150: Successfully erased %s\n", picDevice->name);
-					fail = false;
-				}
-				else
-				{
-					fprintf(stderr, "K150: Failed to erase %s\n", picDevice->name);
-					fail = true;
-				}
+				printf("K150: Successfully erased %s\n", picDevice->name);
+				fail = false;
 			}
 			else
 			{
-				fprintf(stderr, "K150: Failed to initialize %s\n", picDevice->name);
+				fprintf(stderr, "K150: Failed to erase %s\n", picDevice->name);
 				fail = true;
 			}
 			
