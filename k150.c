@@ -655,38 +655,39 @@ static int k150_read_rom_enhanced(const PIC_DEFINITION *device, unsigned char *b
         return ERROR;
     }
     
-    // CRITICAL: Picpro command_start sequence BEFORE read command
-    printf("K150: Starting picpro command_start sequence\n");
+    // CRITICAL: Full Micropro.LOG init sequence
+    printf("K150: Starting Micropro.LOG-style init sequence\n");
     
-    // Step 1: Send 0x01, expect 'Q'
-    unsigned char cmd_start_1 = 0x01;
-    if (k150_write_serial(&cmd_start_1, 1) != SUCCESS) {
-        fprintf(stderr, "K150: Failed to send command_start step 1\n");
+    // Step 1: Send 'P' 0x03 (Command start from log)
+    unsigned char start_seq[] = {0x50, 0x03}; // 'P' + init byte
+    if (k150_write_serial(start_seq, 2) != SUCCESS) {
+        fprintf(stderr, "K150: Failed to send start sequence\n");
         k150_close_port();
         return ERROR;
     }
     
-    unsigned char q_response;
-    if (k150_read_serial(&q_response, 1) == SUCCESS && q_response == 'Q') {
-        printf("K150: Command start step 1 OK: got 'Q' (0x%02X)\n", q_response);
+    unsigned char start_response;
+    if (k150_read_serial(&start_response, 1) == SUCCESS && start_response == 'P') {
+        printf("K150: Start sequence OK: got 'P' (0x%02X)\n", start_response);
     } else {
-        printf("K150: Command start step 1 failed: expected 'Q', got 0x%02X\n", q_response);
+        printf("K150: Start sequence failed: expected 'P', got 0x%02X\n", start_response);
     }
     
-    // Step 2: Send 'P', expect 'P' 
-    unsigned char cmd_start_2 = 'P';
-    if (k150_write_serial(&cmd_start_2, 1) != SUCCESS) {
-        fprintf(stderr, "K150: Failed to send command_start step 2\n");
-        k150_close_port();
-        return ERROR;
+    // Step 2: Send config bytes from Micropro.LOG
+    unsigned char config_bytes[] = {0x04, 0x00, 0x00, 0x40, 0x06, 0x00, 0xC8, 0x02, 0x00, 0x01, 0x00};
+    printf("K150: Sending config bytes (%zu bytes)\n", sizeof(config_bytes));
+    for (int i = 0; i < sizeof(config_bytes); i++) {
+        if (k150_write_serial(&config_bytes[i], 1) != SUCCESS) {
+            fprintf(stderr, "K150: Failed to send config byte %d (0x%02X)\n", i, config_bytes[i]);
+            k150_close_port();
+            return ERROR;
+        }
+        usleep(DELAY_US / 10); // Small delay between config bytes
     }
     
-    unsigned char p_response;
-    if (k150_read_serial(&p_response, 1) == SUCCESS && p_response == 'P') {
-        printf("K150: Command start step 2 OK: got 'P' (0x%02X)\n", p_response);
-    } else {
-        printf("K150: Command start step 2 failed: expected 'P', got 0x%02X\n", p_response);
-    }
+    // Skip config response read (may not always come)
+    printf("K150: Config sent, proceeding without waiting for response\n");
+    usleep(DELAY_US * 2); // Give time for config to settle
     
     // For READ: Need to turn ON voltages like in programming
     printf("K150: Turning ON voltages for read operation\n");
@@ -703,19 +704,27 @@ static int k150_read_rom_enhanced(const PIC_DEFINITION *device, unsigned char *b
         printf("K150: Voltages ON ACK: 0x%02X\n", voltages_ack);
     }
     
-    // Send READ command
-    unsigned char cmd = P018_CMD_READ_ROM; // 0x0B (command 11)
-    printf("K150: Sending read ROM command (0x%02X)\n", cmd);
+    // Send READ command (Log analysis: Micropro.LOG uses 0x14 instead of 0x0B)
+    unsigned char cmd = 0x14; // Try Micropro.LOG command (20 decimal)
+    printf("K150: Sending read ROM command (0x%02X - Micropro.LOG style)\n", cmd);
     if (k150_write_serial(&cmd, 1) != SUCCESS) {
         fprintf(stderr, "K150: Failed to send read ROM command\n");
         k150_close_port();
         return ERROR;
     }
     
-    // CRITICAL: No ACK expected for read command! 
-    // (Based on picpro successful implementation)
-    // Read data comes immediately after command
-    printf("K150: No ACK wait - reading data directly\n");
+    // CRITICAL: Read command does get a response (0x03 from log analysis)
+    // We need to consume this response first, then read ROM data
+    printf("K150: Reading command response first\n");
+    
+    unsigned char cmd_response;
+    if (k150_read_serial(&cmd_response, 1) == SUCCESS) {
+        printf("K150: Read command response: 0x%02X (expected 0x03)\n", cmd_response);
+    } else {
+        printf("K150: No command response received\n");
+    }
+    
+    printf("K150: Now reading actual ROM data\n");
     
     // Read data using exact picpro polling method
     printf("K150: Reading %d bytes using picpro polling method\n", size);
@@ -726,7 +735,7 @@ static int k150_read_rom_enhanced(const PIC_DEFINITION *device, unsigned char *b
     // Use picpro-style polling read (like their IConnection.read method)
     int total_read = 0;
     time_t start_time = time(NULL);
-    time_t timeout_seconds = 10; // 10 second timeout (vs picpro's 180s for large files)
+    time_t timeout_seconds = 30; // 30 second timeout (Log shows many waits)
     
     printf("K150: Starting polling read, timeout=%d seconds\n", (int)timeout_seconds);
     
@@ -738,16 +747,27 @@ static int k150_read_rom_enhanced(const PIC_DEFINITION *device, unsigned char *b
             break;
         }
         
-        // Try to read remaining bytes
-        int bytes_needed = size - total_read;
-        int bytes_read = read(k150_fd, buffer + total_read, bytes_needed);
+        // Try to read one byte at a time (like Micropro.LOG)
+        int bytes_read = read(k150_fd, buffer + total_read, 1);
         
         if (bytes_read > 0) {
             total_read += bytes_read;
             printf("K150: Polling read: +%d bytes (total: %d/%d)\n", bytes_read, total_read, size);
+            
+            // Debug: Show first few bytes
+            if (total_read <= 10) {
+                printf("K150: Data bytes: ");
+                for (int i = total_read - bytes_read; i < total_read; i++) {
+                    printf("0x%02X ", buffer[i]);
+                }
+                printf("\n");
+            }
+            
+            // Reset timer on successful read
+            start_time = time(NULL);
         } else {
             // No data available, small delay before retry (like picpro polling)
-            usleep(10000); // 10ms delay like picpro
+            usleep(50000); // 50ms delay for better data flow
         }
     }
     
