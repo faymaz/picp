@@ -27,6 +27,7 @@
 #include <fcntl.h>
 #include <sys/select.h>
 #include <sys/ioctl.h>
+#include <time.h>
 #include <sys/select.h>
 #include <stdlib.h>
 #include <string.h>
@@ -654,6 +655,39 @@ static int k150_read_rom_enhanced(const PIC_DEFINITION *device, unsigned char *b
         return ERROR;
     }
     
+    // CRITICAL: Picpro command_start sequence BEFORE read command
+    printf("K150: Starting picpro command_start sequence\n");
+    
+    // Step 1: Send 0x01, expect 'Q'
+    unsigned char cmd_start_1 = 0x01;
+    if (k150_write_serial(&cmd_start_1, 1) != SUCCESS) {
+        fprintf(stderr, "K150: Failed to send command_start step 1\n");
+        k150_close_port();
+        return ERROR;
+    }
+    
+    unsigned char q_response;
+    if (k150_read_serial(&q_response, 1) == SUCCESS && q_response == 'Q') {
+        printf("K150: Command start step 1 OK: got 'Q' (0x%02X)\n", q_response);
+    } else {
+        printf("K150: Command start step 1 failed: expected 'Q', got 0x%02X\n", q_response);
+    }
+    
+    // Step 2: Send 'P', expect 'P' 
+    unsigned char cmd_start_2 = 'P';
+    if (k150_write_serial(&cmd_start_2, 1) != SUCCESS) {
+        fprintf(stderr, "K150: Failed to send command_start step 2\n");
+        k150_close_port();
+        return ERROR;
+    }
+    
+    unsigned char p_response;
+    if (k150_read_serial(&p_response, 1) == SUCCESS && p_response == 'P') {
+        printf("K150: Command start step 2 OK: got 'P' (0x%02X)\n", p_response);
+    } else {
+        printf("K150: Command start step 2 failed: expected 'P', got 0x%02X\n", p_response);
+    }
+    
     // For READ: Need to turn ON voltages like in programming
     printf("K150: Turning ON voltages for read operation\n");
     unsigned char voltages_on_cmd = P018_CMD_VOLTAGES_ON; // 0x04
@@ -670,60 +704,57 @@ static int k150_read_rom_enhanced(const PIC_DEFINITION *device, unsigned char *b
     }
     
     // Send READ command
-    unsigned char cmd = P018_CMD_READ_ROM; // 0x0B
+    unsigned char cmd = P018_CMD_READ_ROM; // 0x0B (command 11)
     printf("K150: Sending read ROM command (0x%02X)\n", cmd);
     if (k150_write_serial(&cmd, 1) != SUCCESS) {
         fprintf(stderr, "K150: Failed to send read ROM command\n");
         k150_close_port();
         return ERROR;
     }
-    usleep(DELAY_US);
     
-    // Expect ACK for read start
-    unsigned char ack;
-    if (k150_read_serial(&ack, 1) == SUCCESS) {
-        printf("K150: Read command ACK received: 0x%02X\n", ack);
-    } else {
-        printf("K150: No ACK received for read command (may be normal)\n");
-    }
+    // CRITICAL: No ACK expected for read command! 
+    // (Based on picpro successful implementation)
+    // Read data comes immediately after command
+    printf("K150: No ACK wait - reading data directly\n");
     
-    // Try to read any available data (don't require full chunks)
+    // Read data using exact picpro polling method
+    printf("K150: Reading %d bytes using picpro polling method\n", size);
+    
+    // Give K150 time to prepare data
+    usleep(DELAY_US * 3);
+    
+    // Use picpro-style polling read (like their IConnection.read method)
     int total_read = 0;
+    time_t start_time = time(NULL);
+    time_t timeout_seconds = 10; // 10 second timeout (vs picpro's 180s for large files)
     
-    // First try a small delay for data to become available
-    usleep(DELAY_US * 5); // Give K150 time to prepare data
+    printf("K150: Starting polling read, timeout=%d seconds\n", (int)timeout_seconds);
     
-    // Read whatever is available, byte by byte with timeout tolerance
-    for (int i = 0; i < size; i++) {
-        unsigned char byte = 0xFF; // Default erased state
-        
-        // Use quick read with very short timeout
-        fd_set readfds;
-        struct timeval timeout;
-        FD_ZERO(&readfds);
-        FD_SET(k150_fd, &readfds);
-        timeout.tv_sec = 0;
-        timeout.tv_usec = 10000; // Only 10ms timeout per byte
-        
-        if (select(k150_fd + 1, &readfds, NULL, NULL, &timeout) > 0) {
-            if (read(k150_fd, &byte, 1) == 1) {
-                buffer[i] = byte;
-                total_read++;
-                if (i % 64 == 0) {
-                    printf("K150: Read byte %d: 0x%02X\n", i, byte);
-                }
-            } else {
-                buffer[i] = 0xFF; // Timeout - assume erased
-            }
-        } else {
-            buffer[i] = 0xFF; // No data available
-        }
-        
-        // Stop if we get many consecutive 0xFF (likely end of data)
-        if (i > 100 && buffer[i] == 0xFF && buffer[i-1] == 0xFF && buffer[i-2] == 0xFF) {
-            printf("K150: Detected end of data at byte %d\n", i);
+    while (total_read < size) {
+        // Check timeout
+        if (time(NULL) - start_time > timeout_seconds) {
+            printf("K150: Polling read timeout after %d seconds (%d/%d bytes)\n", 
+                   (int)timeout_seconds, total_read, size);
             break;
         }
+        
+        // Try to read remaining bytes
+        int bytes_needed = size - total_read;
+        int bytes_read = read(k150_fd, buffer + total_read, bytes_needed);
+        
+        if (bytes_read > 0) {
+            total_read += bytes_read;
+            printf("K150: Polling read: +%d bytes (total: %d/%d)\n", bytes_read, total_read, size);
+        } else {
+            // No data available, small delay before retry (like picpro polling)
+            usleep(10000); // 10ms delay like picpro
+        }
+    }
+    
+    // Fill remaining bytes with 0xFF if needed
+    if (total_read < size) {
+        printf("K150: Filling remaining %d bytes with 0xFF\n", size - total_read);
+        memset(buffer + total_read, 0xFF, size - total_read);
     }
     
     // Turn OFF voltages after read
