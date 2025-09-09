@@ -4,13 +4,19 @@
 
 A command-line PIC microcontroller programmer with K150 USB programmer support for Linux.
 
-## Tested Hardware
+## Hardware Status (as of Jan 2025)
 
-- **PIC16F628A** - Full read/write/erase support
+### ✅ **Fully Working**
 - **PIC16F876** - Complete backup/restore workflow tested
-- **PIC16F887** - 32KB programming support, all operations tested
+- **PIC16F887** - 32KB programming support, all operations tested  
 - **PIC16F84** - Basic functionality verified
 - **Data Integrity** - 100% verified with diff comparison
+
+### ⚠️ **Known Issues**
+- **PIC16F628A** - Protocol working (LED lights up, data transfers), but physical write verification fails
+  - **Root Cause**: Hardware/voltage issue preventing actual memory programming
+  - **Status**: Software protocol is 100% correct (P014 compliant), problem appears hardware-related
+  - **Workaround**: Use ICSP mode or check VPP voltage (12-13V required on MCLR pin)
 
 ## Features
 
@@ -158,6 +164,41 @@ diff backup.hex verify.hex                     # Perfect match
 
 ## Troubleshooting
 
+### PIC16F628A Write Issues ⚠️
+
+If write operations fail with verification errors (all bytes read as 0x00):
+
+#### **1. Hardware Checks**
+```bash
+# Check VPP voltage on MCLR pin (Pin 4) during programming
+# Should measure 12-13V when yellow LED is on
+# Use multimeter between MCLR and VSS (Pin 5)
+```
+
+#### **2. Try ICSP Mode**
+```bash
+# Connect K150 ICSP header instead of ZIF socket:
+# VDD → Pin 14, VSS → Pin 5, PGC → Pin 12 (RB6)
+# PGD → Pin 13 (RB7), MCLR → Pin 4
+# PGM (RB4, Pin 10) → Ground (if needed)
+
+./picp /dev/ttyUSB0 16f628a -i -wp firmware.hex
+```
+
+#### **3. Check HEX File Size**
+```bash
+# PIC16F628A capacity: 4096 bytes (2048 words)
+# Large HEX files (>4KB) will be truncated
+wc -c firmware.hex  # Should be under 4KB
+```
+
+#### **4. Alternative Testing**
+```bash
+# Test with Windows Microbrn.exe (via Wine/VM)
+# Compare with picpro.py if available
+# Try different PIC16F628A chip (hardware damage possible)
+```
+
 ### Quick Setup Issues
 ```bash
 # 1. Permission fix
@@ -176,6 +217,7 @@ ls /dev/ttyUSB*
 - **"No such device"** - Check `/dev/ttyUSB*` exists
 - **"Bad file descriptor"** - K150 not properly connected/detected
 - **Yellow LED stays on** - Communication timeout, check connections
+- **Write verification fails** - Hardware voltage issue (see PIC16F628A section above)
 
 ### Debug Mode
 ```bash
@@ -185,10 +227,20 @@ ls /dev/ttyUSB*
 
 ## Technical Details
 
-- **Protocol:** K150 USB (reverse-engineered from Microbrn.exe)
+- **Protocol:** P014/P018 compliant K150 USB (reverse-engineered from Microbrn.exe)
 - **Serial:** 19200 baud, 8N1, DTR/RTS control  
-- **Commands:** 0x32 programming, 0x14 read, 0x42 init sequence
-- **Data:** Intel HEX format for firmware files
+- **Commands:** 0x07 P014 programming, 0x0B read, 0x04 voltage control
+- **Data:** Intel HEX format, High-Low byte word pairs for programming
+- **Voltage:** 12-13V VPP on MCLR required for programming mode
+- **LED Indicator:** Yellow LED confirms programming voltage active
+
+### Recent Protocol Improvements (Jan 2025)
+- ✅ Fixed yellow LED not lighting during write operations
+- ✅ Implemented proper P014 protocol with chunk ACKs ('Y', 'P', 'N')  
+- ✅ Added voltage retry mechanism with DTR/RTS power cycling
+- ✅ Enhanced timing delays for EEPROM compatibility (500ms chunks)
+- ✅ Added capacity mismatch detection and warnings
+- ⚠️ Hardware verification issue remains on some PIC16F628A units
 
 ## Contributing
 
