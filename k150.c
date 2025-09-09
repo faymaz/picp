@@ -74,7 +74,7 @@
 // Forward declarations for helper functions
 static int hex_to_byte(char c);
 #define MAX_RETRIES 5  // Increased retries for PL2303 stability
-#define DELAY_US 50000       // 50ms delay for better PL2303 timing
+#define DELAY_US 70000       // 70ms delay for better PL2303 timing (increased for epk150.hex compatibility)
 
 // Constants for K150 functions
 #define SUCCESS 0
@@ -295,13 +295,13 @@ static int k150_send_device_params(const PIC_DEFINITION *device)
     return SUCCESS;
 }
 
-// Turn voltages on - Fixed based on log analysis
+// Turn voltages on - Enhanced protocol using P018 commands
 static int k150_voltages_on(void)
 {
-    unsigned char voltage_cmd = 0x2E; // Single byte '.' command from log
+    unsigned char voltage_cmd = P018_CMD_VOLTAGES_ON; // 0x04 command 
     unsigned char ack;
     
-    printf("K150: Sending voltages ON command '.' (0x2E)\n");
+    printf("K150: Sending voltages ON command (0x04)\n");
     if (k150_write_serial(&voltage_cmd, 1) != SUCCESS) return ERROR;
     usleep(DELAY_US);
     
@@ -796,9 +796,42 @@ int k150_program_rom_enhanced(const PIC_DEFINITION *device, const unsigned char 
     printf("K150: Programming %d bytes to %s using P018 protocol\n", size, device->name);
     tcflush(k150_fd, TCIOFLUSH);
 
+    // Add DTR/RTS control sequence for write operations (like erase)
+    printf("K150: Performing DTR/RTS control sequence for programming\n");
+    int status;
+    if (ioctl(k150_fd, TIOCMGET, &status) == 0) {
+        // CLR_DTR, CLR_RTS first
+        status &= ~TIOCM_DTR;
+        status &= ~TIOCM_RTS;
+        ioctl(k150_fd, TIOCMSET, &status);
+        usleep(50000);
+        printf("K150: DTR/RTS cleared\n");
+        
+        // SET_DTR, SET_RTS
+        status |= TIOCM_DTR;
+        status |= TIOCM_RTS;
+        ioctl(k150_fd, TIOCMSET, &status);
+        usleep(50000);
+        printf("K150: DTR/RTS set\n");
+        
+        // CLR_DTR final
+        status &= ~TIOCM_DTR;
+        ioctl(k150_fd, TIOCMSET, &status);
+        usleep(100000); // 100ms wait for K150 response
+        printf("K150: Final DTR cleared, waiting for auto-response\n");
+    }
+
     if (k150_start_communication() != SUCCESS) return ERROR;
     if (k150_send_device_params(device) != SUCCESS) return ERROR;
     if (k150_voltages_on() != SUCCESS) return ERROR;
+
+    // Enhanced voltage monitoring for LED indication
+    printf("K150: Programming voltages active - LED should be ON now\n");
+    printf("K150: MCLR/VPP pin should show 12-13V (measure with multimeter if LED not ON)\n");
+    
+    // Keep voltage ON for visible LED indication
+    usleep(2000000); // 2 seconds for user to see yellow LED
+    printf("K150: LED visible confirmation period complete, starting programming...\n");
 
     unsigned char cmd = P018_CMD_PROGRAM_ROM;
     printf("K150: Sending program ROM command (0x07)\n");
@@ -825,7 +858,13 @@ int k150_program_rom_enhanced(const PIC_DEFINITION *device, const unsigned char 
         }
         total_written += chunk_size;
         printf("K150: Program progress: %d/%d bytes\n", total_written, size);
-        usleep(DELAY_US);
+        
+        // Enhanced delay for epk150.hex compatibility - longer delay every 64 bytes
+        if (total_written % 64 == 0) {
+            usleep(100000); // 100ms delay every 64 bytes for EEPROM stability
+        } else {
+            usleep(DELAY_US);
+        }
     }
 
     if (k150_read_serial(&ack, 1) != SUCCESS || ack != P018_ACK_PROGRAM_DONE) {
@@ -834,6 +873,10 @@ int k150_program_rom_enhanced(const PIC_DEFINITION *device, const unsigned char 
         return ERROR;
     }
     printf("K150: Program complete ACK 'P' received\n");
+    
+    // Keep LED ON for 3 seconds to show programming success
+    printf("K150: Keeping programming LED ON for 3 seconds (success indication)...\n");
+    sleep(3);
     
     k150_voltages_off();
     printf("K150: Programming completed successfully\n");
@@ -910,10 +953,16 @@ static int load_hex_file(const char* filename, unsigned char* buffer, int max_si
         
         for (int i = 0; i < byte_count; i++) {
             int byte_val;
-            sscanf(line + 9 + i * 2, "%02x", &byte_val);
-            if (address + i < max_size) {
-                buffer[address + i] = byte_val;
-                if (address + i > max_addr) max_addr = address + i;
+            if (sscanf(line + 9 + i * 2, "%02x", &byte_val) == 1) {
+                if (address + i < max_size) {
+                    buffer[address + i] = (unsigned char)byte_val;
+                    if (address + i > max_addr) max_addr = address + i;
+                } else {
+                    printf("WARNING: HEX data at address 0x%04X exceeds device capacity, skipping\n", address + i);
+                }
+            } else {
+                printf("WARNING: Invalid HEX data in line: %.20s...\n", line);
+                break;
             }
         }
     }
@@ -1463,6 +1512,42 @@ int DoProgramPgm_Enhanced(const char* device_name, const char* hex_filename)
     }
     
     unsigned char buffer[MAX_ROM_SIZE];
+    
+    // First, check HEX file size before loading
+    FILE *fp = fopen(hex_filename, "r");
+    if (!fp) {
+        printf("ERROR: Cannot open HEX file %s\n", hex_filename);
+        k150_close_port();
+        return ERROR;
+    }
+    
+    // Calculate actual HEX file data size
+    char line[256];
+    int hex_max_addr = 0;
+    while (fgets(line, sizeof(line), fp)) {
+        if (line[0] != ':') continue;
+        int byte_count, address, record_type;
+        if (sscanf(line + 1, "%02x%04x%02x", &byte_count, &address, &record_type) == 3) {
+            if (record_type == 1) break; // End of file
+            if (record_type == 0 && byte_count > 0) {
+                if (address + byte_count > hex_max_addr) {
+                    hex_max_addr = address + byte_count;
+                }
+            }
+        }
+    }
+    fclose(fp);
+    
+    // Critical capacity check with warning
+    if (hex_max_addr > rom_bytes) {
+        printf("CRITICAL WARNING: HEX file size (%d bytes) exceeds device capacity (%d bytes)\n", 
+               hex_max_addr, rom_bytes);
+        printf("WARNING: Data will be truncated from %d to %d bytes - firmware may not work correctly!\n",
+               hex_max_addr, rom_bytes);
+        printf("CONTINUING WITH TRUNCATION (automatic mode)\n");
+        // In automatic mode, continue with truncation but warn user
+    }
+    
     int data_size = load_hex_file(hex_filename, buffer, rom_bytes);
     
     if (data_size <= 0) {
@@ -1470,6 +1555,9 @@ int DoProgramPgm_Enhanced(const char* device_name, const char* hex_filename)
         k150_close_port();
         return ERROR;
     }
+    
+    // Use actual device capacity, not HEX file size
+    data_size = (data_size > rom_bytes) ? rom_bytes : data_size;
     
     printf("K150: Programming [%s] (%d bytes)...\n", device->name, data_size);
     

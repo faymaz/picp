@@ -2544,8 +2544,15 @@ static bool DoWritePgm(const PIC_DEFINITION *picDevice, FILE *theFile)
 				}
 			}
 			
-			// Use the smaller of device capacity or actual hex file size
-			pgmsize = (max_address > device_capacity) ? device_capacity : max_address;
+			// Critical: Check for capacity mismatch and warn user
+			if (max_address > device_capacity) {
+				fprintf(stderr, "WARNING: HEX file size (%d bytes) exceeds device capacity (%d bytes)\n", 
+						max_address, device_capacity);
+				fprintf(stderr, "WARNING: Data will be truncated - some firmware may not function correctly\n");
+				pgmsize = device_capacity; // Truncate to device capacity
+			} else {
+				pgmsize = max_address;
+			}
 			printf("K150: Device capacity: %d bytes, Hex file size: %d bytes, Using: %d bytes\n", 
 				   device_capacity, max_address, pgmsize);
 			
@@ -2578,7 +2585,7 @@ static bool DoWritePgm(const PIC_DEFINITION *picDevice, FILE *theFile)
 				// Program the PIC with K150
 				printf("K150: Programming %s (%d bytes)...\n", picDevice->name, pgmsize);
 				fflush(stdout);
-				if (k150_program_rom(theBuffer, pgmsize) == 0) {
+				if (k150_program_rom_enhanced(picDevice, theBuffer, pgmsize) == 0) {
 					printf("K150: Programming completed successfully\n");
 					fflush(stdout);
 					
@@ -4668,7 +4675,9 @@ int main(int argc,char *argv[])
 										if (hexFile)
 										{
 											printf("DEBUG: K150 calling k150_write_pgm with picDevice=%p, hexFile=%p\n", picDevice, hexFile);
-											fail = !k150_write_pgm(picDevice, hexFile);
+											// Use enhanced write function with proper capacity checking
+											extern int DoProgramPgm_Enhanced(const char* device_name, const char* hex_filename);
+											fail = (DoProgramPgm_Enhanced(picDevice->name, filename) != 0);
 											fclose(hexFile);
 											printf("DEBUG: K150 k150_write_pgm completed, fail=%d\n", fail);
 										}
