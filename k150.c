@@ -894,35 +894,93 @@ int k150_program_rom_enhanced(const PIC_DEFINITION *device, const unsigned char 
     usleep(2000000); // 2 seconds for user to see yellow LED
     printf("K150: LED visible confirmation period complete, starting programming...\n");
 
-    // Use picpro-style write command (like successful read uses 0x0B)
-    unsigned char cmd = 0x32; // Write command from successful logs
-    printf("K150: Sending program ROM command (0x32 - picpro style)\n");
+    // Use correct P014 protocol write command 
+    unsigned char cmd = 0x07; // Command 7 = PROGRAM ROM (from protocol.txt)
+    printf("K150: Sending program ROM command (0x07 - P014 protocol)\n");
     if (k150_write_serial(&cmd, 1) != SUCCESS) {
         k150_voltages_off();
         return ERROR;
     }
     usleep(DELAY_US * 2); // Longer delay for write mode entry
 
-    // Skip ACK for write command (like read does)
-    printf("K150: Write mode entered, starting data transfer (no ACK expected)\n");
+    // Send ROM word count (P014 protocol requirement)
+    int word_count = size / 2; // Convert bytes to words
+    unsigned char word_count_high = (word_count >> 8) & 0xFF;
+    unsigned char word_count_low = word_count & 0xFF;
+    
+    printf("K150: Sending ROM word count: %d words (%02X %02X)\n", word_count, word_count_high, word_count_low);
+    if (k150_write_serial(&word_count_high, 1) != SUCCESS) {
+        k150_voltages_off();
+        return ERROR;
+    }
+    if (k150_write_serial(&word_count_low, 1) != SUCCESS) {
+        k150_voltages_off();
+        return ERROR;
+    }
+    usleep(DELAY_US);
+    
+    // Wait for 'Y' ACK (P014 protocol requirement)
+    unsigned char ack;
+    if (k150_read_serial(&ack, 1) != SUCCESS || ack != 'Y') {
+        printf("K150: ERROR: Expected 'Y' ACK for program start, got 0x%02x\n", ack);
+        k150_voltages_off();
+        return ERROR;
+    }
+    printf("K150: Got 'Y' ACK - programming mode active\n");
 
+    // P014 protocol: Send data in 32-byte chunks as High-Low word pairs
     int total_written = 0;
     while (total_written < size) {
-        int chunk_size = (size - total_written > CHUNK_SIZE) ? CHUNK_SIZE : size - total_written;
-        if (k150_write_serial(buffer + total_written, chunk_size) != SUCCESS) {
+        int chunk_size = (size - total_written > 32) ? 32 : size - total_written;
+        
+        // Convert bytes to High-Low word format for P014
+        unsigned char word_buffer[32];
+        int word_pairs = chunk_size / 2;
+        
+        for (int i = 0; i < word_pairs; i++) {
+            int byte_offset = total_written + (i * 2);
+            if (byte_offset + 1 < size) {
+                // P014 protocol: High Byte - Low Byte format
+                word_buffer[i * 2] = buffer[byte_offset + 1];     // High byte
+                word_buffer[i * 2 + 1] = buffer[byte_offset];     // Low byte
+            } else {
+                // Handle odd byte count
+                word_buffer[i * 2] = 0x00;                        // High byte (padding)
+                word_buffer[i * 2 + 1] = buffer[byte_offset];     // Low byte
+            }
+        }
+        
+        printf("K150: Sending chunk %d bytes (%d word pairs)\n", chunk_size, word_pairs);
+        if (k150_write_serial(word_buffer, chunk_size) != SUCCESS) {
             printf("K150: Program write failed at byte %d\n", total_written);
             k150_voltages_off();
             return ERROR;
         }
+        
         total_written += chunk_size;
         printf("K150: Program progress: %d/%d bytes\n", total_written, size);
         
-        // Enhanced delay for epk150.hex compatibility - longer delay every 64 bytes
-        if (total_written % 64 == 0) {
-            usleep(100000); // 100ms delay every 64 bytes for EEPROM stability
+        // P014 protocol: Wait for ACK after each 32-byte chunk
+        unsigned char chunk_ack;
+        if (k150_read_serial(&chunk_ack, 1) == SUCCESS) {
+            if (chunk_ack == 'Y') {
+                printf("K150: Chunk ACK 'Y' received - continuing\n");
+            } else if (chunk_ack == 'P') {
+                printf("K150: Programming complete ACK 'P' received\n");
+                break; // Programming finished
+            } else if (chunk_ack == 'N') {
+                printf("K150: Programming error 'N' received\n");
+                k150_voltages_off();
+                return ERROR;
+            } else {
+                printf("K150: Unexpected chunk response: 0x%02X\n", chunk_ack);
+            }
         } else {
-            usleep(DELAY_US);
+            printf("K150: No chunk ACK received\n");
         }
+        
+        // P014 protocol timing - 500ms for stable programming 
+        usleep(500000); // 500ms for very stable programming
     }
 
     // Skip final ACK check for picpro-style write
@@ -930,9 +988,9 @@ int k150_program_rom_enhanced(const PIC_DEFINITION *device, const unsigned char 
     usleep(DELAY_US * 2); // Give K150 time to process
     
     // Optional: Try to read any response, but don't fail if none
-    unsigned char ack;
-    if (k150_read_serial(&ack, 1) == SUCCESS) {
-        printf("K150: Write response received: 0x%02x\n", ack);
+    unsigned char final_ack;
+    if (k150_read_serial(&final_ack, 1) == SUCCESS) {
+        printf("K150: Write response received: 0x%02x\n", final_ack);
     } else {
         printf("K150: No final ACK (normal for picpro-style writes)\n");
     }
