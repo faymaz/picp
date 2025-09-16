@@ -1137,49 +1137,119 @@ int k150_program_rom_enhanced(const PIC_DEFINITION *device, const unsigned char 
     // K150'nin kendi ROM programming protocol'ünü kullan
     // İlk önce data'yı chunk'lar halinde gönder
 
-    // K150 native write - send command 0x32 with data chunks (from localhost.LOG analysis)
-    unsigned char write_cmd = 0x32; // K150 ROM write command
-    printf("K150: Sending K150 ROM write command (0x32)\n");
-    if (k150_write_serial(&write_cmd, 1) != SUCCESS) {
-        k150_voltages_off();
-        return ERROR;
-    }
-    usleep(DELAY_US);
+    // Use PIC16F87x/84 programming algorithm instead of K150 command 0x32
+    printf("K150: Using PIC16F87x/84 programming algorithm (raw PIC commands)\n");
     
-    // Send data in small chunks 
+    // Reset PC to 0x0000 (optional, for safety)
+    printf("K150: Resetting program counter to 0x0000\n");
+    
     int total_written = 0;
+    int word_count = 0;
+    
     while (total_written < size) {
-        int chunk_size = (size - total_written > 32) ? 32 : size - total_written;
-        
-        printf("K150: Sending data chunk %d bytes at offset %d\n", chunk_size, total_written);
-        
-        if (k150_write_serial(&buffer[total_written], chunk_size) != SUCCESS) {
-            printf("K150: Failed to send data chunk at offset %d\n", total_written);
-            k150_voltages_off();
-            return ERROR;
-        }
-        
-        total_written += chunk_size;
-        printf("K150: Programming progress: %d/%d bytes (%.1f%%)\n", 
-               total_written, size, (float)total_written * 100.0 / size);
-        
-        // Wait for chunk ACK
-        unsigned char chunk_ack;
-        if (k150_read_serial(&chunk_ack, 1) == SUCCESS) {
-            if (chunk_ack == 'Y') {
-                printf("K150: Chunk ACK 'Y' received\n");
-            } else if (chunk_ack == 'N') {
-                printf("K150: Programming error 'N' received at byte %d\n", total_written);
+        // Process words (2 bytes each)
+        if (total_written + 1 < size) {
+            unsigned char low_byte = buffer[total_written];
+            unsigned char high_byte = buffer[total_written + 1];
+            
+            printf("K150: Programming word %d: 0x%02X%02X at address 0x%04X\n", 
+                   word_count, high_byte, low_byte, word_count);
+            
+            // Load Data for Program Memory (Command 0x02)
+            unsigned char load_cmd = 0x02;
+            if (k150_write_serial(&load_cmd, 1) != SUCCESS) {
+                printf("K150: Failed to send Load Data command at word %d\n", word_count);
                 k150_voltages_off();
                 return ERROR;
-            } else {
-                printf("K150: Unexpected chunk response: 0x%02X\n", chunk_ack);
             }
+            usleep(1000);
+            
+            // Send word data (Low byte first, then High byte)
+            if (k150_write_serial(&low_byte, 1) != SUCCESS || 
+                k150_write_serial(&high_byte, 1) != SUCCESS) {
+                printf("K150: Failed to send word data at address 0x%04X\n", word_count);
+                k150_voltages_off();
+                return ERROR;
+            }
+            usleep(1000);
+            
+            // Begin Programming (Command 0x08)
+            unsigned char begin_prog = 0x08;
+            if (k150_write_serial(&begin_prog, 1) != SUCCESS) {
+                printf("K150: Failed to send Begin Programming command\n");
+                k150_voltages_off();
+                return ERROR;
+            }
+            usleep(5000); // Tprog = 5ms for PIC16F87x
+            
+            // End Programming (Command 0x0E)
+            unsigned char end_prog = 0x0E;
+            if (k150_write_serial(&end_prog, 1) != SUCCESS) {
+                printf("K150: Failed to send End Programming command\n");
+                k150_voltages_off();
+                return ERROR;
+            }
+            usleep(1000);
+            
+            // Check for programming ACK (non-blocking check)
+            fd_set readfds;
+            struct timeval timeout;
+            FD_ZERO(&readfds);
+            FD_SET(k150_fd, &readfds);
+            timeout.tv_sec = 1;
+            timeout.tv_usec = 0;
+            
+            if (select(k150_fd + 1, &readfds, NULL, NULL, &timeout) > 0) {
+                unsigned char ack;
+                if (k150_read_serial(&ack, 1) == SUCCESS) {
+                    if (ack == 'N' || ack == 0x4E) {
+                        printf("K150: Programming error 'N' (0x%02X) at word %d\n", ack, word_count);
+                        k150_voltages_off();
+                        return ERROR;
+                    } else if (ack == 0x51) {
+                        printf("K150: Retry signal (0x51) received - voltage cycling\n");
+                        // Voltage cycle and retry
+                        unsigned char voltages_off = 0x05;
+                        if (k150_write_serial(&voltages_off, 1) == SUCCESS) {
+                            usleep(100000);
+                            printf("K150: Voltages OFF for retry\n");
+                        }
+                        unsigned char voltages_on = 0x04;
+                        if (k150_write_serial(&voltages_on, 1) == SUCCESS) {
+                            usleep(100000);
+                            printf("K150: Voltages ON for retry\n");
+                        }
+                        // Retry the word programming
+                        continue;
+                    }
+                }
+            }
+            
+            total_written += 2; // Move to next word
+            word_count++;
+            
+            // Increment Address (Command 0x06) for next word
+            if (total_written < size) {
+                unsigned char inc_addr = 0x06;
+                if (k150_write_serial(&inc_addr, 1) != SUCCESS) {
+                    printf("K150: Failed to send Increment Address command\n");
+                    k150_voltages_off();
+                    return ERROR;
+                }
+                usleep(1000);
+            }
+            
+            // Progress update every 8 words
+            if (word_count % 8 == 0) {
+                printf("K150: Programming progress: %d/%d bytes (%.1f%%) - %d words\n", 
+                       total_written, size, (float)total_written * 100.0 / size, word_count);
+            }
+            
         } else {
-            printf("K150: No chunk ACK received\n");
+            // Handle odd byte (pad with 0x00)
+            printf("K150: Padding last odd byte with 0x00\n");
+            total_written = size;
         }
-        
-        usleep(50000); // 50ms delay between chunks
     }
 
     // Skip final ACK check for picpro-style write
