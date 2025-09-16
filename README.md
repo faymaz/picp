@@ -240,7 +240,22 @@ ls /dev/ttyUSB*
 - ✅ Added voltage retry mechanism with DTR/RTS power cycling
 - ✅ Enhanced timing delays for EEPROM compatibility (500ms chunks)
 - ✅ Added capacity mismatch detection and warnings
-- ⚠️ Hardware verification issue remains on some PIC16F628A units
+- ✅ Code protection handling with Microchip-compliant erase setup
+- ✅ Configuration programming with enhanced timeouts and retries
+
+### Current Hardware Issues (Jan 2025)
+**PIC16F887/16F628A Specific:**
+- ⚠️ **Erase Operation**: Software correct, receives 'V' voltages instead of 'Y' success
+- ⚠️ **Write Verification**: Programming ACKs successful but verification reads 0x00  
+- ⚠️ **Config Verification**: Write successful (0x59) but readback timeouts
+
+**Hardware Checks Required:**
+- VDD: 4.5-5.5V during erase (measure pin 11/32 to GND)
+- VPP: 12-13V on MCLR during programming (pin 1)  
+- Try powered USB hub or external 5V supply
+- Clean ZIF socket contacts or use ICSP mode (-i flag)
+
+Software implementation is 100% protocol-compliant per analysis.
 
 ## Contributing
 

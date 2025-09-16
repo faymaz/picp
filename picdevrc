@@ -5924,15 +5924,15 @@
 	00 00 00 00
 	00 00 00 00
 
-[16F887]	; pic definition
+[16F887]	; pic definition - Enhanced for K150 compatibility
 	0	; config word: code protect bit mask
 	0	; config word: watchdog bit mask
 	4	; Word alignment for writing to this device
-	0	; Configuration memory start address
-	0 0	; ID Locations addr and size
-	0	; Data eeprom address
-	0	; number of words in cfg bits with factory set bits
-	0 0 0 0 0 0 0 0	; fixed bits mask
+	2007	; Configuration memory start address (corrected)
+	2000 4	; ID Locations addr and size
+	2100	; Data eeprom address (128 bytes)
+	1	; number of words in cfg bits with factory set bits
+	00 00 00 00 00 00 00 00	; fixed bits mask
 	PICSTART WARP JUPIC OLIMEX K150	; bit map of supporting programmers
 
 [16F887:def]

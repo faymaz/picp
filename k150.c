@@ -69,7 +69,8 @@
 #define P018_ACK_CONFIG         'C'  // 0x43 - Configuration start
 
 #define MAX_ROM_SIZE 16384  // Maximum ROM size in bytes (8192 words)
-#define CHUNK_SIZE 64       // Read/write chunk size
+#define CHUNK_SIZE 16       // Reduced chunk size for better K150 compatibility (was 64)
+#define ERASE_TIMEOUT_MS 10000  // Extended erase timeout for code-protected chips
 
 // Forward declarations for helper functions
 static int hex_to_byte(char c);
@@ -216,20 +217,155 @@ int k150_send_command(unsigned char cmd) {
     return ERROR;
 }
 
-// Microbrn.exe cyclic fuse programming
+// Enhanced configuration programming with P014 protocol compatibility
 int k150_program_config(unsigned char *config_data) {
-    if (k150_send_command(K150_CMD_INIT) != SUCCESS) return ERROR;
-    unsigned char buf[2] = {config_data[0], config_data[1]};
-    if (k150_write_serial(buf, 2) != SUCCESS) return ERROR;
-    unsigned char resp[2];
-    if (k150_read_serial(resp, 2) == SUCCESS) {
-        if (resp[0] == config_data[0] && resp[1] == config_data[1]) {
-            k150_send_command(K150_CMD_EXIT);
-            return SUCCESS;
+    printf("K150: Programming configuration memory (fuse bits)...\n");
+    printf("K150: Config value: 0x%02x%02x\n", config_data[1], config_data[0]);
+    
+    // Initialize communication sequence
+    printf("K150: Starting configuration programming sequence\n");
+    
+    // DTR/RTS control sequence for stable operation
+    int status;
+    if (ioctl(k150_fd, TIOCMGET, &status) == 0) {
+        status &= ~(TIOCM_DTR | TIOCM_RTS);
+        ioctl(k150_fd, TIOCMSET, &status);
+        usleep(50000); // 50ms
+        status |= (TIOCM_DTR | TIOCM_RTS);
+        ioctl(k150_fd, TIOCMSET, &status);
+        usleep(50000); // 50ms
+        status &= ~TIOCM_DTR;
+        ioctl(k150_fd, TIOCMSET, &status);
+        usleep(100000); // 100ms wait
+    }
+    
+    // Start communication
+    unsigned char start_seq[] = {0x50, 0x03};
+    printf("K150: Sending start sequence: 50 03\n");
+    if (k150_write_serial(start_seq, 2) != SUCCESS) return ERROR;
+    usleep(DELAY_US);
+    
+    unsigned char ack;
+    if (k150_read_serial(&ack, 1) == SUCCESS) {
+        printf("K150: Start ACK: 0x%02x\n", ack);
+    }
+    
+    // Send device parameters
+    unsigned char config_params[] = {0x04, 0x00, 0x00, 0x40, 0x06, 0x00, 0xC8, 0x02, 0x00, 0x01, 0x00, 0x14};
+    printf("K150: Sending device parameters\n");
+    for (int i = 0; i < sizeof(config_params); i++) {
+        if (k150_write_serial(&config_params[i], 1) != SUCCESS) return ERROR;
+        usleep(10000); // 10ms between each parameter
+    }
+    
+    // Voltages ON for configuration programming
+    printf("K150: Enabling voltages for config programming\n");
+    unsigned char voltages_on = 0x04;
+    if (k150_write_serial(&voltages_on, 1) != SUCCESS) return ERROR;
+    
+    // Extended timeout for voltage ACK (config programming needs stable voltages)
+    fd_set readfds;
+    struct timeval timeout;
+    FD_ZERO(&readfds);
+    FD_SET(k150_fd, &readfds);
+    timeout.tv_sec = 5;  // 5 second timeout for voltage stabilization
+    timeout.tv_usec = 0;
+    
+    bool voltage_ack_received = false;
+    int retry_count = 0;
+    const int max_retries = 5;
+    
+    while (!voltage_ack_received && retry_count < max_retries) {
+        if (select(k150_fd + 1, &readfds, NULL, NULL, &timeout) > 0) {
+            if (k150_read_serial(&ack, 1) == SUCCESS) {
+                printf("K150: Voltage response[%d]: 0x%02x\n", retry_count, ack);
+                if (ack == 0x56) { // 'V' - voltages ON ACK
+                    voltage_ack_received = true;
+                    printf("K150: Voltages ON confirmed - config programming ready\n");
+                    break;
+                }
+            }
+        }
+        
+        retry_count++;
+        if (retry_count < max_retries) {
+            printf("K150: Voltage ACK timeout, retry %d/%d\n", retry_count, max_retries);
+            usleep(500000); // 500ms between retries
+            
+            // Power cycle for retry
+            if (ioctl(k150_fd, TIOCMGET, &status) == 0) {
+                status &= ~(TIOCM_DTR | TIOCM_RTS);
+                ioctl(k150_fd, TIOCMSET, &status);
+                usleep(200000); // 200ms power off
+                status |= (TIOCM_DTR | TIOCM_RTS);
+                ioctl(k150_fd, TIOCMSET, &status);
+                usleep(200000); // 200ms power on
+            }
+            
+            // Retry voltages ON command
+            if (k150_write_serial(&voltages_on, 1) != SUCCESS) return ERROR;
+            
+            // Reset timeout for next attempt
+            FD_ZERO(&readfds);
+            FD_SET(k150_fd, &readfds);
+            timeout.tv_sec = 2;
+            timeout.tv_usec = 0;
         }
     }
-    k150_send_command(K150_CMD_EXIT);
-    return ERROR;
+    
+    if (!voltage_ack_received) {
+        printf("K150: ERROR: Failed to receive voltage ACK after %d retries\n", max_retries);
+        printf("K150: Configuration programming cannot proceed without stable voltages\n");
+        return ERROR;
+    }
+    
+    // Configuration write command (P014 style)
+    printf("K150: Sending configuration write command\n");
+    unsigned char config_write_cmd = 0x0E; // Command 14 = Write Configuration
+    if (k150_write_serial(&config_write_cmd, 1) != SUCCESS) return ERROR;
+    usleep(DELAY_US);
+    
+    // Send configuration data (Low byte first, then High byte)
+    printf("K150: Writing config data: 0x%02x 0x%02x\n", config_data[0], config_data[1]);
+    if (k150_write_serial(config_data, 2) != SUCCESS) return ERROR;
+    usleep(DELAY_US * 2); // Extra delay for config programming
+    
+    // Read programming response with extended timeout
+    unsigned char prog_response;
+    timeout.tv_sec = 3; // 3 seconds for config programming
+    timeout.tv_usec = 0;
+    FD_ZERO(&readfds);
+    FD_SET(k150_fd, &readfds);
+    
+    if (select(k150_fd + 1, &readfds, NULL, NULL, &timeout) > 0) {
+        if (k150_read_serial(&prog_response, 1) == SUCCESS) {
+            printf("K150: Config programming response: 0x%02x\n", prog_response);
+            if (prog_response == 0x59) { // 'Y' = Success
+                printf("K150: Configuration programming successful\n");
+            } else {
+                printf("K150: Configuration programming failed, response: 0x%02x\n", prog_response);
+                return ERROR;
+            }
+        } else {
+            printf("K150: Failed to read config programming response\n");
+            return ERROR;
+        }
+    } else {
+        printf("K150: Configuration write timeout\n");
+        return ERROR;
+    }
+    
+    // Voltages OFF
+    printf("K150: Turning off voltages\n");
+    unsigned char voltages_off = 0x05;
+    if (k150_write_serial(&voltages_off, 1) != SUCCESS) return ERROR;
+    usleep(DELAY_US);
+    
+    if (k150_read_serial(&ack, 1) == SUCCESS && ack == 0x76) {
+        printf("K150: Voltages OFF confirmed\n");
+    }
+    
+    return SUCCESS;
 }
 
 //-----------------------------------------------------------------------------
@@ -600,27 +736,117 @@ int k150_erase_chip_enhanced(const PIC_DEFINITION *device)
         printf("K150: Voltages ON ACK 'V' received: 0x%02x\n", ack);
     }
     
-    // Step 5: ERASE command with parameter (0F 3F)
-    printf("K150: Sending erase command: 0F 3F\n");
-    unsigned char erase_cmd[2] = {0x0F, 0x3F}; // Erase + parameter
-    if (k150_write_serial(erase_cmd, 2) != SUCCESS) return ERROR;
-    usleep(DELAY_US * 4); // Erase takes longer
+    // Step 5: Pre-erase setup for code-protected chips (Microchip programming spec)
+    printf("K150: Performing pre-erase setup for code-protected chips\n");
     
-    // Step 6: Read multiple status responses (42 42 42 59)
-    unsigned char status_responses[4];
-    printf("K150: Reading erase status responses...\n");
-    for (int i = 0; i < 4; i++) {
-        if (k150_read_serial(&status_responses[i], 1) == SUCCESS) {
-            printf("K150: Status[%d]: 0x%02x\n", i, status_responses[i]);
-        }
-        usleep(DELAY_US);
+    // Load Configuration - send command 0x00 (Load Configuration) with dummy data
+    unsigned char load_config_cmd = 0x00;
+    unsigned char dummy_data[2] = {0x00, 0x3F}; // Dummy config data
+    printf("K150: Sending Load Configuration command (0x00)\n");
+    if (k150_write_serial(&load_config_cmd, 1) != SUCCESS) return ERROR;
+    usleep(1000);
+    if (k150_write_serial(dummy_data, 2) != SUCCESS) return ERROR;
+    usleep(1000);
+    
+    // Increment Address 7 times to set PC to 0x2007 (config word) from 0x2000
+    printf("K150: Setting PC to config word address (0x2007)\n");
+    unsigned char inc_addr_cmd = 0x06;
+    for (int i = 0; i < 7; i++) {
+        if (k150_write_serial(&inc_addr_cmd, 1) != SUCCESS) return ERROR;
+        usleep(1000); // 1ms delay between commands
     }
     
-    // Check for final success ACK (0x59 = 'Y')
-    if (status_responses[3] == 0x59) {
-        printf("K150: Erase SUCCESS ACK 'Y' received!\n");
-    } else {
-        printf("K150: ERROR: Expected final 'Y' ACK, got 0x%02x\n", status_responses[3]);
+    // Bulk Erase Setup sequence (from Microchip programming spec)
+    printf("K150: Executing bulk erase setup sequence\n");
+    unsigned char bulk_erase_setup1 = 0x01; // Command 1: Bulk Erase Setup 1
+    unsigned char bulk_erase_setup2 = 0x07; // Command 7: Bulk Erase Setup 2  
+    unsigned char begin_erase = 0x08;        // Command 8: Begin Erase Programming
+    
+    // First setup sequence
+    if (k150_write_serial(&bulk_erase_setup1, 1) != SUCCESS) return ERROR;
+    usleep(1000);
+    if (k150_write_serial(&bulk_erase_setup2, 1) != SUCCESS) return ERROR;
+    usleep(1000);
+    if (k150_write_serial(&begin_erase, 1) != SUCCESS) return ERROR;
+    usleep(10000); // Wait Tera + Tprog (~10ms)
+    
+    // Second setup sequence (repeat for reliability)
+    if (k150_write_serial(&bulk_erase_setup1, 1) != SUCCESS) return ERROR;
+    usleep(1000);
+    if (k150_write_serial(&bulk_erase_setup2, 1) != SUCCESS) return ERROR;
+    usleep(1000);
+    
+    // Step 6: ERASE command with parameter (0F 3F) - enhanced timeout
+    printf("K150: Sending erase command: 0F 3F (after pre-setup)\n");
+    unsigned char erase_cmd[2] = {0x0F, 0x3F}; // Erase + parameter
+    if (k150_write_serial(erase_cmd, 2) != SUCCESS) return ERROR;
+    usleep(DELAY_US * 10); // Increased timeout for code-protected chips (700ms)
+    
+    // Step 7: Read erase status with enhanced handling
+    printf("K150: Reading erase status responses (extended timeout for code-protected chips)...\n");
+    unsigned char status_responses[10]; // Buffer for multiple responses
+    int status_count = 0;
+    bool erase_success = false;
+    
+    // Extended timeout for erase completion (up to 10 seconds for code-protected chips)
+    time_t start_time = time(NULL);
+    time_t timeout_seconds = 10;
+    
+    while ((time(NULL) - start_time) < timeout_seconds && status_count < 10) {
+        fd_set readfds;
+        struct timeval timeout;
+        FD_ZERO(&readfds);
+        FD_SET(k150_fd, &readfds);
+        timeout.tv_sec = 1;  // 1 second per attempt
+        timeout.tv_usec = 0;
+        
+        if (select(k150_fd + 1, &readfds, NULL, NULL, &timeout) > 0) {
+            if (k150_read_serial(&status_responses[status_count], 1) == SUCCESS) {
+                printf("K150: Status[%d]: 0x%02x ('%c')\n", status_count, 
+                       status_responses[status_count], 
+                       (status_responses[status_count] >= 32 && status_responses[status_count] <= 126) ? 
+                       status_responses[status_count] : '?');
+                
+                // Check for success or failure indicators
+                if (status_responses[status_count] == 0x59) { // 'Y' = Success
+                    printf("K150: Erase SUCCESS ACK 'Y' received at position %d!\n", status_count);
+                    erase_success = true;
+                    break;
+                } else if (status_responses[status_count] == 0x4E) { // 'N' = Failure
+                    printf("K150: Erase FAILURE 'N' received - code protection or voltage issue\n");
+                    printf("K150: Retrying erase with voltage stabilization...\n");
+                    
+                    // Voltage stabilization attempt
+                    usleep(100000); // 100ms delay
+                    
+                    // Retry the erase command once more
+                    if (k150_write_serial(erase_cmd, 2) == SUCCESS) {
+                        printf("K150: Erase retry command sent\n");
+                        usleep(DELAY_US * 15); // Even longer timeout for retry (1050ms)
+                    }
+                }
+                status_count++;
+                usleep(DELAY_US / 2); // Short delay between reads
+            }
+        } else {
+            // Timeout on this read, continue waiting
+            printf("K150: Waiting for erase completion... (%ld/%ld seconds)\n", 
+                   time(NULL) - start_time, timeout_seconds);
+        }
+    }
+    
+    if (!erase_success) {
+        printf("K150: ERROR: Erase operation failed after %ld seconds\n", timeout_seconds);
+        printf("K150: Final status responses received: %d\n", status_count);
+        for (int i = 0; i < status_count; i++) {
+            printf("K150:   [%d]: 0x%02x ('%c')\n", i, status_responses[i],
+                   (status_responses[i] >= 32 && status_responses[i] <= 126) ? status_responses[i] : '?');
+        }
+        printf("K150: TROUBLESHOOTING:\n");
+        printf("K150:   - Check VDD voltage (should be 4.5-5.5V during erase)\n");
+        printf("K150:   - Check VPP voltage (should be 12-13V on MCLR pin)\n");
+        printf("K150:   - Chip may be code-protected (try ICSP mode)\n");
+        printf("K150:   - Use stronger power supply or powered USB hub\n");
         return ERROR;
     }
     
@@ -928,55 +1154,88 @@ int k150_program_rom_enhanced(const PIC_DEFINITION *device, const unsigned char 
     }
     printf("K150: Got 'Y' ACK - programming mode active\n");
 
-    // P014 protocol: Send data in 32-byte chunks as High-Low word pairs
+    // P014 protocol: Send data using smaller chunks for better reliability
     int total_written = 0;
     while (total_written < size) {
-        int chunk_size = (size - total_written > 32) ? 32 : size - total_written;
+        int chunk_size = (size - total_written > CHUNK_SIZE) ? CHUNK_SIZE : size - total_written;
         
-        // Convert bytes to High-Low word format for P014
-        unsigned char word_buffer[32];
-        int word_pairs = chunk_size / 2;
+        // P014 protocol uses Load Program Memory (0x02) + Begin Programming (0x08) sequence
+        printf("K150: Programming chunk at address 0x%04X (%d bytes)\n", total_written, chunk_size);
         
-        for (int i = 0; i < word_pairs; i++) {
-            int byte_offset = total_written + (i * 2);
-            if (byte_offset + 1 < size) {
-                // P014 protocol: High Byte - Low Byte format
-                word_buffer[i * 2] = buffer[byte_offset + 1];     // High byte
-                word_buffer[i * 2 + 1] = buffer[byte_offset];     // Low byte
-            } else {
-                // Handle odd byte count
-                word_buffer[i * 2] = 0x00;                        // High byte (padding)
-                word_buffer[i * 2 + 1] = buffer[byte_offset];     // Low byte
+        // Send data using P014 Load Program Memory command for each word
+        for (int i = 0; i < chunk_size; i += 2) {
+            unsigned char load_cmd = 0x02; // Command 2: Load Program Memory
+            if (k150_write_serial(&load_cmd, 1) != SUCCESS) {
+                printf("K150: Failed to send Load Program Memory command\n");
+                k150_voltages_off();
+                return ERROR;
             }
-        }
-        
-        printf("K150: Sending chunk %d bytes (%d word pairs)\n", chunk_size, word_pairs);
-        if (k150_write_serial(word_buffer, chunk_size) != SUCCESS) {
-            printf("K150: Program write failed at byte %d\n", total_written);
-            k150_voltages_off();
-            return ERROR;
+            
+            // Send word data (Low byte first, then High byte for P014)
+            unsigned char low_byte = buffer[total_written + i];
+            unsigned char high_byte = (total_written + i + 1 < size) ? buffer[total_written + i + 1] : 0x00;
+            
+            if (k150_write_serial(&low_byte, 1) != SUCCESS || k150_write_serial(&high_byte, 1) != SUCCESS) {
+                printf("K150: Failed to send program data at offset %d\n", total_written + i);
+                k150_voltages_off();
+                return ERROR;
+            }
+            
+            // Begin Programming command
+            unsigned char begin_prog = 0x08; // Command 8: Begin Programming  
+            if (k150_write_serial(&begin_prog, 1) != SUCCESS) {
+                printf("K150: Failed to send Begin Programming command\n");
+                k150_voltages_off();
+                return ERROR;
+            }
+            
+            usleep(5000); // Wait Tprog ~5ms for programming
+            
+            // End Programming command
+            unsigned char end_prog = 0x0E; // Command 14: End Programming
+            if (k150_write_serial(&end_prog, 1) != SUCCESS) {
+                printf("K150: Failed to send End Programming command\n");
+                k150_voltages_off();
+                return ERROR;
+            }
+            
+            usleep(1000); // Short delay after programming
+            
+            // Increment Address for next word (if not last word)
+            if (total_written + i + 2 < size) {
+                unsigned char inc_addr = 0x06; // Command 6: Increment Address
+                if (k150_write_serial(&inc_addr, 1) != SUCCESS) {
+                    printf("K150: Failed to send Increment Address command\n");
+                    k150_voltages_off();
+                    return ERROR;
+                }
+                usleep(1000);
+            }
         }
         
         total_written += chunk_size;
-        printf("K150: Program progress: %d/%d bytes\n", total_written, size);
+        printf("K150: Programming progress: %d/%d bytes (%.1f%%)\n", 
+               total_written, size, (float)total_written * 100.0 / size);
         
-        // P014 protocol: Wait for ACK after each 32-byte chunk
-        unsigned char chunk_ack;
-        if (k150_read_serial(&chunk_ack, 1) == SUCCESS) {
-            if (chunk_ack == 'Y') {
-                printf("K150: Chunk ACK 'Y' received - continuing\n");
-            } else if (chunk_ack == 'P') {
-                printf("K150: Programming complete ACK 'P' received\n");
-                break; // Programming finished
-            } else if (chunk_ack == 'N') {
-                printf("K150: Programming error 'N' received\n");
-                k150_voltages_off();
-                return ERROR;
-            } else {
-                printf("K150: Unexpected chunk response: 0x%02X\n", chunk_ack);
+        // Check for any error responses every chunk (non-blocking)
+        fd_set readfds;
+        struct timeval timeout;
+        FD_ZERO(&readfds);
+        FD_SET(k150_fd, &readfds);
+        timeout.tv_sec = 0;
+        timeout.tv_usec = 100000; // 100ms timeout
+        
+        if (select(k150_fd + 1, &readfds, NULL, NULL, &timeout) > 0) {
+            unsigned char response;
+            if (k150_read_serial(&response, 1) == SUCCESS) {
+                if (response == 'N') {
+                    printf("K150: Programming error 'N' received at byte %d\n", total_written);
+                    k150_voltages_off();
+                    return ERROR;
+                } else {
+                    printf("K150: Unexpected response during programming: 0x%02X\n", response);
+                }
             }
-        } else {
-            printf("K150: No chunk ACK received\n");
         }
         
         // P014 protocol timing - 500ms for stable programming 
