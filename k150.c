@@ -319,20 +319,24 @@ int k150_program_config(unsigned char *config_data) {
         return ERROR;
     }
     
-    // Configuration write command (P014 style)
-    printf("K150: Sending configuration write command\n");
-    unsigned char config_write_cmd = 0x0E; // Command 14 = Write Configuration
+    // K150-specific configuration write (NOT Microchip PIC16F87x direct commands)
+    printf("K150: Sending K150-specific configuration write sequence\n");
+    
+    // K150 config write uses its own command protocol, not raw PIC commands
+    // Command 14 (0x0E) = Write Configuration on K150 protocol
+    unsigned char config_write_cmd = 0x0E; // K150 Write Configuration command
     if (k150_write_serial(&config_write_cmd, 1) != SUCCESS) return ERROR;
     usleep(DELAY_US);
     
-    // Send configuration data (Low byte first, then High byte)
-    printf("K150: Writing config data: 0x%02x 0x%02x\n", config_data[0], config_data[1]);
+    // Send configuration word directly (K150 handles the PIC protocol internally)
+    printf("K150: Writing config word: 0x%02x%02x (0x%04x)\n", 
+           config_data[1], config_data[0], (config_data[1] << 8) | config_data[0]);
     if (k150_write_serial(config_data, 2) != SUCCESS) return ERROR;
-    usleep(DELAY_US * 2); // Extra delay for config programming
+    usleep(DELAY_US * 2); // Allow K150 time to process config write
     
-    // Read programming response with extended timeout
+    // Read programming response with extended timeout and retry mechanism
     unsigned char prog_response;
-    timeout.tv_sec = 3; // 3 seconds for config programming
+    timeout.tv_sec = 10; // Extended timeout for config programming  
     timeout.tv_usec = 0;
     FD_ZERO(&readfds);
     FD_SET(k150_fd, &readfds);
@@ -340,10 +344,53 @@ int k150_program_config(unsigned char *config_data) {
     if (select(k150_fd + 1, &readfds, NULL, NULL, &timeout) > 0) {
         if (k150_read_serial(&prog_response, 1) == SUCCESS) {
             printf("K150: Config programming response: 0x%02x\n", prog_response);
+            
+            if (prog_response == 0x56) { // 'V' - Voltage ACK, retry after voltage cycle
+                printf("K150: Received voltage ACK (0x56) - retrying with voltage cycle\n");
+                
+                // Voltage cycle for retry
+                unsigned char voltages_off = 0x05;
+                if (k150_write_serial(&voltages_off, 1) == SUCCESS) {
+                    usleep(100000); // 100ms delay
+                    printf("K150: Voltages cycled OFF for retry\n");
+                }
+                
+                unsigned char voltages_on = 0x04;
+                if (k150_write_serial(&voltages_on, 1) == SUCCESS) {
+                    usleep(100000); // 100ms delay  
+                    printf("K150: Voltages cycled ON for retry\n");
+                }
+                
+                // Retry with same K150 command sequence 
+                printf("K150: Retrying K150 configuration write\n");
+                
+                // Just retry the same K150 command sequence
+                if (k150_write_serial(&config_write_cmd, 1) == SUCCESS) {
+                    usleep(DELAY_US);
+                    if (k150_write_serial(config_data, 2) == SUCCESS) {
+                        usleep(DELAY_US * 2);
+                        
+                        // Read retry response
+                        timeout.tv_sec = 5;
+                        timeout.tv_usec = 0;
+                        FD_ZERO(&readfds);
+                        FD_SET(k150_fd, &readfds);
+                        
+                        if (select(k150_fd + 1, &readfds, NULL, NULL, &timeout) > 0) {
+                            if (k150_read_serial(&prog_response, 1) == SUCCESS) {
+                                printf("K150: Config retry response: 0x%02x\n", prog_response);
+                            }
+                        }
+                    }
+                }
+            }
+            
             if (prog_response == 0x59) { // 'Y' = Success
                 printf("K150: Configuration programming successful\n");
             } else {
-                printf("K150: Configuration programming failed, response: 0x%02x\n", prog_response);
+                printf("K150: Configuration programming failed, final response: 0x%02x\n", prog_response);
+                printf("K150: Expected 0x59 ('Y') for success, got 0x%02x ('%c')\n", 
+                       prog_response, (prog_response >= 32 && prog_response <= 126) ? prog_response : '?');
                 return ERROR;
             }
         } else {
@@ -615,8 +662,9 @@ int k150_detect_chip_command_line(void)
 int k150_erase_chip_enhanced(const PIC_DEFINITION *device)
 {
     printf("=== K150_ERASE_CHIP_ENHANCED CALLED ===\n");
-    printf("K150: Erasing chip %s using Micropro.LOG sequence\n", device->name);
+    printf("K150: Erasing chip %s using PIC16F87x sequence\n", device->name);
     printf("K150: Serial port fd: %d\n", k150_fd);
+    printf("DEBUG: Device details - Name: %s\n", device->name);
     
     // Step 0: CRITICAL DTR/RTS control sequence (from Micropro.LOG)
     printf("K150: Performing DTR/RTS control sequence\n");
@@ -736,51 +784,13 @@ int k150_erase_chip_enhanced(const PIC_DEFINITION *device)
         printf("K150: Voltages ON ACK 'V' received: 0x%02x\n", ack);
     }
     
-    // Step 5: Pre-erase setup for code-protected chips (Microchip programming spec)
-    printf("K150: Performing pre-erase setup for code-protected chips\n");
-    
-    // Load Configuration - send command 0x00 (Load Configuration) with dummy data
-    unsigned char load_config_cmd = 0x00;
-    unsigned char dummy_data[2] = {0x00, 0x3F}; // Dummy config data
-    printf("K150: Sending Load Configuration command (0x00)\n");
-    if (k150_write_serial(&load_config_cmd, 1) != SUCCESS) return ERROR;
-    usleep(1000);
-    if (k150_write_serial(dummy_data, 2) != SUCCESS) return ERROR;
-    usleep(1000);
-    
-    // Increment Address 7 times to set PC to 0x2007 (config word) from 0x2000
-    printf("K150: Setting PC to config word address (0x2007)\n");
-    unsigned char inc_addr_cmd = 0x06;
-    for (int i = 0; i < 7; i++) {
-        if (k150_write_serial(&inc_addr_cmd, 1) != SUCCESS) return ERROR;
-        usleep(1000); // 1ms delay between commands
-    }
-    
-    // Bulk Erase Setup sequence (from Microchip programming spec)
-    printf("K150: Executing bulk erase setup sequence\n");
-    unsigned char bulk_erase_setup1 = 0x01; // Command 1: Bulk Erase Setup 1
-    unsigned char bulk_erase_setup2 = 0x07; // Command 7: Bulk Erase Setup 2  
-    unsigned char begin_erase = 0x08;        // Command 8: Begin Erase Programming
-    
-    // First setup sequence
-    if (k150_write_serial(&bulk_erase_setup1, 1) != SUCCESS) return ERROR;
-    usleep(1000);
-    if (k150_write_serial(&bulk_erase_setup2, 1) != SUCCESS) return ERROR;
-    usleep(1000);
-    if (k150_write_serial(&begin_erase, 1) != SUCCESS) return ERROR;
-    usleep(10000); // Wait Tera + Tprog (~10ms)
-    
-    // Second setup sequence (repeat for reliability)
-    if (k150_write_serial(&bulk_erase_setup1, 1) != SUCCESS) return ERROR;
-    usleep(1000);
-    if (k150_write_serial(&bulk_erase_setup2, 1) != SUCCESS) return ERROR;
-    usleep(1000);
-    
-    // Step 6: ERASE command with parameter (0F 3F) - enhanced timeout
-    printf("K150: Sending erase command: 0F 3F (after pre-setup)\n");
-    unsigned char erase_cmd[2] = {0x0F, 0x3F}; // Erase + parameter
+    // K150 native erase command - no raw PIC commands needed
+    printf("K150: Sending K150 native erase command\n");
+    unsigned char erase_cmd[2] = {0x0F, 0x3F}; // K150 erase command + parameter
     if (k150_write_serial(erase_cmd, 2) != SUCCESS) return ERROR;
-    usleep(DELAY_US * 10); // Increased timeout for code-protected chips (700ms)
+    usleep(DELAY_US * 10); // Extended delay for erase operation
+    
+    printf("K150: K150 erase command sent, waiting for response\n");
     
     // Step 7: Read erase status with enhanced handling
     printf("K150: Reading erase status responses (extended timeout for code-protected chips)...\n");
@@ -819,9 +829,10 @@ int k150_erase_chip_enhanced(const PIC_DEFINITION *device)
                     // Voltage stabilization attempt
                     usleep(100000); // 100ms delay
                     
-                    // Retry the erase command once more
-                    if (k150_write_serial(erase_cmd, 2) == SUCCESS) {
-                        printf("K150: Erase retry command sent\n");
+                    // Retry the erase command once more (use 0x18 for PIC16F87x)
+                    unsigned char retry_erase_cmd = 0x18; // PIC16F87x bulk erase command
+                    if (k150_write_serial(&retry_erase_cmd, 1) == SUCCESS) {
+                        printf("K150: Erase retry command (0x18) sent\n");
                         usleep(DELAY_US * 15); // Even longer timeout for retry (1050ms)
                     }
                 }
@@ -1120,126 +1131,55 @@ int k150_program_rom_enhanced(const PIC_DEFINITION *device, const unsigned char 
     usleep(2000000); // 2 seconds for user to see yellow LED
     printf("K150: LED visible confirmation period complete, starting programming...\n");
 
-    // Use correct P014 protocol write command 
-    unsigned char cmd = 0x07; // Command 7 = PROGRAM ROM (from protocol.txt)
-    printf("K150: Sending program ROM command (0x07 - P014 protocol)\n");
-    if (k150_write_serial(&cmd, 1) != SUCCESS) {
-        k150_voltages_off();
-        return ERROR;
-    }
-    usleep(DELAY_US * 2); // Longer delay for write mode entry
-
-    // Send ROM word count (P014 protocol requirement)
-    int word_count = size / 2; // Convert bytes to words
-    unsigned char word_count_high = (word_count >> 8) & 0xFF;
-    unsigned char word_count_low = word_count & 0xFF;
+    // Use K150 native ROM programming command (not raw PIC commands)
+    printf("K150: Using K150 native ROM programming\n");
     
-    printf("K150: Sending ROM word count: %d words (%02X %02X)\n", word_count, word_count_high, word_count_low);
-    if (k150_write_serial(&word_count_high, 1) != SUCCESS) {
-        k150_voltages_off();
-        return ERROR;
-    }
-    if (k150_write_serial(&word_count_low, 1) != SUCCESS) {
+    // K150'nin kendi ROM programming protocol'ünü kullan
+    // İlk önce data'yı chunk'lar halinde gönder
+
+    // K150 native write - send command 0x32 with data chunks (from localhost.LOG analysis)
+    unsigned char write_cmd = 0x32; // K150 ROM write command
+    printf("K150: Sending K150 ROM write command (0x32)\n");
+    if (k150_write_serial(&write_cmd, 1) != SUCCESS) {
         k150_voltages_off();
         return ERROR;
     }
     usleep(DELAY_US);
     
-    // Wait for 'Y' ACK (P014 protocol requirement)
-    unsigned char ack;
-    if (k150_read_serial(&ack, 1) != SUCCESS || ack != 'Y') {
-        printf("K150: ERROR: Expected 'Y' ACK for program start, got 0x%02x\n", ack);
-        k150_voltages_off();
-        return ERROR;
-    }
-    printf("K150: Got 'Y' ACK - programming mode active\n");
-
-    // P014 protocol: Send data using smaller chunks for better reliability
+    // Send data in small chunks 
     int total_written = 0;
     while (total_written < size) {
-        int chunk_size = (size - total_written > CHUNK_SIZE) ? CHUNK_SIZE : size - total_written;
+        int chunk_size = (size - total_written > 32) ? 32 : size - total_written;
         
-        // P014 protocol uses Load Program Memory (0x02) + Begin Programming (0x08) sequence
-        printf("K150: Programming chunk at address 0x%04X (%d bytes)\n", total_written, chunk_size);
+        printf("K150: Sending data chunk %d bytes at offset %d\n", chunk_size, total_written);
         
-        // Send data using P014 Load Program Memory command for each word
-        for (int i = 0; i < chunk_size; i += 2) {
-            unsigned char load_cmd = 0x02; // Command 2: Load Program Memory
-            if (k150_write_serial(&load_cmd, 1) != SUCCESS) {
-                printf("K150: Failed to send Load Program Memory command\n");
-                k150_voltages_off();
-                return ERROR;
-            }
-            
-            // Send word data (Low byte first, then High byte for P014)
-            unsigned char low_byte = buffer[total_written + i];
-            unsigned char high_byte = (total_written + i + 1 < size) ? buffer[total_written + i + 1] : 0x00;
-            
-            if (k150_write_serial(&low_byte, 1) != SUCCESS || k150_write_serial(&high_byte, 1) != SUCCESS) {
-                printf("K150: Failed to send program data at offset %d\n", total_written + i);
-                k150_voltages_off();
-                return ERROR;
-            }
-            
-            // Begin Programming command
-            unsigned char begin_prog = 0x08; // Command 8: Begin Programming  
-            if (k150_write_serial(&begin_prog, 1) != SUCCESS) {
-                printf("K150: Failed to send Begin Programming command\n");
-                k150_voltages_off();
-                return ERROR;
-            }
-            
-            usleep(5000); // Wait Tprog ~5ms for programming
-            
-            // End Programming command
-            unsigned char end_prog = 0x0E; // Command 14: End Programming
-            if (k150_write_serial(&end_prog, 1) != SUCCESS) {
-                printf("K150: Failed to send End Programming command\n");
-                k150_voltages_off();
-                return ERROR;
-            }
-            
-            usleep(1000); // Short delay after programming
-            
-            // Increment Address for next word (if not last word)
-            if (total_written + i + 2 < size) {
-                unsigned char inc_addr = 0x06; // Command 6: Increment Address
-                if (k150_write_serial(&inc_addr, 1) != SUCCESS) {
-                    printf("K150: Failed to send Increment Address command\n");
-                    k150_voltages_off();
-                    return ERROR;
-                }
-                usleep(1000);
-            }
+        if (k150_write_serial(&buffer[total_written], chunk_size) != SUCCESS) {
+            printf("K150: Failed to send data chunk at offset %d\n", total_written);
+            k150_voltages_off();
+            return ERROR;
         }
         
         total_written += chunk_size;
         printf("K150: Programming progress: %d/%d bytes (%.1f%%)\n", 
                total_written, size, (float)total_written * 100.0 / size);
         
-        // Check for any error responses every chunk (non-blocking)
-        fd_set readfds;
-        struct timeval timeout;
-        FD_ZERO(&readfds);
-        FD_SET(k150_fd, &readfds);
-        timeout.tv_sec = 0;
-        timeout.tv_usec = 100000; // 100ms timeout
-        
-        if (select(k150_fd + 1, &readfds, NULL, NULL, &timeout) > 0) {
-            unsigned char response;
-            if (k150_read_serial(&response, 1) == SUCCESS) {
-                if (response == 'N') {
-                    printf("K150: Programming error 'N' received at byte %d\n", total_written);
-                    k150_voltages_off();
-                    return ERROR;
-                } else {
-                    printf("K150: Unexpected response during programming: 0x%02X\n", response);
-                }
+        // Wait for chunk ACK
+        unsigned char chunk_ack;
+        if (k150_read_serial(&chunk_ack, 1) == SUCCESS) {
+            if (chunk_ack == 'Y') {
+                printf("K150: Chunk ACK 'Y' received\n");
+            } else if (chunk_ack == 'N') {
+                printf("K150: Programming error 'N' received at byte %d\n", total_written);
+                k150_voltages_off();
+                return ERROR;
+            } else {
+                printf("K150: Unexpected chunk response: 0x%02X\n", chunk_ack);
             }
+        } else {
+            printf("K150: No chunk ACK received\n");
         }
         
-        // P014 protocol timing - 500ms for stable programming 
-        usleep(500000); // 500ms for very stable programming
+        usleep(50000); // 50ms delay between chunks
     }
 
     // Skip final ACK check for picpro-style write
