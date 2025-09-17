@@ -1137,19 +1137,32 @@ int k150_program_rom_enhanced(const PIC_DEFINITION *device, const unsigned char 
     // K150'nin kendi ROM programming protocol'ünü kullan
     // İlk önce data'yı chunk'lar halinde gönder
 
-    // Enhanced PIC-specific programming algorithm
-    printf("K150: Using enhanced PIC-specific programming algorithm\n");
+    // Enhanced PIC-specific programming algorithm with pre-write setup
+    printf("K150: Using enhanced PIC-specific programming algorithm with pre-write setup\n");
     
     // Detect device type
     const char* device_name = device->name;
     int is_16f84 = (strcasecmp(device_name, "16F84") == 0);
     int is_16f887 = (strcasecmp(device_name, "16F887") == 0);
     
-    // Set device-specific timing and behavior
-    int tprog_us = is_16f84 ? 20000 : 8000; // 20ms for 16F84 (extended for reliable flash write), 8ms for 16F887
+    // Set device-specific timing and behavior (enhanced for better reliability)
+    int tprog_us = is_16f84 ? 25000 : 10000; // 25ms for 16F84 (further increased), 10ms for 16F887
     int max_capacity = is_16f84 ? 2048 : 16384;
     int chunk_size = is_16f84 ? 8 : 16; // Smaller chunks for 16F84
     int require_ack = is_16f887 ? 1 : 0; // ACK optional for 16F84 (fire-and-forget mode)
+    
+    // Pre-write setup for PIC16F84 (clears any residual protection)
+    if (is_16f84) {
+        printf("K150: Performing PIC16F84 pre-write setup to clear residual protection\n");
+        unsigned char setup1 = 0x01; // Bulk Erase Setup 1
+        unsigned char setup2 = 0x07; // Bulk Erase Setup 2
+        if (k150_write_serial(&setup1, 1) == SUCCESS && k150_write_serial(&setup2, 1) == SUCCESS) {
+            usleep(5000); // 5ms delay for setup commands
+            printf("K150: PIC16F84 pre-write setup completed\n");
+        } else {
+            printf("K150: WARNING: PIC16F84 pre-write setup failed\n");
+        }
+    }
     
     printf("K150: Device: %s, Tprog: %dms, Capacity: %d bytes, ChunkSize: %d, RequireACK: %s\n", 
            device_name, tprog_us/1000, max_capacity, chunk_size, require_ack ? "Yes" : "No");
@@ -1198,7 +1211,7 @@ int k150_program_rom_enhanced(const PIC_DEFINITION *device, const unsigned char 
                 k150_voltages_off();
                 return ERROR;
             }
-            usleep(1000);
+            usleep(3000); // Increased delay for stability
             
             // Send word data (Low byte first, then High byte)
             if (k150_write_serial(&low_byte, 1) != SUCCESS || 
@@ -1207,7 +1220,7 @@ int k150_program_rom_enhanced(const PIC_DEFINITION *device, const unsigned char 
                 k150_voltages_off();
                 return ERROR;
             }
-            usleep(1000);
+            usleep(3000); // Increased delay for data stability
             
             // Begin Programming (Command 0x08)
             unsigned char begin_prog = 0x08;
@@ -1225,7 +1238,7 @@ int k150_program_rom_enhanced(const PIC_DEFINITION *device, const unsigned char 
                 k150_voltages_off();
                 return ERROR;
             }
-            usleep(1000);
+            usleep(5000); // Increased delay after programming
             
             // Device-specific ACK checking
             if (require_ack) {
@@ -1342,11 +1355,11 @@ int k150_program_rom_enhanced(const PIC_DEFINITION *device, const unsigned char 
     // Final processing with device-specific handling
     printf("K150: Data transfer completed for %s (%d words programmed)\n", device_name, word_count);
     
-    // Extended delay before voltage-off to allow last word to settle
-    usleep(5000); // 5ms delay critical for preventing hang
+    // Extended delay before voltage-off to allow last word to settle  
+    usleep(15000); // 15ms delay critical for preventing hang (increased from 5ms)
     
-    // Safe voltage-off with timeout
-    printf("K150: Turning off voltages safely\n");
+    // Safe voltage-off with enhanced timeout and retry
+    printf("K150: Turning off voltages safely with retry mechanism\n");
     unsigned char voltages_off_cmd = 0x05;
     if (k150_write_serial(&voltages_off_cmd, 1) == SUCCESS) {
         // Check for voltage-off ACK with timeout
@@ -1354,13 +1367,23 @@ int k150_program_rom_enhanced(const PIC_DEFINITION *device, const unsigned char 
         struct timeval timeout;
         FD_ZERO(&readfds);
         FD_SET(k150_fd, &readfds);
-        timeout.tv_sec = 10; // 10 second timeout for voltage-off
+        timeout.tv_sec = 15; // 15 second timeout for voltage-off (increased)
         timeout.tv_usec = 0;
         
         if (select(k150_fd + 1, &readfds, NULL, NULL, &timeout) > 0) {
             unsigned char voltage_ack;
             if (k150_read_serial(&voltage_ack, 1) == SUCCESS) {
                 printf("K150: Voltage-off ACK: 0x%02X\n", voltage_ack);
+                if (voltage_ack != 0x76) {
+                    printf("K150: WARNING: Expected 'v' ACK (0x76), got 0x%02X, retrying\n", voltage_ack);
+                    usleep(100000); // 100ms delay before retry
+                    if (k150_write_serial(&voltages_off_cmd, 1) == SUCCESS) {
+                        usleep(50000); // 50ms wait for retry response
+                        if (k150_read_serial(&voltage_ack, 1) == SUCCESS) {
+                            printf("K150: Retry voltage-off ACK: 0x%02X\n", voltage_ack);
+                        }
+                    }
+                }
                 if (voltage_ack == 0x76) {
                     printf("K150: Voltages safely turned off\n");
                 } else {
