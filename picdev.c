@@ -4393,6 +4393,74 @@ const static PIC_DEFINITION PIC16F688 =
 };
 
 //-----------------------------------------------------------
+// PIC16F690 - 20-pin, 4K words program memory, ICSP only
+//-----------------------------------------------------------
+const static unsigned char def_PIC16F690[] =
+{
+	0x20, 0x00,		// size of program space (4K words = 8K bytes)
+	0x3f, 0xff,		// width of address word
+	0x3f, 0xff,		// width of data word
+	0x00, 0x7f,		// width of ID
+	0x00, 0x7f,		// ID mask
+	0x0f, 0xff,		// width of configuration word
+	0x0f, 0xff,		// configuration word mask
+	0x00, 0xff,		// EEPROM data width
+	0x00, 0xff,		// EEPROM data mask
+	0x00, 0x00,		// Calibration width
+	0x00, 0x00,		// Calibration mask
+	0x00, 0x00,		// ??
+	0x20, 0x00,		// ??
+	0x20, 0x00,		// address of ID locations
+	0x04,				// size of ID locations
+	0x20, 0x07,		// address of configuration bits
+	0x01,				// size of configuration register
+	0x00, 0x00,		// address of data space
+	0x01, 0x00,		// size of data space
+	0x00, 0x00,		// address of internal clock calibration value
+	0x00, 0x00,		// size of clock calibration space
+	0x00,				// additional programming pulses for C devices
+	0x01,				// main programming pulses for C devices
+	0x14, 0x14,		// ZIF configuration (20-pin package)
+};
+
+const static unsigned char defx_PIC16F690[] =
+{
+	0x03, 0x00, 0x07, 0x00,		// ??
+	0x0f, 0xff, 0x0f, 0xff,		// ??
+	0x00, 0x80, 0x00, 0x80,		// ??
+	0x00, 0x00, 0x00, 0x00,		// ??
+	0x00, 0x80, 0x00, 0x80,		// ??
+	0x00, 0x00, 0x00, 0x00,		// ??
+	0x00, 0x00, 0x00, 0x00,		// ??
+	0x00, 0x00, 0x00, 0x00,		// ??
+	0x00, 0x00, 0x00, 0x00,		// ??
+	0x00, 0x00, 0x00, 0x00,		// ??
+	0x00, 0x00, 0x00, 0x00,		// ??
+	0x00, 0x00, 0x00, 0x00,		// ??
+	0x00, 0x00, 0x00, 0x00,		// ??
+	0x00, 0x00, 0x00, 0x00,		// ??
+	0x00, 0x00, 0x00, 0x00,		// ??
+	0x00, 0x00, 0x00, 0x00,		// ??
+};
+
+const static PIC_DEFINITION PIC16F690 =
+{
+	"16F690",			// device name
+	def_PIC16F690,		// definition
+	defx_PIC16F690,	// extended definition
+	0,						// config word: code protect bit mask
+	0,						// config word: watchdog bit mask
+
+	0,						// Word alignment for writing to this device
+	0,						// Configuration memory start address
+	0, 0,					// ID Locations addr
+	0,						// Data eeprom address
+	0,						// number of words in cfg bits with factory set bits
+	{0, 0, 0, 0, 0, 0, 0, 0},	// fixed bits mask
+	(P_PICSTART | P_WARP13 | P_JUPIC | P_OLIMEX | P_K150),	// bit map of supporting programmers (added K150)
+};
+
+//-----------------------------------------------------------
 const static unsigned char def_PIC16C71[] =
 {
 	0x04, 0x00,		// size of program space
@@ -9635,6 +9703,7 @@ const PIC_DEFINITION *deviceArray[] =
 	&PIC16F676,
 	&PIC16F684,
 	&PIC16F688,
+	&PIC16F690,
 	&PIC16C71,
 	&PIC16C710,
 	&PIC16C711,
