@@ -4,7 +4,7 @@ CFLAGS = -Wall -O2 -g -DDEBUG
 LDFLAGS = -lm
 
 # Essential source files only
-SOURCES = main.c k150.c k150_config.c picdev.c serial.c debug.c parse.c verify.c atoi_base.c record.c
+SOURCES = main.c k150.c picdev.c serial.c debug.c parse.c verify.c atoi_base.c record.c
 
 OBJECTS = $(SOURCES:.c=.o)
 TARGET = picp
@@ -21,4 +21,3 @@ clean:
 	rm -f $(OBJECTS) $(TARGET)
 
 .PHONY: all clean
-SRCS += k150_stubs.c

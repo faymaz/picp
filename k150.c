@@ -336,39 +336,29 @@ int k150_p18a_write_rom(int fd, const char *device, uint8_t *data, int length) {
     }
     printf("K150: Write mode confirmed ('Y' ACK)\n");
     
-    // Send data in 32-byte chunks (from Microbrn.exe log)
-    const int chunk_size = 32;
-    int total_sent = 0;
-    int chunk_num = 0;
+    // EXPERIMENT: Send all data continuously (no intermediate ACKs)
+    printf("K150: 🧪 EXPERIMENTAL: Sending all %d bytes continuously\n", length);
     
-    while (total_sent < length) {
-        int bytes_to_send = (length - total_sent > chunk_size) ? chunk_size : (length - total_sent);
-        
-        printf("K150: Sending chunk %d: %d bytes (offset %d)\n", chunk_num, bytes_to_send, total_sent);
-        
-        // Send chunk data
-        if (k150_write_serial(data + total_sent, bytes_to_send) != SUCCESS) {
-            printf("K150: Failed to send chunk %d\n", chunk_num);
-            return -1;
-        }
-        
-        // Programming delay (device-specific Tprog) - increased for multi-chunk stability
-        usleep(50000); // 50ms delay for P18A multi-chunk writes
-        
-        // Read chunk ACK: should be 'Y' (0x59)
-        uint8_t chunk_ack;
-        if (k150_read_with_timeout(&chunk_ack, 1, 10000) != 1 || chunk_ack != P18A_ACK_SUCCESS) {
-            printf("K150: Chunk %d ACK failed (expected 0x59, got 0x%02X)\n", chunk_num, chunk_ack);
-            return -1;
-        }
-        
-        printf("K150: ✅ Chunk %d programmed successfully ('Y' ACK)\n", chunk_num);
-        
-        total_sent += bytes_to_send;
-        chunk_num++;
+    if (k150_write_serial(data, length) != SUCCESS) {
+        printf("K150: Failed to send all data\n");
+        return -1;
     }
     
-    printf("K150: ✅ P18A write completed (%d bytes, %d chunks)\n", total_sent, chunk_num);
+    printf("K150: All data sent, waiting for final ACK...\n");
+    
+    // Programming delay for entire operation
+    usleep(length * 1000); // 1ms per byte
+    
+    // Read final ACK: should be 'Y' (0x59)
+    uint8_t final_ack;
+    if (k150_read_with_timeout(&final_ack, 1, 15000) != 1 || final_ack != P18A_ACK_SUCCESS) {
+        printf("K150: Final ACK failed (expected 0x59, got 0x%02X)\n", final_ack);
+        return -1;
+    }
+    
+    printf("K150: ✅ All data programmed successfully with continuous mode!\n");
+    
+    printf("K150: ✅ P18A write completed (%d bytes, continuous mode)\n", length);
     return 0;
 }
 
