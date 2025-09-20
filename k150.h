@@ -149,6 +149,6 @@ const ZIF_INFO* get_zif_info(const char* pic_name);
 
 // Global variables
 extern int theDevice;
-extern bool isK150;  // K150 programmer active flag
+extern bool isK150;  // K150 programmer active flag\n\n// Function declarations\nint k150_read_with_timeout(unsigned char *buf, int len, int timeout_ms);
 
 #endif // __K150_H_

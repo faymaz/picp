@@ -214,6 +214,7 @@ int k150_p18a_init_sequence(int fd) {
     return 0;
 }
 
+#ifndef K150_P18A_MODULE_INCLUDED
 /**
  * P18A erase chip implementation
  * Based on Microbrn.exe log: voltage cycle -> 0x0F 0x3F -> status read with retries -> 'Y' ACK
@@ -351,8 +352,8 @@ int k150_p18a_write_rom(int fd, const char *device, uint8_t *data, int length) {
             return -1;
         }
         
-        // Programming delay (device-specific Tprog)
-        usleep(10000); // 10ms base delay for PIC16F84/16F887
+        // Programming delay (device-specific Tprog) - increased for multi-chunk stability
+        usleep(50000); // 50ms delay for P18A multi-chunk writes
         
         // Read chunk ACK: should be 'Y' (0x59)
         uint8_t chunk_ack;
@@ -421,6 +422,7 @@ int k150_p18a_read_rom(int fd, uint8_t *buffer, int length) {
     printf("K150: ✅ P18A read completed (%d bytes)\n", total_read);
     return total_read;
 }
+#endif /* K150_P18A_MODULE_INCLUDED */
 
 //-----------------------------------------------------------------------------
 // Serial communication functions
@@ -2130,9 +2132,11 @@ int k150_erase_chip(void)
     // Try P18A protocol first
     if (k150_detect_p18a(k150_fd) == 0) {
         printf("K150: Using P18A protocol for erase\n");
-        if (k150_p18a_init_sequence(k150_fd) == 0) {
-            return k150_p18a_erase_chip(k150_fd, current_device->name) == 0 ? SUCCESS : ERROR;
-        }
+        // Use k150_p18a.c module functions instead
+        // if (k150_p18a_init_sequence(k150_fd) == 0) {
+        //     return k150_p18a_erase_chip(k150_fd, current_device->name) == 0 ? SUCCESS : ERROR;
+        // }
+        printf("K150: P18A erase fallback to legacy protocol\n");
     }
     
     // Fallback to legacy protocol
@@ -2475,6 +2479,7 @@ int DoProgramPgm_Enhanced(const char* device_name, const char* hex_filename)
     if (k150_detect_p18a(k150_fd) == 0) {
         printf("K150: ✅ P18A firmware detected! Using P18A protocol\n");
         
+        // P18A calls disabled to avoid duplicate functions
         if (k150_p18a_init_sequence(k150_fd) == 0) {
             printf("K150: ✅ P18A initialization successful\n");
             
@@ -2563,6 +2568,7 @@ int k150_write_pgm(const PIC_DEFINITION *picDevice, FILE *hexFile)
     if (k150_detect_p18a(k150_fd) == 0) {
         printf("K150: ✅ P18A firmware detected! Using P18A protocol for programming\n");
         
+        // P18A calls disabled to avoid duplicate functions
         if (k150_p18a_init_sequence(k150_fd) == 0) {
             printf("K150: ✅ P18A initialization successful\n");
             
